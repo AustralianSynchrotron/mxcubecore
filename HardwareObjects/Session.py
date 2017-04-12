@@ -50,14 +50,12 @@ class Session(HardwareObject):
             getProperty('processed_data_folder_name')
 
         try:
-           inhouse_proposals = self["inhouse_users"]["proposal"]
- 
-           for prop in inhouse_proposals:
-               self.in_house_users.append((prop.getProperty('code'),
-                   str(prop.getProperty('number'))))
-        except:
-           pass
-
+            inhouse_proposals = self["inhouse_users"]["proposal"]
+            for prop in inhouse_proposals:
+                self.in_house_users.append((prop.getProperty('code'),
+                                            str(prop.getProperty('number'))))
+        except IndexError:
+            pass
 
         email_extension = self.getProperty('email_extension')
         if email_extension:
