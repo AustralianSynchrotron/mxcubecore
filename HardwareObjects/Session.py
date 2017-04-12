@@ -67,7 +67,6 @@ class Session(HardwareObject):
             except (TypeError, IndexError):
                 pass
 
-
         archive_base_directory = self['file_info'].getProperty('archive_base_directory')
         if archive_base_directory:
             if self.synchrotron_name.lower() == 'esrf':
