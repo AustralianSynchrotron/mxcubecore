@@ -1639,8 +1639,8 @@ def mount_sample(beamline_setup_hwobj,
                 # This is to preserve backward compatibility (load_sample was supposed to return None);
                 # if sample could not be loaded, but no exception is raised, let's skip the sample
                 raise QueueSkippEntryException("Sample changer could not load sample", "")
-
-    if not sample_mount_device.hasLoadedSample():
+    
+    if False: #not sample_mount_device.hasLoadedSample():
         #Disables all related collections
         view.setOn(False)
         view.setText(1, "Sample not loaded")
