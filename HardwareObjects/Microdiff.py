@@ -15,14 +15,9 @@ MICRODIFF = None
 
 class Microdiff(MiniDiff.MiniDiff):
     def init(self):
-        
         global MICRODIFF
         MICRODIFF = self
         self.timeout = 3
-        try:
-          self.chiAngle = self.getProperty("chi")
-        except: 
-          self.chiAngle = 0
         self.phiMotor = self.getDeviceByRole('phi')
         self.exporter_addr = self.phiMotor.exporter_address
         self.x_calib = self.addChannel({ "type":"exporter", "exporter_address": self.exporter_addr, "name":"x_calib" }, "CoaxCamScaleX")
