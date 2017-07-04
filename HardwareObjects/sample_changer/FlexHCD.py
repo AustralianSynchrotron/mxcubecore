@@ -52,10 +52,15 @@ class Basket(Container):
 
 class Cell(Container):
     __TYPE__ = "Cell"
-    def __init__(self, container, number):
+    def __init__(self, container, number, sc3_pucks=True):
       super(Cell, self).__init__(self.__TYPE__,container,Cell.getCellAddress(number),True)
-      for i in range(3):
-        self._addComponent(Basket(self,number,i+1, unipuck=1-(number%2)))
+      if sc3_pucks:
+        for i in range(3):
+          self._addComponent(Basket(self,number,i+1, unipuck=1-(number%2)))
+      else:
+        for i in range(3):
+          self._addComponent(Basket(self,number,i+1, unipuck=True))
+       
     @staticmethod
     def getCellAddress(cell_number):
       return str(cell_number)
@@ -73,12 +78,16 @@ class FlexHCD(SampleChanger):
     def __init__(self, *args, **kwargs):
         super(FlexHCD, self).__init__(self.__TYPE__, True, *args, **kwargs)
 
+    def init(self):
+        try:
+            sc3_pucks = self.getProperty("sc3_pucks")
+        except Exception:
+            sc3_pucks = True
+
         for i in range(8):
-            cell = Cell(self, i+1)
+            cell = Cell(self, i+1, sc3_pucks)
             self._addComponent(cell)
 
-
-    def init(self):
         self.robot = DeviceProxy(self.getProperty('tango_device'))
         self.controller = self.getObjectByRole("controller")
         self.prepareLoad = self.getCommandObject("moveToLoadingPosition")
@@ -122,7 +131,7 @@ class FlexHCD(SampleChanger):
         return
  
     def _execute_cmd(self, cmd, *args, **kwargs):
-        timeout = kwargs.pop('timeout', 120)
+        timeout = kwargs.pop('timeout', None)
         if args:
             cmd_str = 'flex.%s(%s)' % (cmd, ",".join(map(repr, args)))
         else:
