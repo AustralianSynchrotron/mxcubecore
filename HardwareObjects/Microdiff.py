@@ -19,6 +19,10 @@ class Microdiff(MiniDiff.MiniDiff):
         global MICRODIFF
         MICRODIFF = self
         self.timeout = 3
+        try:
+          self.chiAngle = self.getProperty("chi")
+        except: 
+          self.chiAngle = 0
         self.phiMotor = self.getDeviceByRole('phi')
         self.exporter_addr = self.phiMotor.exporter_address
         self.x_calib = self.addChannel({ "type":"exporter", "exporter_address": self.exporter_addr, "name":"x_calib" }, "CoaxCamScaleX")
@@ -44,6 +48,7 @@ class Microdiff(MiniDiff.MiniDiff):
         self.scan_detector_gate_pulse_enabled = self.addChannel({"type":"exporter", "exporter_address": self.exporter_addr, "name":"detector_gate_pulse_enabled" }, "DetectorGatePulseEnabled")
         self.scan_detector_gate_pulse_readout_time = self.addChannel({"type":"exporter", "exporter_address": self.exporter_addr, "name":"detector_gate_pulse_readout_time" }, "DetectorGatePulseReadoutTime")
 
+        self.abort_cmd = self.addCommand({ "type": "exporter", "exporter_address": self.exporter_addr, "name": "abort" }, "abort") 
 
         MiniDiff.MiniDiff.init(self)
         self.centringPhiy.direction = -1
@@ -58,12 +63,11 @@ class Microdiff(MiniDiff.MiniDiff):
         self.beam_info = self.getObjectByRole('beam_info')
 
     def getMotorToExporterNames(self):
-        #only temporary. Get the names from the xml files
-        MOTOR_TO_EXPORTER_NAME = {"focus":"AlignmentX", "kappa":"Kappa",
-                                  "kappa_phi":"Phi", "phi": "Omega",
-                                  "phiy":"AlignmentY", "phiz":"AlignmentZ",
-                                  "sampx":"CentringX", "sampy":"CentringY",
-                                  "zoom":"Zoom"}
+        MOTOR_TO_EXPORTER_NAME = {"focus":self.focusMotor.getProperty('motor_name'), "kappa":self.kappaMotor.getProperty('motor_name'),
+                                  "kappa_phi":self.kappaPhiMotor.getProperty('motor_name'), "phi": self.phiMotor.getProperty('motor_name'),
+                                  "phiy":self.phiyMotor.getProperty('motor_name'), "phiz":self.phizMotor.getProperty('motor_name'),
+                                  "sampx":self.sampleXMotor.getProperty('motor_name'), "sampy":self.sampleYMotor.getProperty('motor_name'),
+                                  "zoom":'Zoom' }
         return MOTOR_TO_EXPORTER_NAME
 
     def getCalibrationData(self, offset):
@@ -113,6 +117,7 @@ class Microdiff(MiniDiff.MiniDiff):
         return self.readPhase.getValue()
 
     def moveSyncMotors(self, motors_dict, wait=False, timeout=None):
+        in_kappa_mode = self.in_kappa_mode()
         argin = ""
         #print "start moving motors =============", time.time()
         if wait:
@@ -121,7 +126,9 @@ class Microdiff(MiniDiff.MiniDiff):
             position = motors_dict[motor]
             if position is None:
                 continue
-            name=self.MOTOR_TO_EXPORTER_NAME[motor]
+            name = self.MOTOR_TO_EXPORTER_NAME[motor]
+            if not in_kappa_mode and motor in ('kappa','kappa_phi'):
+              continue
             argin += "%s=%0.3f;" % (name, position)
         if not argin:
             return
@@ -292,7 +299,7 @@ class Microdiff(MiniDiff.MiniDiff):
                                                                    "sampy": self.centringSampley,
                                                                    "phiz": self.centringPhiz }, 
                                                                   self.pixelsPerMmY, self.pixelsPerMmZ, 
-                                                                  self.getBeamPosX(), self.getBeamPosY())
+                                                                  self.getBeamPosX(), self.getBeamPosY(), chi_angle=self.chiAngle)
 
         self.currentCentringProcedure.link(self.manualCentringDone)
 
