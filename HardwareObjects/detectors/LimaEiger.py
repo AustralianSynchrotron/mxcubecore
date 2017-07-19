@@ -43,7 +43,12 @@ class Eiger:
       self.addChannel({ "type": "tango",
                         "name": "set_image_header",
                         "tangoname": lima_device }, "saving_common_header")
-      
+      try:
+        self.addChannel({"type":"tango", "name": "acq_nb_sequences", "tangoname": lima_device },
+                        "acq_nb_sequences")
+      except Exception:
+        pass
+
       self.getCommandObject("prepare_acq").init_device()
       self.getCommandObject("prepare_acq").device.set_timeout_millis(5*60*1000)
       self.getChannelObject("photon_energy").init_device()
@@ -62,7 +67,7 @@ class Eiger:
       return float(self.config.getProperty("deadtime"))
 
   @task
-  def prepare_acquisition(self, take_dark, start, osc_range, exptime, npass, number_of_images, comment, energy, still, gate=False):
+  def prepare_acquisition(self, take_dark, start, osc_range, exptime, npass, number_of_images, comment, energy, still, gate=False, nb_seq=None):
       diffractometer_positions = self.collect_obj.bl_control.diffractometer.getPositions()
       self.start_angles = list()
       for i in range(number_of_images):
@@ -112,7 +117,10 @@ class Eiger:
 
       if gate:
           self.getChannelObject("acq_trigger_mode").setValue("EXTERNAL_GATE")
-      else :
+      elif nb_seq:
+        self.getChannelObject("acq_trigger_mode").setValue("EXTERNAL_TRIGGER_SEQUENCES")
+        self.getChannelObject("acq_nb_sequences").setValue(nb_seq)
+      else:
           if still:
               self.getChannelObject("acq_trigger_mode").setValue("INTERNAL_TRIGGER")
           else:
