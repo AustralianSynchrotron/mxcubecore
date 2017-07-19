@@ -221,8 +221,11 @@ class FlexHCD(SampleChanger):
                 logging.getLogger("HWR").error(msg)
 
     def get_gripper(self):
-        gripper_type = "SPINE" if self._execute_cmd("get_gripper_type") == 3 else "UNIPUCK"
-        return gripper_type
+        gripper_type = {1:"UNIPUCK", 3:"SPINE"}
+        tt = self._execute_cmd("get_gripper_type")
+        if tt in gripper_type:
+            return gripper_type[tt]
+        return "?"
 
     @task
     def change_gripper(self):
