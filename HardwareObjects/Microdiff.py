@@ -252,7 +252,7 @@ class Microdiff(MiniDiff.MiniDiff):
 
     def moveToBeam(self, x, y):
         if not self.in_plate_mode():  
-            super(Microdiff,this).moveToBeam(x,y)
+            super(Microdiff,self).moveToBeam(x,y)
         else:          
             try:
                 beam_xc = self.getBeamPosX()
