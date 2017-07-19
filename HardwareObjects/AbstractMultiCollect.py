@@ -743,6 +743,9 @@ class AbstractMultiCollect(object):
                     data_collect_parameters["dark"] = 0
 
                     i = 0
+                    #######
+                    if self.nb_sequence:
+                        wedge_size *= self.nb_sequence
                     j = wedge_size
                     while j > 0: 
                       frame_start = start+i*osc_range

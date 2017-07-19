@@ -204,6 +204,14 @@ class Microdiff(MiniDiff.MiniDiff):
             self._wait_ready(1800) #timeout of 30 min
             print "finished at ---------->", time.time()
 
+    def stillScan(self, pulse_duration, pulse_period, pulse_nb, wait=False):
+        scan_params = "%0.6f\t%0.6f\t%d"% (pulse_duration, pulse_period, pulse_nb)
+        scan = self.addCommand({"type":"exporter", "exporter_address":self.exporter_addr, "name":"start_scan" }, "startStillScan")
+        scan(scan_params)
+        print "still scan started at ----------->", time.time()
+        if wait:
+            self._wait_ready(1800) #timeout of 30 min
+            print "finished at ---------->", time.time()
 
     def in_plate_mode(self):
         try:

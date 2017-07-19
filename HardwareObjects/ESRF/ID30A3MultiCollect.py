@@ -17,6 +17,8 @@ class ID30A3MultiCollect(ESRFMultiCollect):
         ESRFMultiCollect.__init__(self, name, PixelDetector(Eiger), FixedEnergy(0.9677, 12.812))
 
         self._notify_greenlet = None
+        self.nb_sequence = None
+        self.jitter = 0.1
 
     @task
     def data_collection_hook(self, data_collect_parameters):
@@ -106,8 +108,6 @@ class ID30A3MultiCollect(ESRFMultiCollect):
        self.bl_control.diffractometer.takeSnapshots(number_of_snapshots, wait=True)
 
 
-
-
     @task
     def do_prepare_oscillation(self, *args, **kwargs):
         #set the detector cover out
@@ -128,18 +128,26 @@ class ID30A3MultiCollect(ESRFMultiCollect):
 
     @task
     def oscil(self, start, end, exptime, npass, wait=True):
+        nb_seq = self.nb_sequence
         diffr = self.getObjectByRole("diffractometer")
         if self.helical:
             diffr.oscilScan4d(start, end, exptime, self.helical_pos, wait=True)
         elif self.mesh:
-            diffr.oscilScanMesh(start, end, exptime, self._detector.get_deadtime(), self.mesh_num_lines, self.mesh_total_nb_frames, self.mesh_center, self.mesh_range , wait=True) 
+            diffr.oscilScanMesh(start, end, exptime, self._detector.get_deadtime(), self.mesh_num_lines, self.mesh_total_nb_frames, self.mesh_center, self.mesh_range , wait=True)
+        elif nb_seq:
+            pulse_duration = 0.1 # 100 ms
+            pulse_period = exptime/nb_seq + self.jitter
+            diffr.stillScan(pulse_duration, pulse_period, nb_seq, wait=True)
         else:
             diffr.oscilScan(start, end, exptime, wait=True)
             
     def prepare_acquisition(self, take_dark, start, osc_range, exptime, npass, number_of_images, comment=""):
         energy = self._tunable_bl.getCurrentEnergy()
-        return self._detector.prepare_acquisition(take_dark, start, osc_range, exptime, npass, number_of_images, comment, energy, self.mesh)
-
+        nb_seq = self.nb_sequence
+        if nb_seq:
+            number_of_images *= nb_seq
+        self.nb_img = number_of_images
+        return self._detector.prepare_acquisition(take_dark, start, osc_range, exptime, npass, number_of_images, comment, energy, self.mesh, nb_seq)
 
     def open_fast_shutter(self):
         self.getObjectByRole("fastshut").actuatorIn()
@@ -187,7 +195,6 @@ class ID30A3MultiCollect(ESRFMultiCollect):
         self.last_image_filename = filename
         return ESRFMultiCollect.set_detector_filenames(self, frame_number, start, filename, jpeg_full_path, jpeg_thumbnail_full_path)
        
- 
     def adxv_notify(self, image_filename):
         logging.info("adxv_notify %r", image_filename)
         try:

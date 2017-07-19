@@ -164,7 +164,7 @@ class PixelDetector:
         return self._detector.get_deadtime()
 
     @task
-    def prepare_acquisition(self, take_dark, start, osc_range, exptime, npass, number_of_images, comment="", energy=None, gate = False):
+    def prepare_acquisition(self, take_dark, start, osc_range, exptime, npass, number_of_images, comment="", energy=None, gate=False, nb_seq=None):
         self.new_acquisition = True
         if osc_range < 1E-4:
             still = True
@@ -175,7 +175,7 @@ class PixelDetector:
             self.shutterless_range = osc_range*number_of_images
             self.shutterless_exptime = (exptime + self._detector.get_deadtime())*number_of_images
         if self._detector:
-            self._detector.prepare_acquisition(take_dark, start, osc_range, exptime, npass, number_of_images, comment, energy, still, gate)
+            self._detector.prepare_acquisition(take_dark, start, osc_range, exptime, npass, number_of_images, comment, energy, still, gate, nb_seq)
         else:
             self.execute_command("prepare_acquisition", take_dark, start, osc_range, exptime, npass, comment)
         
