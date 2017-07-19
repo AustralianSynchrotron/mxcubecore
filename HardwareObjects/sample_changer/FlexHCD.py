@@ -122,12 +122,14 @@ class FlexHCD(SampleChanger):
         return
  
     def _execute_cmd(self, cmd, *args, **kwargs):
-        timeout = kwargs.pop('timeout', None)
+        timeout = kwargs.pop('timeout', 120)
         if args:
             cmd_str = 'flex.%s(%s)' % (cmd, ",".join(map(repr, args)))
         else:
             cmd_str = 'flex.%s()' % cmd
         cmd_id = self.robot.eval(cmd_str)
+        if not cmd_id:
+            cmd_id = self.robot.eval(cmd_str)
         with gevent.Timeout(timeout, RuntimeError("Timeout while executing %s" % repr(cmd_str))):
           while True:
             if self.robot.is_finished(cmd_id):
@@ -224,6 +226,7 @@ class FlexHCD(SampleChanger):
 
     @task
     def change_gripper(self):
+        self.prepare_load(wait=True)
         self.enable_power()
         self._execute_cmd("changeGripper") 
 
@@ -241,6 +244,8 @@ class FlexHCD(SampleChanger):
 
     @task
     def defreeze(self):
+        self.prepare_load(wait=True)
+        self.enable_power()
         self._execute_cmd("defreezeGripper")
 
     def _doLoad(self, sample=None):
