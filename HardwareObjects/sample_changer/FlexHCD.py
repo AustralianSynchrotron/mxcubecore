@@ -223,6 +223,7 @@ class FlexHCD(SampleChanger):
 
     @task
     def change_gripper(self):
+        self.prepare_load(wait=True)
         self.enable_power()
         self._execute_cmd("changeGripper") 
 
