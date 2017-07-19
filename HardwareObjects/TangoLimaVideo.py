@@ -4,7 +4,7 @@ from HardwareRepository import BaseHardwareObjects
 from HardwareRepository import CommandContainer
 from HardwareRepository import HardwareRepository
 from HardwareRepository.HardwareObjects.Camera import JpegType, BayerType, MmapType, RawType, RGBType
-from Qub.CTools import pixmaptools
+
 import gevent
 import logging
 import os
@@ -15,6 +15,12 @@ from PyTango.gevent import DeviceProxy
 import numpy
 import struct
 
+try:
+    from Qub.CTools import pixmaptools
+except ImportError:
+    pixmaptools = None
+
+
 class TangoLimaVideo(BaseHardwareObjects.Device):
     def __init__(self, name):
         BaseHardwareObjects.Device.__init__(self, name)
@@ -23,7 +29,11 @@ class TangoLimaVideo(BaseHardwareObjects.Device):
         self.__gainExists = False
         self.__gammaExists = False
         self.__polling = None
-        self.scaling = pixmaptools.LUT.Scaling()
+
+        if pixmaptools:
+            self.scaling = pixmaptools.LUT.Scaling()
+        else:
+            self.scaling = None
         
     def init(self):
         self.device = None
