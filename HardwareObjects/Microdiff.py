@@ -115,6 +115,8 @@ class Microdiff(MiniDiff.MiniDiff):
     def moveSyncMotors(self, motors_dict, wait=False, timeout=None):
         argin = ""
         #print "start moving motors =============", time.time()
+        if wait:
+            self._wait_ready()
         for motor in motors_dict.keys():
             position = motors_dict[motor]
             if position is None:
@@ -127,8 +129,8 @@ class Microdiff(MiniDiff.MiniDiff):
         move_sync_motors(argin)
 
         if wait:
-            while not self._ready():
-                time.sleep(0.5)
+            time.sleep(0.1)
+            self._wait_ready()
         #print "end moving motors =============", time.time()
             
     def oscilScan(self, start, end, exptime, wait=False):
