@@ -144,7 +144,7 @@ class Microdiff(MiniDiff.MiniDiff):
         scan_params = "1\t%0.3f\t%0.3f\t%0.4f\t1"% (start, (end-start), exptime)
         scan = self.addCommand({"type":"exporter", "exporter_address":self.exporter_addr, "name":"start_scan" }, "startScanEx")
         scan(scan_params)
-        print "scan started at ----------->", time.time()
+        print "oscil scan started at ----------->", time.time()
         if wait:
             self._wait_ready(300) #timeout of 5 min
             print "finished at ---------->", time.time()
@@ -170,7 +170,7 @@ class Microdiff(MiniDiff.MiniDiff):
 
         scan = self.addCommand({"type":"exporter", "exporter_address":self.exporter_addr, "name":"start_scan4d" }, "startScan4DEx")
         scan(scan_params)
-        print "scan started at ----------->", time.time()
+        print "helical scan started at ----------->", time.time()
         if wait:
             self._wait_ready(900) #timeout of 15 min
             print "finished at ---------->", time.time()
@@ -199,7 +199,7 @@ class Microdiff(MiniDiff.MiniDiff):
 
         scan = self.addCommand({"type":"exporter", "exporter_address":self.exporter_addr, "name":"start_raster_scan" }, "startRasterScan")
         scan(scan_params)
-        print "scan started at ----------->", time.time()
+        print "mesh scan started at ----------->", time.time()
         if wait:
             self._wait_ready(1800) #timeout of 30 min
             print "finished at ---------->", time.time()
