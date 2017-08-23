@@ -474,7 +474,8 @@ class MiniDiff(Equipment):
                                                                "sampy": self.centringSampley,
                                                                "phiz": self.centringPhiz }, 
                                                               self.pixelsPerMmY, self.pixelsPerMmZ, 
-                                                              self.getBeamPosX(), self.getBeamPosY())
+                                                              self.getBeamPosX(), self.getBeamPosY(),
+                                                              chi_angle=self.chiAngle)
                                                                          
         self.currentCentringProcedure.link(self.manualCentringDone)
 
@@ -555,6 +556,7 @@ class MiniDiff(Equipment):
                                                                     "phiz": self.centringPhiz },
                                                                    self.pixelsPerMmY, self.pixelsPerMmZ, 
                                                                    self.getBeamPosX(), self.getBeamPosY(), 
+                                                                   chi_angle=self.chiAngle,
                                                                    msg_cb=self.emitProgressMessage,
                                                                    new_point_cb=lambda point: self.emit("newAutomaticCentringPoint", point))
        
