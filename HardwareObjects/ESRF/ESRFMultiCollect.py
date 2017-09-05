@@ -683,16 +683,19 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             return self.bl_control.machine_current.getFillMode()
         else:
             ''
+
     def get_cryo_temperature(self):
-      while True:
-          logging.info("Reading cryostream temperature")
-          try:
-              T = self.bl_control.cryo_stream.getTemperature()
-          except Exception:
-              time.sleep(0.1)
-              continue
-          else:
-              return T
+      with gevent.Timeout(3, RuntimeError("Cannot read cryostream temperature")):
+          while True:
+              logging.info("Reading cryostream temperature")
+              try:
+                  T = self.bl_control.cryo_stream.get_temperature()
+              except Exception:
+                  time.sleep(1)
+                  continue
+              else:
+                  return T
+
 
     def getCurrentEnergy(self):
       return self._tunable_bl.getCurrentEnergy()
