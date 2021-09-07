@@ -93,6 +93,7 @@ class _Poller:
         self.queue = queue.Queue()
         self.delay = 0
         self.stop_event = Event()
+        self.async_watcher = gevent.get_hub().loop.async_()
 
         if gevent_version < [1, 3, 0]:
             self.async_watcher = getattr(gevent.get_hub().loop, "async")()

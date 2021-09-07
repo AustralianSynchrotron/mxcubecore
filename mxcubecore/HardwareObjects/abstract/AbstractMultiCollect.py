@@ -6,7 +6,7 @@ import time
 import errno
 import abc
 import collections
-import autoprocessing
+from mxcubecore.HardwareObjects import autoprocessing
 import gevent
 from mxcubecore.TaskUtils import task, cleanup, error_cleanup
 
