@@ -8,6 +8,7 @@
     <channel type="epics" name="epicsMotor_dllm">MX3:TESTRIG_Y.DLLM</channel>
     <channel type="epics" name="epicsMotor_dhlm">MX3:TESTRIG_Y.DHLM</channel>
     <channel type="epics" name="epicsMotor_egu">MX3:TESTRIG_Y.EGU</channel>
+    <exporter_address>10.244.101.10</exporter_address>
     <username>PhiY</username>
     <motor_name>AlignmentY</motor_name>
     <unit>1e-5</unit>

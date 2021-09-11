@@ -8,6 +8,7 @@
     <channel type="epics" name="epicsMotor_dllm">MX3:TESTRIG_Z.DLLM</channel>
     <channel type="epics" name="epicsMotor_dhlm">MX3:TESTRIG_Z.DHLM</channel>
     <channel type="epics" name="epicsMotor_egu">MX3:TESTRIG_Z.EGU</channel>
+    <exporter_address>10.244.101.10</exporter_address>
     <username>PhiZ</username>
     <motor_name>AlignmentZ</motor_name>
     <GUIstep>1.0</GUIstep>
