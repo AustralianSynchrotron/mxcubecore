@@ -1,4 +1,4 @@
-<device class="LNLS.EPICSMotor.EPICSMotor">
+<device class="LNLS.EPICSMotor">
    <channel type="epics" name="epicsActuator_val">MX3:TESTRIG_Y.VAL</channel>
     <channel type="epics" name="epicsActuator_rbv" polling="500">MX3:TESTRIG_Y.RBV</channel>
     <channel type="epics" name="epicsMotor_rlv">MX3:TESTRIG_Y.RLV</channel>
