@@ -1,7 +1,7 @@
 import time
 import logging
 
-from HardwareRepository.HardwareObjects.ASLS.ASLSMotor import ASLSMotor
+from mxcubecore.HardwareObjects.ASLS.ASLSMotor import ASLSMotor
 
 
 class ASLSDetDistMotor(ASLSMotor):

@@ -21,9 +21,9 @@
 
 import logging
 
-from HardwareRepository.HardwareObjects.abstract.AbstractEnergy import (
+from mxcubecore.HardwareObjects.abstract.AbstractEnergy import (
     AbstractEnergy)
-from HardwareRepository.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
+from mxcubecore.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
 
 
 class ASLSEnergy(EPICSActuator, AbstractEnergy):
@@ -68,7 +68,8 @@ class ASLSEnergy(EPICSActuator, AbstractEnergy):
         #    logging.getLogger("user_level_log").info(
         #        "Checking Pilatus threshold. Please wait..."
         #    )
-        threshold_ok = self.detector.set_threshold_energy(energy)
+        #threshold_ok = self.detector.set_threshold_energy(energy)
+        threshold_ok = energy
 
         if threshold_ok:
             logging.getLogger("HWR").info("Pilatus threshold is okay.")

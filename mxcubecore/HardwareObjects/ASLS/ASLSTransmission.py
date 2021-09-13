@@ -20,16 +20,16 @@
 
 import logging
 
-from HardwareRepository import HardwareRepository as HWR
-from HardwareRepository.HardwareObjects.abstract.AbstractTransmission import (
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects.abstract.AbstractTransmission import (
     AbstractTransmission,
 )
-from HardwareRepository.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
+from mxcubecore.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
 
-from HardwareRepository.HardwareObjects.ASLS.read_transmission_mnc import (
+from mxcubecore.HardwareObjects.ASLS.read_transmission_mnc import (
     read_transmission
 )
-from HardwareRepository.HardwareObjects.ASLS.set_transmission_mnc import (
+from mxcubecore.HardwareObjects.ASLS.set_transmission_mnc import (
     get_transmission, set_foils
 )
 
