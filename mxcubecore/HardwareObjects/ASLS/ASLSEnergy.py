@@ -33,7 +33,7 @@ class ASLSEnergy(EPICSActuator, AbstractEnergy):
         """Initialise default properties"""
         super(ASLSEnergy, self).init()
         self.update_state(self.STATES.READY)
-        self.detector = self.getObjectByRole("detector")
+        #self.detector = self.getObjectByRole("detector")
 
     def set_value(self):
         """Override method."""

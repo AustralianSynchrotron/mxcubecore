@@ -1,6 +1,6 @@
 # The class to initialise, and init parameters
 _initialise_class:
-    class: HardwareRepository.HardwareObjects.Beamline.Beamline
+    class: mxcubecore.HardwareObjects.Beamline.Beamline
     # Further key-value pairs here will be passed to the class init
 #    mode: devel
 
@@ -26,10 +26,11 @@ _objects:
     - session: session.xml
     - machine_info: machine_info.xml
     - detector: detector.xml
-    - beam: beam_info.xml
-    - energy: energy.xml
+    - beam: beam.xml
     - transmission: transmission.xml
     - flux: flux.xml
+    - cryo: cryo.xml
+    - energy: energy.xml
     - resolution: resolution.xml
     - safety_shutter: safety_shutter.xml
     - fast_shutter: fast_shutter.xml
@@ -57,7 +58,7 @@ _objects:
     - online_processing: parallel_processing.xml
     - characterisation: characterisation.xml
     - data_publisher: data_publisher.xml
-    - scan_mockup: scan_mockup.xml
+    - scan_mockup: scan.xml
 
     # - beam_realign: # Skipped - optional
 
@@ -130,7 +131,7 @@ available_methods:
     helical: True
     xrf_scan: True
     energy_scan: True
-    mesh_scan: fals
+    mesh_scan: False
 
 undulators:
     - type: PPU35C_GAP
