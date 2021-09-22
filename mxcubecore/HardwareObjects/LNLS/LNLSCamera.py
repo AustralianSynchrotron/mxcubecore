@@ -113,7 +113,10 @@ class LNLSCamera(BaseHardwareObjects.Device):
         try:
             # Get data
             data = self.imgArray
-            arr = np.array(data).reshape(self.height, self.width, self.pixel_size)
+            # FIXME the following two lines are probably causing
+            # color inversion
+            arr = np.array(data).reshape(self.height, self.width, self.pixel_size) * 255
+            arr = arr.astype(np.uint8)
             # Convert data to rgb image
             img = Image.fromarray(arr)
             #img_rot = img.rotate(angle=0, expand=True)
