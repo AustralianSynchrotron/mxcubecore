@@ -68,11 +68,11 @@ class EpicsCommand(CommandObject):
             self.read_as_str
         )
         self.pv = epics.PV(pv_name, auto_monitor = self.auto_monitor)
-        time.sleep(0.01)
-        self.pv_connected = self.pv.connect(timeout=0.1)
+        time.sleep(0.3)
+        self.pv_connected = self.pv.connect(timeout=5)
 
         if (self.pv_connected):
-            self.value_changed(self.pv.get(as_string=self.read_as_str, timeout=0.1))
+            self.value_changed(self.pv.get(as_string=self.read_as_str, timeout=5))
         else:
             logging.getLogger("HWR").error(
                 "EpicsCommand: Error connecting to pv %s.",

@@ -51,7 +51,7 @@ class LNLSCamera(BaseHardwareObjects.Device):
 
     def _init(self):
         self.stream_hash = "#"
-        self.setIsReady(True)
+        self.set_is_ready(True)
 
     def init(self):
         self.read_sizes()
@@ -337,7 +337,9 @@ class LNLSCamera(BaseHardwareObjects.Device):
 
             if live:
                 logging.getLogger("HWR").info("LNLSCamera is going to poll images")
-                self.delay = float(int(self.getProperty("interval"))/1000.0)
+                # self.delay = float(int(self.getProperty("interval"))/1000.0)
+                # the "interval" property is hardcoded at the moment
+                self.delay = float(int(100.0/1000.0))
                 thread = Thread(target=self.poll)
                 thread.daemon = True
                 thread.start()
@@ -346,6 +348,7 @@ class LNLSCamera(BaseHardwareObjects.Device):
 
             return True
         except:
+            logging.getLogger("HWR").error('Error polling images')
             return False
 
     def imageType(self):
