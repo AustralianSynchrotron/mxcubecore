@@ -51,7 +51,7 @@ class ASLSCamera(BaseHardwareObjects.Device):
 
     def _init(self):
         self.stream_hash = "#"
-        self.setIsReady(True)
+        self.set_is_ready(True)
 
     def init(self):
         self.read_sizes()
@@ -113,7 +113,10 @@ class ASLSCamera(BaseHardwareObjects.Device):
         try:
             # Get data
             data = self.imgArray
-            arr = np.array(data).reshape(self.height, self.width, self.pixel_size)
+            # FIXME the following two lines are probably causing
+            # color inversion
+            arr = np.array(data).reshape(self.height, self.width, self.pixel_size) * 255
+            arr = arr.astype(np.uint8)
             # Convert data to rgb image
             img = Image.fromarray(arr)
             #img_rot = img.rotate(angle=0, expand=True)
@@ -337,7 +340,9 @@ class ASLSCamera(BaseHardwareObjects.Device):
 
             if live:
                 logging.getLogger("HWR").info("ASLSCamera is going to poll images")
-                self.delay = float(int(self.getProperty("interval"))/1000.0)
+                # self.delay = float(int(self.getProperty("interval"))/1000.0)
+                # the "interval" property is hardcoded at the moment
+                self.delay = float(int(100.0/1000.0))
                 thread = Thread(target=self.poll)
                 thread.daemon = True
                 thread.start()
@@ -346,6 +351,7 @@ class ASLSCamera(BaseHardwareObjects.Device):
 
             return True
         except:
+            logging.getLogger("HWR").error('Error while polling images')
             return False
 
     def imageType(self):
