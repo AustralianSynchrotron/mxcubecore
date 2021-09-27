@@ -1,15 +1,15 @@
 import time
 import logging
 
-from mxcubecore.HardwareObjects.LNLS.LNLSMotor import ASLSMotor
+from mxcubecore.HardwareObjects.LNLS.LNLSMotor import LNLSMotor
 
 
-class ASLSDetDistMotor(ASLSMotor):
+class LNLSDetDistMotor(LNLSMotor):
 
     PMAC_SENDCMD = 'pmac_sendcmd'
 
     def __init__(self, name):
-        ASLSMotor.__init__(self, name)
+        LNLSMotor.__init__(self, name)
 
     def _move(self, value):
         """Override super class method."""
