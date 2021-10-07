@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<equipment class="DiffractometerMockup">
+  <username>diffractometer</username>
+  <object role="focus" hwrid="./diffractometer_config/motor_x"></object>
+  <object role="zoom" hwrid="./diffractometer_config/zoom"></object>
+  <object role="phi" hwrid="./diffractometer_config/omega"></object>
+  <object role="phiy" hwrid="./diffractometer_config/motor_y"></object>
+  <object role="phiz" hwrid="./diffractometer_config/motor_z"></object>
+  <object role="sampx" hwrid="./diffractometer_config/sampx"/>
+  <object role="sampy" hwrid="./diffractometer_config/sampy"/>
+  <object role="kappa" hwrid="./diffractometer_config/kappa"></object>
+  <object role="kappa_phi" hwrid="./diffractometer_config/kappaphi"></object>
+  <object role="beam" hwrid="./beam"></object>
+
+  <object role="backlight" href="./diffractometer_config/backlight"/>
+  <object role="backlightswitch" href="./diffractometer_config/backlightswitch"/>
+  <object role="frontlight" href="./diffractometer_config/frontlight"/>
+  <object role="frontlightswitch" href="./diffractometer_config/frontlightswitch"/>
+
+  <object role="beamstop_distance" hwrid="./beamstop_alignment_x"></object>
+
+  <object role="sample_vertical" hwrid="./diffractometer_config/sampx"/>
+  <object role="sample_horizontal" hwrid="./diffractometer_config/sampy"/>
+
+  <object role="beamstop" href="/beam_stop"/>
+  <object role="aperture" href="/aperture"/>
+  <object role="capillary" href="/capillary"/>
+
+  <zoom_centre>{"x":340,"y":250}</zoom_centre>
+  <omega_reference>{"motor_name": "phiz", "position":-0.2224, "camera_axis":"x"}</omega_reference>
+
+  <!-- MD2 -->
+  <!-- <gridDirection>{"fast": (1, 0), "slow": (0, -1)}</gridDirection>  -->
+
+  <!-- use sample_changer or plate to test different sample mounting modes -->
+  <sample_mount_mode>sample_changer</sample_mount_mode>
+  <!-- MD3 -->
+  <grid_direction>{"fast": (0, 1), "slow": (1, 0), "omega_ref": 0}</grid_direction>
+
+  <object role="camera" hwrid="./diffractometer_config/camera"></object>
+  <object role="samplechanger" hwrid="./sc"></object>
+  <headType>MiniKappa</headType>
+</equipment>

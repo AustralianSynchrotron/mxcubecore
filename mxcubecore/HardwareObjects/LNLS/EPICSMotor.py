@@ -101,4 +101,3 @@ class EPICSMotor(EPICSActuator, AbstractMotor):
         """ Return whether motor finished movement or not."""
         dmov = self.get_channel_value(self.MOTOR_DMOV)
         return bool(dmov)
-

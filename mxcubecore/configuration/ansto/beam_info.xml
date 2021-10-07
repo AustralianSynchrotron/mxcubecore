@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<object class="BeamMockup">
+    <device hwrid="./aperture" role="aperture"/>
+    <device hwrid="./slits" role="slits"/>
+    <beam_divergence_horizontal>12.0</beam_divergence_horizontal>
+    <beam_divergence_vertical>12.0</beam_divergence_vertical>
+</object>
