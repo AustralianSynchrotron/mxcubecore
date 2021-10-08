@@ -72,7 +72,8 @@ class EpicsCommand(CommandObject):
         self.pv_connected = self.pv.connect(timeout=5)
 
         if (self.pv_connected):
-            self.value_changed(self.pv.get(as_string=self.read_as_str, timeout=5))
+            self.value_changed(
+                self.pv.get(as_string=self.read_as_str, timeout=5))
         else:
             logging.getLogger("HWR").error(
                 "EpicsCommand: Error connecting to pv %s.",
@@ -99,7 +100,7 @@ class EpicsCommand(CommandObject):
             if len(args) == 0:
                 # no arguments available -> get the pv's current value
                 try:
-                    ret = self.pv.get(as_string=self.read_as_str, timeout=0.2)
+                    ret = self.pv.get(as_string=self.read_as_str, timeout=5)
                     if ret is None:
                         ret = self.reconnect()
                 except TypeError:
@@ -196,9 +197,9 @@ class EpicsCommand(CommandObject):
         epics.ca._cache.clear()
         # Reconnect PV
         self.pv = epics.PV(self.pv_name, auto_monitor = self.auto_monitor)
-        self.pv_connected = self.pv.connect(timeout=0.2)
+        self.pv_connected = self.pv.connect(timeout=5)
         # Return the result of get()
-        ret = self.pv.get(as_string = self.read_as_str, timeout=0.2)
+        ret = self.pv.get(as_string = self.read_as_str, timeout=5)
         return ret
 
 
