@@ -1,5 +1,5 @@
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
-from mxcubecore.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
+from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 import ophyd
 import logging
 import time
