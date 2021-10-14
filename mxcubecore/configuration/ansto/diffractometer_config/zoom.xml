@@ -1,6 +1,10 @@
-<device class="MicrodiffZoomMockup">
+<device class="ANSTO.ANSTOZoom">
+  <exporter_address>10.244.101.10</exporter_address>
   <username>zoom</username>
   <motor_name>zoom</motor_name>
-  <exporter_address>130.235.94.124:9001</exporter_address>
-  <values>{"LEVEL1": 1, "LEVEL2": 2, "LEVEL3": 3, "LEVEL4": 4, "LEVEL5": 5, "LEVEL6": 7}</values>
+  <channel type="epics" name="epicsActuator_val">MXCUBE:m1.VAL</channel>
+  <channel type="epics" name="epicsActuator_rbv" polling="500">MXCUBE:m1.RBV</channel>
+  <values>{"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8}</values>
+  <mm_per_pixel_x>{"0": 0.004650 , "1": 0.00196, "2": 0.001610 , "3": 0.001000, "4": 0.000795, "5": 0.000330, "6": 0.0002790, "7": 0.000240, "8": 0.000163}</mm_per_pixel_x>
+  <mm_per_pixel_y>{"0": 0.004650 , "1": 0.00190, "2": 0.001560 , "3": 0.000969, "4": 0.000770, "5": 0.000319, "6": 0.0002704, "7": 0.000234, "8": 0.000163}</mm_per_pixel_y>
 </device>

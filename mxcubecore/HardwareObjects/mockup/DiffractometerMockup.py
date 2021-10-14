@@ -75,7 +75,7 @@ class DiffractometerMockup(GenericDiffractometer):
 
         self.cancel_centring_methods = {}
         self.current_motor_positions = {
-            "phiy": 1.0,
+            "phiy": 40.354,
             "sampx": 0.0,
             "sampy": -1.0,
             "zoom": 8.53,
