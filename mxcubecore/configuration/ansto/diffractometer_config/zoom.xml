@@ -1,10 +1,12 @@
-<device class="ANSTO.ANSTOZoom">
+<device class="ANSTO.Zoom">
   <exporter_address>10.244.101.10</exporter_address>
   <username>zoom</username>
   <motor_name>zoom</motor_name>
   <channel type="epics" name="epicsActuator_val">MXCUBE:m1.VAL</channel>
   <channel type="epics" name="epicsActuator_rbv" polling="500">MXCUBE:m1.RBV</channel>
   <values>{"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8}</values>
-  <mm_per_pixel_x>{"0": 0.004650 , "1": 0.00196, "2": 0.001610 , "3": 0.001000, "4": 0.000795, "5": 0.000330, "6": 0.0002790, "7": 0.000240, "8": 0.000163}</mm_per_pixel_x>
-  <mm_per_pixel_y>{"0": 0.004650 , "1": 0.00190, "2": 0.001560 , "3": 0.000969, "4": 0.000770, "5": 0.000319, "6": 0.0002704, "7": 0.000234, "8": 0.000163}</mm_per_pixel_y>
+  <!-- There is not a zoom motor in the testrig, so mm_per_pixel_x/y are constant -->
+  <!-- The following values work assuming that motor_y = 40.3  -->
+  <mm_per_pixel_x>{"0": 0.00333, "1": 0.00333, "2": 0.00333, "3": 0.00333, "4": 0.00333, "5": 0.00333, "6": 0.00333, "7": 0.00333, "8": 0.00333}</mm_per_pixel_x>
+  <mm_per_pixel_y>{"0": 0.00333, "1": 0.00333, "2": 0.00333, "3": 0.00333, "4": 0.00333, "5": 0.00333, "6": 0.00333, "7": 0.00333, "8": 0.00333}</mm_per_pixel_y>
 </device>

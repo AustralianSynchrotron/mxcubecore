@@ -28,11 +28,7 @@ from mxcubecore import HardwareRepository as HWR
 # @pytest.fixture(scope="session")
 @pytest.fixture(scope="function")
 def beamline():
-    hwr_path = "%s%s%s" % (
-        os.path.join(ROOT_DIR, "mxcubecore/configuration/mockup"),
-        ":",
-        os.path.join(ROOT_DIR, "mxcubecore/configuration/mockup/test")
-    )
+    hwr_path = os.path.join(ROOT_DIR, "mxcubecore/configuration/ansto")
     HWR._instance = HWR.beamline = None
     HWR.init_hardware_repository(hwr_path)
     hwr = HWR.get_hardware_repository()

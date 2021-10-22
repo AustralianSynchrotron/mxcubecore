@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<equipment class="DiffractometerMockup">
+<equipment class="ANSTO.Diffractometer">
   <username>diffractometer</username>
   <object role="focus" hwrid="./diffractometer_config/motor_x"></object>
   <object role="zoom" hwrid="./diffractometer_config/zoom"></object>
@@ -10,7 +10,7 @@
   <object role="sampy" hwrid="./diffractometer_config/sampy"/>
   <object role="kappa" hwrid="./diffractometer_config/kappa"></object>
   <object role="kappa_phi" hwrid="./diffractometer_config/kappaphi"></object>
-  <object role="beam" hwrid="./beam"></object>
+  <object role="beam_info" hwrid="./beam_info"></object>
 
   <object role="backlight" href="./diffractometer_config/backlight"/>
   <object role="backlightswitch" href="./diffractometer_config/backlightswitch"/>
@@ -39,5 +39,6 @@
 
   <object role="camera" hwrid="./diffractometer_config/camera"></object>
   <object role="samplechanger" hwrid="./sc"></object>
+  <phaseList>["Transfer","Centring","BeamLocation", "DataCollection"]</phaseList>
   <headType>MiniKappa</headType>
 </equipment>

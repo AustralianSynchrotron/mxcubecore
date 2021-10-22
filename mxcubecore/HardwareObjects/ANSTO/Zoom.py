@@ -1,17 +1,14 @@
-from enum import Enum
-import gevent
 import time
 import logging
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
-from mxcubecore.HardwareObjects.abstract.AbstractNState import BaseValueEnum
 from mxcubecore.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
 
 
-class ANSTOZoom(EPICSActuator, AbstractNState):
+class Zoom(EPICSActuator, AbstractNState):
     """MicrodiffZoomMockup class"""
 
     def __init__(self, name):
-        super(ANSTOZoom, self).__init__(name)
+        super(Zoom, self).__init__(name)
 
     def init(self):
         """Initialize the zoom"""
@@ -60,7 +57,7 @@ class ANSTOZoom(EPICSActuator, AbstractNState):
         current_value = self.get_value()
         self.update_value(current_value)
         logging.getLogger("HWR").debug(
-            f"Moved zoom motors to: {current_value}")
+            f"Moving motorized zoom lens to: {current_value}")
         return value
 
     def get_value(self):
@@ -73,4 +70,4 @@ class ANSTOZoom(EPICSActuator, AbstractNState):
         """Override super class method."""
         enum = value
         target_val = enum.value
-        super(ANSTOZoom, self)._set_value(target_val)
+        super(Zoom, self)._set_value(target_val)

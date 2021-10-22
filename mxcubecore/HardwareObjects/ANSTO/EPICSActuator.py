@@ -61,8 +61,8 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
         Args:
             value (float): target value
             timeout (float): optional - timeout [s],
-                             If timeout == 0: return at once and do not wait (default);
-                             if timeout is None: wait forever.
+                If timeout == 0: return at once and do not wait (default);
+                if timeout is None: wait forever.
         Raises:
             ValueError: Value not valid or attemp to set read-only actuator.
         """

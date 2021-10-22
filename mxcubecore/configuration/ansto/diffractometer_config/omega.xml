@@ -1,7 +1,8 @@
-<device class="MotorMockup">
-  <username>Omega</username>
-  <exporter_address>130.235.94.124:9001</exporter_address>
-  <motor_name>Omega</motor_name>
-  <unit>1e-3</unit>
-  <GUIstep>90</GUIstep>
+<device class="ANSTO.OphydEpicsMotor">
+    <exporter_address>10.244.101.10</exporter_address>
+    <username>Omega</username>
+    <motor_name>Omega</motor_name>
+    <pv_prefix>MXCUBE:m2</pv_prefix>
+    <GUIstep>90</GUIstep>
+    <unit>1e-1</unit>
 </device>
