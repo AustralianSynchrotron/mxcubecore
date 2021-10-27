@@ -1,6 +1,6 @@
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
-import ophyd
+from ophyd import EpicsMotor
 import logging
 import time
 
@@ -13,7 +13,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         self.device = None
 
     def init(self):
-        self.device = ophyd.EpicsMotor(self.pv_prefix, name=self.motor_name)
+        self.device = EpicsMotor(self.pv_prefix, name=self.motor_name)
         self.device.wait_for_connection(timeout=5)
 
         """ Initialization method """
