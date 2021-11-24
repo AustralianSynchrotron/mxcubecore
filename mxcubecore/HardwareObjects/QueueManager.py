@@ -176,7 +176,11 @@ class QueueManager(HardwareObject, QueueEntryContainer):
             return
 
         status = "Successful"
-        self.emit("queue_entry_execute_started", (entry, ))
+        # self.emit('centringAllowed', (False, ))
+
+        # NOTE: I added "Successful" in the following line of code,
+        # otherwise, I get this error: missing 1  positional argument: 'message'
+        self.emit("queue_entry_execute_started", (entry, "Successful"))
         self.set_current_entry(entry)
         self._current_queue_entries.append(entry)
 

@@ -50,6 +50,7 @@ class Camera(BaseHardwareObjects.Device):
 
         self.img_plugin = ImgPlugin(
             f"{self.pv_prefix}:image1:", name="ImagePlugin")
+        self.img_plugin.wait_for_connection(timeout=5)
 
         self.read_sizes()
         # Start camera image acquisition
