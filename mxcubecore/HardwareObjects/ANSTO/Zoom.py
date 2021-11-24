@@ -1,19 +1,41 @@
 import time
 import logging
+from typing import Tuple
+from enum import Enum
+
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
-from mxcubecore.HardwareObjects.ASLS.EPICSActuator import EPICSActuator
+from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 
 
-class Zoom(EPICSActuator, AbstractNState):
-    """MicrodiffZoomMockup class"""
+class Zoom(OphydEpicsMotor, AbstractNState):
+    """
+    Changes the camera zoom assuming that a motorized zoom lens is attached.
+    """
 
-    def __init__(self, name):
-        super(Zoom, self).__init__(name)
+    def __init__(self, name: str) -> None:
+        """
+        Parameters
+        ----------
+        name : str
+            Name of a Hardware object, e.g. `/diffractometer_config/zoom`
 
-    def init(self):
-        """Initialize the zoom"""
-        EPICSActuator.init(self)
+        Returns
+        -------
+        None
+        """
+        AbstractNState.__init__(self, name)
+        OphydEpicsMotor.__init__(self, name)
+
+    def init(self) -> None:
+        """
+        Object initialisation - executed *after* loading contents
+
+        Returns
+        -------
+        None
+        """
         AbstractNState.init(self)
+        OphydEpicsMotor.init(self)
 
         self.initialise_values()
 
@@ -36,20 +58,46 @@ class Zoom(EPICSActuator, AbstractNState):
         self.update_value(current_value)
         self.update_state(self.STATES.READY)
 
-    def set_limits(self, limits=(None, None)):
-        """Overrriden from AbstractActuator"""
+    def set_limits(self, limits: Tuple[float, float]) -> None:
+        """
+        Set the low and high limits.
+
+        Parameters
+        ----------
+        limits : tuple
+            two element (low limit, high limit) tuple.
+
+        Returns
+        -------
+        None
+        """
         self._nominal_limits = limits
 
-    def update_limits(self, limits=None):
-        """Overrriden from AbstractNState"""
-        if limits is None:
-            limits = self.get_limits()
+    def update_limits(self, limits: Tuple[float, float]) -> None:
+        """
+        Emits signal limitsChanged.
 
+        Parameters
+        ----------
+        limits : Tuple[float, float]
+            Two elements tuple (low limit, high limit)
+
+        Returns
+        -------
+        None
+        """
         self._nominal_limits = limits
         self.emit("limitsChanged", (limits,))
 
-    def _move(self, value):
-        """Override super class method."""
+    def _move(self, value: Enum) -> Enum:
+        """
+        Moves a motor to `value`
+
+        Parameters
+        ----------
+        value : Enum
+            New value of a motor
+        """
         self.update_state(self.STATES.BUSY)
         time.sleep(0.2)
         self.update_state(self.STATES.READY)
@@ -60,14 +108,52 @@ class Zoom(EPICSActuator, AbstractNState):
             f"Moving motorized zoom lens to: {current_value}")
         return value
 
-    def get_value(self):
-        """Override super class method."""
-        current_val = self.get_channel_value(self.ACTUATOR_RBV)
+    def get_value(self) -> Enum:
+        """
+        Reads the value of a motor
+
+        Returns
+        -------
+        current_enum : Enum
+            The current value of a motor
+        """
+        current_val = self.device.user_readback.get()
         current_enum = self.value_to_enum(current_val)
         return current_enum
 
-    def _set_value(self, value):
-        """Override super class method."""
-        enum = value
-        target_val = enum.value
-        super(Zoom, self)._set_value(target_val)
+    def _set_value(self, value: Enum) -> None:
+        """
+        Sets a new motor value
+
+        Parameters
+        ----------
+        value : Enum
+            New value
+
+        Returns
+        -------
+        None
+        """
+        target_val = value.value
+
+        self.device.user_setpoint.put(target_val, wait=False)
+        self.update_value(target_val)
+        self.update_state(self.STATES.READY)
+
+    def update_value(self, value: Enum = None) -> Enum:
+        """
+        Checks if the value has changed. Emits signal `valueChanged`.
+
+        Parameters
+        ----------
+        value : Enum
+            New value
+        """
+
+        if value is None:
+            value = self.get_value()
+
+        if self._nominal_value is None:
+            if value is None:
+                return
+        self.emit("valueChanged", (value,))
