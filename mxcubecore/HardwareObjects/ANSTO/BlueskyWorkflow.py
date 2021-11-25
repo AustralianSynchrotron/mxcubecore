@@ -7,6 +7,7 @@ import requests
 import binascii
 import asyncio
 from typing import List
+from requests.exceptions import ConnectionError
 
 from mxcubecore.HardwareObjects.SecureXMLRpcRequestHandler import (
     SecureXMLRpcRequestHandler)
@@ -135,7 +136,12 @@ class BlueskyWorkflow(HardwareObject):
         self.motor_z = _diffractometer.alignment_z
 
         # Open RunEngine
-        requests.post(f"{self.REST}/environment/open")
+        try:
+            requests.post(f"{self.REST}/environment/open")
+        except ConnectionError:
+            logging.getLogger("HWR").info(
+                "Could not connect to the bluesky Run Engine,"
+                " bluesky plans will not be available.")
 
     @property
     def state(self) -> State:
