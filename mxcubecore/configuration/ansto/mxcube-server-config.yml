@@ -8,12 +8,9 @@ server:
   ALLOWED_CORS_ORIGINS:
     - "http://localhost:8081"
     - "http://localhost:8090"
-    - "http://mx3-dev-fhv.mx3.beamline.synchrotron.org.au:8081"
-    - "http://mx3-dev-fhv.mx3.beamline.synchrotron.org.au:8090"
-    - "http://acquire-dev.mx3.beamline.synchrotron.org.au:8081"
-    - "http://acquire-dev.mx3.beamline.synchrotron.org.au:8090"
-    - "http://jacob-dev1.mx3.beamline.synchrotron.org.au:8081"
-    - "http://jacob-dev1.mx3.beamline.synchrotron.org.au:8090"
+    - "http://mx3-dev-fhv.mx3.beamline.synchrotron.org.au"
+    - "http://acquire-dev.mx3.beamline.synchrotron.org.au"
+    - "http://jacob-dev1.mx3.beamline.synchrotron.org.au"
 
 mxcube:
   VIDEO_FORMAT: MJPEG
