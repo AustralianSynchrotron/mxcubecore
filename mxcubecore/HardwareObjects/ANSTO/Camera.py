@@ -10,10 +10,9 @@ import gevent
 import numpy as np
 from PIL import Image
 
+from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.ANSTO.BlackFlyCam import BlackFlyCam
 from mxcubecore.HardwareObjects.ANSTO.ImgPlugin import ImgPlugin
-
-from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
 class Camera(HardwareObject):
@@ -100,8 +99,7 @@ class Camera(HardwareObject):
         -------
         None
         """
-        logging.getLogger("HWR").debug(
-            'ANSTO Camera image acquiring has started.')
+        logging.getLogger("HWR").debug("ANSTO Camera image acquiring has started.")
 
         self.image_generator(self.delay)
 
@@ -117,8 +115,7 @@ class Camera(HardwareObject):
             self.get_camera_image()
             gevent.sleep(delay)
 
-        logging.getLogger("HWR").debug(
-            'ANSTO Camera image acquiring has stopped.')
+        logging.getLogger("HWR").debug("ANSTO Camera image acquiring has stopped.")
 
     def get_camera_image(self) -> int:
         """Get camera image by converting into RGB and in JPEG format.
@@ -132,7 +129,8 @@ class Camera(HardwareObject):
         if self.imgArray is None:
             if self._print_cam_error_null:
                 logging.getLogger("HWR").error(
-                    f"{self.__class__.__name__} - Error: null camera image!")
+                    f"{self.__class__.__name__} - Error: null camera image!"
+                )
 
                 self._print_cam_sucess = True
                 self._print_cam_error_null = False
@@ -148,7 +146,8 @@ class Camera(HardwareObject):
                 logging.getLogger("HWR").error(
                     f"{self.__class__.__name__} - Error in array lenght!"
                     f" Expected {self.array_size},"
-                    f" but got {len(self.imgArray)}.")
+                    f" but got {len(self.imgArray)}."
+                )
 
                 self._print_cam_sucess = True
                 self._print_cam_error_null = True
@@ -171,7 +170,7 @@ class Camera(HardwareObject):
             # Convert data to rgb image
             img = Image.fromarray(arr)
             # img_rot = img.rotate(angle=0, expand=True)
-            img_rgb = img.convert('RGB')
+            img_rgb = img.convert("RGB")
             # Get binary image
             with BytesIO() as f:
                 img_rgb.save(f, format="JPEG")
@@ -183,17 +182,17 @@ class Camera(HardwareObject):
             # str(img_bin_str[0:10]))
             if self._print_cam_sucess:
                 logging.getLogger("HWR").info(
-                    "ANSTO Camera is emitting images! Cam routine is ok.")
+                    "ANSTO Camera is emitting images! Cam routine is ok."
+                )
 
                 self._print_cam_sucess = False
                 self._print_cam_error_null = True
                 self._print_cam_error_size = True
                 self._print_cam_error_format = True
             return 0
-        except Exception as e:
+        except Exception:
             if self._print_cam_error_format:
-                logging.getLogger("HWR").error(
-                    'Error while formatting camera image')
+                logging.getLogger("HWR").error("Error while formatting camera image")
 
                 self._print_cam_sucess = True
                 self._print_cam_error_null = True
@@ -214,13 +213,11 @@ class Camera(HardwareObject):
             depth = self.img_plugin.depth.get()
             if depth is None or depth <= 0:
                 depth = 1
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error on getting camera pixel size.")
-        finally:
-            logging.getLogger("HWR").info(f"Camera pixel size is {depth}.")
+        except Exception:
+            logging.getLogger("HWR").error("Error on getting camera pixel size.")
 
-            return depth
+        logging.getLogger("HWR").info(f"Camera pixel size is {depth}.")
+        return depth
 
     def read_width(self) -> float:
         """Get width of the camera image.
@@ -235,13 +232,12 @@ class Camera(HardwareObject):
             width = self.img_plugin.width.get()
             if width is None:
                 width = 0
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error on getting camera width.")
-        finally:
-            logging.getLogger("HWR").info(f"Camera width is {width}.")
+        except Exception:
+            logging.getLogger("HWR").error("Error on getting camera width.")
 
-            return width
+        logging.getLogger("HWR").info(f"Camera width is {width}.")
+
+        return width
 
     def read_height(self) -> float:
         """Get the height of the camera image
@@ -256,13 +252,12 @@ class Camera(HardwareObject):
             height = self.img_plugin.height.get()
             if height is None:
                 height = 0
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error on getting camera height.")
-        finally:
-            logging.getLogger("HWR").info(f"Camera height is {height}.")
+        except Exception:
+            logging.getLogger("HWR").error("Error on getting camera height.")
 
-            return height
+        logging.getLogger("HWR").info(f"Camera height is {height}.")
+
+        return height
 
     def read_array_size(self) -> float:
         """Get array size of the camera image
@@ -278,9 +273,8 @@ class Camera(HardwareObject):
             width = self.read_width()
             height = self.read_height()
             array_size = depth * width * height
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error on getting camera array size.")
+        except Exception:
+            logging.getLogger("HWR").error("Error on getting camera array size.")
 
         return array_size
 
@@ -377,9 +371,8 @@ class Camera(HardwareObject):
 
         try:
             gain = self.cam.gain_rbv.get()
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error getting gain of camera.")
+        except Exception:
+            logging.getLogger("HWR").error("Error getting gain of camera.")
 
         return gain
 
@@ -398,9 +391,8 @@ class Camera(HardwareObject):
         """
         try:
             self.cam.gain.put(gain)
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error setting gain of camera.")
+        except Exception:
+            logging.getLogger("HWR").error("Error setting gain of camera.")
 
     @property
     def gain_auto(self) -> float:
@@ -415,9 +407,8 @@ class Camera(HardwareObject):
 
         try:
             auto = self.cam.gain_auto_rbv.get()
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error getting auto-gain of camera.")
+        except Exception:
+            logging.getLogger("HWR").error("Error getting auto-gain of camera.")
 
         return auto
 
@@ -436,9 +427,8 @@ class Camera(HardwareObject):
         """
         try:
             self.cam.gain_auto.put(gain_auto)
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error setting auto-gain of camera.")
+        except Exception:
+            logging.getLogger("HWR").error("Error setting auto-gain of camera.")
 
     @property
     def exposure_time(self) -> int:
@@ -453,9 +443,8 @@ class Camera(HardwareObject):
 
         try:
             exp = self.cam.acquire_time_rbv.get()
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error getting exposure time of camera.")
+        except Exception:
+            logging.getLogger("HWR").error("Error getting exposure time of camera.")
 
         return exp
 
@@ -474,9 +463,8 @@ class Camera(HardwareObject):
         """
         try:
             self.cam.acquire_time.put(exp)
-        except Exception as e:
-            logging.getLogger("HWR").error(
-                "Error setting gain of camera.")
+        except Exception:
+            logging.getLogger("HWR").error("Error setting gain of camera.")
 
     def start_camera(self) -> None:
         """Start the camera and it's associated plugins.
@@ -533,7 +521,8 @@ class Camera(HardwareObject):
         None
         """
         logging.getLogger("user_level_log").error(
-            "Resetting camera, please, wait a while...")
+            "Resetting camera, please, wait a while..."
+        )
 
         # Start a new thread to don't freeze UI
         self.refreshgen = gevent.spawn(self.refresh_camera_procedure)
@@ -561,7 +550,7 @@ class Camera(HardwareObject):
                 logging.getLogger("HWR").info("ANSTO Camera is going to poll images")
                 # self.delay = float(int(self.getProperty("interval"))/1000.0)
                 # the "interval" property is hardcoded at the moment
-                self.delay = float(int(100.0/1000.0))
+                self.delay = float(int(100.0 / 1000.0))
 
                 thread = Thread(target=self.poll, daemon=True)
                 thread.start()
@@ -569,16 +558,23 @@ class Camera(HardwareObject):
                 self.stop_camera()
 
             return True
-        except Exception as e:
-            logging.getLogger("HWR").error('Error while polling images')
+        except Exception:
+            logging.getLogger("HWR").error("Error while polling images")
 
             return False
 
-    def take_snapshots_procedure(self, image_count: int, snapshotFilePath: str,
-                                 snapshotFilePrefix: str, logFilePath: str,
-                                 runNumber: int, collectStart: int,
-                                 collectEnd: int, motorHwobj: HardwareObject,
-                                 detectorHwobj: HardwareObject) -> None:
+    def take_snapshots_procedure(
+        self,
+        image_count: int,
+        snapshotFilePath: str,
+        snapshotFilePrefix: str,
+        logFilePath: str,
+        runNumber: int,
+        collectStart: int,
+        collectEnd: int,
+        motorHwobj: HardwareObject,
+        detectorHwobj: HardwareObject,
+    ) -> None:
         """It takes snapshots of sample camera and camserver execution.
 
         Parameters
@@ -637,15 +633,16 @@ class Camera(HardwareObject):
                 except OSError as e:
                     logging.getLogger().error(
                         f"Snapshot: error trying to create the directory"
-                        f" {snapshotFilePath} ({str(e)})")
+                        f" {snapshotFilePath} ({str(e)})"
+                    )
 
             for index in range(image_count):
                 while motorHwobj.getPosition() < positions[index]:
                     gevent.sleep(0.02)
 
                 logging.getLogger("HWR").info(
-                    f"{self.__class__.__name__}"
-                    f" - taking snapshot #{index + 1}")
+                    f"{self.__class__.__name__}" f" - taking snapshot #{index + 1}"
+                )
 
                 # Save snapshot image file
                 motor_position = str(round(motorHwobj.getPosition(), 2))
@@ -670,19 +667,26 @@ class Camera(HardwareObject):
 
                 # centred_images.append((0, str(imageInfo)))
                 # centred_images.reverse()
-        except Exception as e:
+        except Exception:
             logging.getLogger("HWR").exception(
-                f"{self.__class__.__name__}"
-                f" - could not take crystal snapshots")
+                f"{self.__class__.__name__}" f" - could not take crystal snapshots"
+            )
 
         return centred_images
 
-    def take_snapshots(self, image_count: int, snapshotFilePath: str,
-                       snapshotFilePrefix: str, logFilePath: str,
-                       runNumber: int, collectStart: int, collectEnd: int,
-                       motorHwobj: HardwareObject,
-                       detectorHwobj: HardwareObject, wait: bool = False
-                       ) -> None:
+    def take_snapshots(
+        self,
+        image_count: int,
+        snapshotFilePath: str,
+        snapshotFilePrefix: str,
+        logFilePath: str,
+        runNumber: int,
+        collectStart: int,
+        collectEnd: int,
+        motorHwobj: HardwareObject,
+        detectorHwobj: HardwareObject,
+        wait: bool = False,
+    ) -> None:
         """It takes snapshots of sample camera and camserver execution.
 
         Parameters
@@ -747,10 +751,10 @@ class Camera(HardwareObject):
         """
         try:
             self.centring_status["images"] = snapshots_procedure.get()
-        except Exception as e:
+        except Exception:
             logging.getLogger("HWR").exception(
-                f"{self.__class__.__name__}"
-                f" - could not take crystal snapshots")
+                f"{self.__class__.__name__}" f" - could not take crystal snapshots"
+            )
 
     def cancel_snapshot(self) -> None:
         """Cancel taking of snapshots of the camera.
@@ -771,8 +775,7 @@ class Camera(HardwareObject):
         -------
         None
         """
-        logging.getLogger("HWR").exception(
-            f"{self.__class__.__name__} - __del__()!")
+        logging.getLogger("HWR").exception(f"{self.__class__.__name__} - __del__()!")
 
         self.stop_camera()
         self.set_live(False)

@@ -18,6 +18,7 @@ class BlackFlyCam(CamBase):
     frame_rate: int
                 Frame rate of the camera images.
     """
+
     acquire_time_rbv = ADCpt(EpicsSignalRO, "AcquireTime_RBV")
     gain_rbv = ADCpt(EpicsSignalRO, "Gain_RBV")
     gain_atuo = ADCpt(EpicsSignalWithRBV, "GainAuto")

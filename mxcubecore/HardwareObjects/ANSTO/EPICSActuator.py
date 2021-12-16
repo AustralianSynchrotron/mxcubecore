@@ -8,6 +8,8 @@ Should be put as the first superclass,
 e.g. class MotorMockup(EPICSActuator, AbstractMotor):
 """
 
+import logging
+
 import gevent
 
 from mxcubecore.HardwareObjects.abstract import AbstractActuator
@@ -111,8 +113,7 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
                 f"{self.username} is out of limits." f" Limits are {self.get_limits()}"
             )
 
-            raise ValueError(
-                f"Invalid value {value}; limits are {self.get_limits()}")
+            raise ValueError(f"Invalid value {value}; limits are {self.get_limits()}")
 
     def abort(self) -> None:
         """Imediately halt movement. By default self.stop = self.abort
@@ -121,7 +122,6 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
         -------
         None
         """
-        pass
 
     def _callback(self, move_task) -> None:
         """Callback method to set the current value of the hardware.
@@ -150,4 +150,3 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
         -------
         None
         """
-        pass
