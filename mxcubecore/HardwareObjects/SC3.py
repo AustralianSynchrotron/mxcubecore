@@ -1,11 +1,12 @@
+import gevent
+import sys
+
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
     Container,
     Sample,
     SampleChanger,
     SampleChangerMode,
     SampleChangerState,
-    gevent,
-    sys,
 )
 
 import xml.sax
