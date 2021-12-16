@@ -1,10 +1,10 @@
 import ast
 import logging
-from typing import Tuple, List, Union
 from enum import Enum
+from typing import List, Tuple, Union
 
-from mxcubecore.HardwareObjects.abstract.AbstractBeam import AbstractBeam
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects.abstract.AbstractBeam import AbstractBeam
 
 
 class Beam(AbstractBeam):
@@ -60,8 +60,7 @@ class Beam(AbstractBeam):
 
             ad = self._aperture.get_diameter_size() / 1000.0
             self._beam_size_dict["aperture"] = [ad, ad]
-            logging.getLogger("HWR").info(
-                "Aperture object loaded successfully")
+            logging.getLogger("HWR").info("Aperture object loaded successfully")
 
         self._slits = self.get_object_by_role("slits")
         if self._slits is not None:
@@ -117,8 +116,7 @@ class Beam(AbstractBeam):
 
         self.emit("beamInfoChanged", (self._beam_info_dict))
 
-    def set_beam_position_on_screen(self, beam_x: float,
-                                    beam_y: float) -> None:
+    def set_beam_position_on_screen(self, beam_x: float, beam_y: float) -> None:
         """
         Sets beam mark position on screen
         # TODO move method to sample_view
@@ -149,8 +147,7 @@ class Beam(AbstractBeam):
 
         return self._beam_size_dict["slits"]
 
-    def set_slits_gap(self, width_microns: float,
-                      height_microns: float) -> None:
+    def set_slits_gap(self, width_microns: float, height_microns: float) -> None:
         """
         Sets slits gap in microns.
 
@@ -202,8 +199,12 @@ class Beam(AbstractBeam):
             A tuple containing beam_width, beam_height,
             beam_shape and label
         """
-        result = (self._beam_width, self._beam_height,
-                  self._beam_shape, self._beam_label)
+        result = (
+            self._beam_width,
+            self._beam_height,
+            self._beam_shape,
+            self._beam_label,
+        )
         return result
 
     def get_beam_position_on_screen(self) -> List[float]:
@@ -218,12 +219,11 @@ class Beam(AbstractBeam):
         """
         if self._beam_position_on_screen == (0, 0):
             hwr = HWR.get_hardware_repository()
-            self._camera = hwr.get_hardware_object(
-                "/diffractometer_config/camera")
+            self._camera = hwr.get_hardware_object("/diffractometer_config/camera")
             _beam_position_on_screen = [
                 self._camera.get_width() / 2,
                 self._camera.get_height() / 2,
-                ]
+            ]
             self._beam_position_on_screen = _beam_position_on_screen
         return self._beam_position_on_screen
 

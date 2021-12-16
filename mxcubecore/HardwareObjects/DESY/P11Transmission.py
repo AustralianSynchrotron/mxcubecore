@@ -47,7 +47,7 @@ class P11Transmission(AbstractTransmission):
 
         if limits is None:
             log.error("P11Transmission - Cannot read LIMITS from configuration xml file.  Check values")
-            return 
+            return
         else:
             self.set_limits(limits)
 
@@ -80,7 +80,7 @@ class P11Transmission(AbstractTransmission):
             state = self.chan_state.getValue()
 
         _str_state = str(state)
-        
+
         if _str_state == 'ON':
            _state = self.STATES.READY
         elif _str_state == 'MOVING':

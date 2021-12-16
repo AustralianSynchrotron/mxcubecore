@@ -42,11 +42,10 @@
     <object hwrid="/eh1/beamFocusingMotors/P14ExpTbl" role="P14ExpTbl"/>
     <object hwrid="/eh1/beamFocusingMotors/P14KB" role="P14KB"/>
     <object hwrid="/eh1/beamFocusingMotors/P14BCU" role="P14BCU"/>
-    <object hwrid="/eh1/beamFocusingMotors/P14DetTrans" role="P14DetTrans"/> 
-    <object hwrid="/eh1/slitsMotors/slitsGroup" role="slitsMotors"/> 	 
-    <object hwrid="/eh1/diff-aperture" role="aperture"/> 
+    <object hwrid="/eh1/beamFocusingMotors/P14DetTrans" role="P14DetTrans"/>
+    <object hwrid="/eh1/slitsMotors/slitsGroup" role="slitsMotors"/>
+    <object hwrid="/eh1/diff-aperture" role="aperture"/>
 
     <command type="tine" name="cmdSetCalibrationName"   tinename="/P14/collection/distance">calibration</command>
     <setPhaseCmd>{"address": "/P14/MD3/MD3_0", "property": "startSetPhase", "argument": "BeamLocation"}</setPhaseCmd>
 </object>
-	  

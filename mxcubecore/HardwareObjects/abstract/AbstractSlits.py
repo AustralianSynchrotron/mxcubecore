@@ -53,7 +53,6 @@ class AbstractSlits(HardwareObject, object):
         :param timeout: timeout is sec. If None do not wait
         :return:
         """
-        pass
 
     def get_vertical_gap(self):
         """
@@ -70,7 +69,6 @@ class AbstractSlits(HardwareObject, object):
         :param timeout: timeout in sec. If None do not wait
         :return:
         """
-        pass
 
     def get_gaps(self):
         """

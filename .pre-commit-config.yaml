@@ -5,6 +5,16 @@ repos:
     rev: v1.4
     hooks:
       - id: autoflake
+        name: Autoflake - Full repo
+        exclude: (deprecated/|mxcubecore/HardwareObjects/(ALBA|ASLS|DESY|EMBL|ESRF|Gphl|LNLS|MAXIV|SOLEIL|ANSTO))
+        args:
+          - --expand-star-imports
+          - --ignore-init-module-imports
+          - --in-place
+          - --remove-duplicate-keys
+      - id: autoflake
+        name: Autoflake - ANSTO
+        files: mxcubecore/HardwareObjects/ANSTO
         args:
           - --expand-star-imports
           - --ignore-init-module-imports
@@ -16,17 +26,16 @@ repos:
     rev: 21.12b0
     hooks:
     - id: black
+      name: Black - Full repo
       language_version: python3.9
+      exclude: (deprecated/|mxcubecore/HardwareObjects/(ALBA|ASLS|DESY|EMBL|ESRF|Gphl|LNLS|MAXIV|SOLEIL))
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-      - id: debug-statements
-      - id: fix-encoding-pragma
+        exclude: (deprecated/|mxcubecore/HardwareObjects/(ALBA|ASLS|DESY|EMBL|ESRF|Gphl|LNLS|MAXIV|SOLEIL))
       - id: check-case-conflict
-      - id: check-docstring-first
-      - id: check-executables-have-shebangs
       - id: check-merge-conflict
         # exclude files where underlines are not distinguishable from merge conflicts
         exclude: /README\.rst$|^docs/.*\.rst$
@@ -42,15 +51,18 @@ repos:
     rev: 5.10.1
     hooks:
       - id: isort
-        name: isort except __init__.py
+        name: Import Sort - ANSTO
         args:
           - --settings=.
+        files: mxcubecore/HardwareObjects/ANSTO
         exclude: /__init__\.py$
   - repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:
     - id: flake8
+      name: Flake8 - ANSTO
       additional_dependencies: ["flake8-bugbear==20.1.4"]
+      files: mxcubecore/HardwareObjects/ANSTO
   - repo: local
     hooks:
       - id: pytest-check

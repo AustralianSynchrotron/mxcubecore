@@ -26,7 +26,7 @@ from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
 class AbstractSampleView(HardwareObject):
-    """ AbstractSampleView Class """
+    """AbstractSampleView Class"""
 
     __metaclass__ = abc.ABCMeta
 
@@ -41,35 +41,32 @@ class AbstractSampleView(HardwareObject):
 
     @abc.abstractmethod
     def get_snapshot(self, overlay=True, bw=False, return_as_array=False):
-        """ Get snappshot(s)
+        """Get snappshot(s)
         Args:
             overlay(bool): Display shapes and other items on the snapshot
             bw(bool): return grayscale image
             return_as_array(bool): return as np array
         """
-        pass
 
     @abc.abstractmethod
     def save_snapshot(self, filename, overlay=True, bw=False):
-        """ Save a snapshot to file.
+        """Save a snapshot to file.
         Args:
             filename (str): The filename.
             overlay(bool): Display shapes and other items on the snapshot
             bw(bool): return grayscale image
         """
-        pass
 
     def save_scene_animation(self, filename, duration=1):
-        """ Take snapshots and create an animation.
+        """Take snapshots and create an animation.
         Args:
             filename (str): Filename.
             duration (int): Duration time [s].
         """
-        pass
 
     @property
     def camera(self):
-        """ Get camera object.
+        """Get camera object.
         Returns:
             (AbstractCamera): Camera hardware object.
         """
@@ -77,7 +74,7 @@ class AbstractSampleView(HardwareObject):
 
     @property
     def shapes(self):
-        """ Get shapes dict.
+        """Get shapes dict.
         Returns:
             (AbstractShapes): Shapes hardware object.
         """
@@ -85,7 +82,7 @@ class AbstractSampleView(HardwareObject):
 
     @property
     def zoom(self):
-        """ Get zoom object.
+        """Get zoom object.
         Returns:
             (AbstractZoom): Zoom gardware object.
         """
@@ -93,7 +90,7 @@ class AbstractSampleView(HardwareObject):
 
     @property
     def frontlight(self):
-        """ Get Front light object
+        """Get Front light object
         Returns:
             (AbstractLight): Front light hardware object.
         """
@@ -101,7 +98,7 @@ class AbstractSampleView(HardwareObject):
 
     @property
     def backlight(self):
-        """ Get Back light object.
+        """Get Back light object.
         Returns:
             (AbstractLight): Back light hardware object.
         """

@@ -4,11 +4,8 @@ from mxcubecore import BaseHardwareObjects
 import logging
 import os
 import time
-import datetime
 from PIL import Image
 import numpy as np
-from threading import Event, Thread
-import base64
 import gevent
 
 from mxcubecore import HardwareRepository as HWR

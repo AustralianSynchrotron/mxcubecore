@@ -14,7 +14,7 @@ __license__ = "LGPLv3+"
 
 
 def all_equal(iterable):
-    """ Check for same number of points on each line"""
+    """Check for same number of points on each line"""
     grp = itertools.groupby(iterable)
     return next(grp, True) and not next(grp, False)
 
@@ -127,7 +127,7 @@ class Bliss(HardwareObject):
         )
 
     def __on_scan_data(self, scan_info, data):
-        """ Retrieve the scan data. Emit plot_data.
+        """Retrieve the scan data. Emit plot_data.
         Args:
             scan_info (dict): SCAN_INFO dictionary from bliss
             data (numpy array): data from bliss

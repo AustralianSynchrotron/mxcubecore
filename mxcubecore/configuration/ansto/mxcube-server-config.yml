@@ -123,7 +123,7 @@ mxcube:
         -
           label: Fast Shutter
           attribute: fast_shutter
-        - 
+        -
           label: Safety shutter
           attribute: safety_shutter
         -
@@ -151,7 +151,7 @@ mxcube:
           label: Cryo
           attribute: cryo
           precision: 2
-          suffix: k       
+          suffix: k
         -
           label: Wavelength
           attribute: energy.wavelength
@@ -163,7 +163,7 @@ mxcube:
           attribute: detector_distance
           step: 0.1
           precision: 1
-          suffix: mm 
+          suffix: mm
         -
           label: Flux
           attribute: flux

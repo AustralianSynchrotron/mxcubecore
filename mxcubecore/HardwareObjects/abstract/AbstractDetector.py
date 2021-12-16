@@ -100,8 +100,7 @@ class AbstractDetector(HardwareObject):
         self._height = self.get_property("height")
 
     def force_emit_signals(self):
-        """Emit all hardware object signals.
-        """
+        """Emit all hardware object signals."""
         self.emit("detectorRoiModeChanged", (self._roi_mode,))
         self.emit("temperatureChanged", (self._temperature, True))
         self.emit("humidityChanged", (self._humidity, True))
@@ -141,12 +140,10 @@ class AbstractDetector(HardwareObject):
 
     @abc.abstractmethod
     def start_acquisition(self):
-        """Start the acquisition.
-        """
+        """Start the acquisition."""
 
     def stop_acquisition(self):
-        """Stop the acquisition.
-        """
+        """Stop the acquisition."""
 
     def get_roi_mode(self):
         """Get the current ROI mode.

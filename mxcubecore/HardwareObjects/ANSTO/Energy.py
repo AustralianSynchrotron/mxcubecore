@@ -1,8 +1,8 @@
 import logging
+
 from ophyd import EpicsSignal
 
-from mxcubecore.HardwareObjects.abstract.AbstractEnergy import (
-    AbstractEnergy)
+from mxcubecore.HardwareObjects.abstract.AbstractEnergy import AbstractEnergy
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 
@@ -11,6 +11,7 @@ class Energy(EPICSActuator, AbstractEnergy):
     Sets and gets the energy and wavelenght of the beam, while
     checking if the energy threshold is okay.
     """
+
     def __init__(self, name: str) -> None:
         """
         Parameters

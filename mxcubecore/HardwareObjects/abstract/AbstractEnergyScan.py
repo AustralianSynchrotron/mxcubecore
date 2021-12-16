@@ -18,25 +18,21 @@ class AbstractEnergyScan(object):
         """
         Open the safety shutter. Give a timeout [s] if needed.
         """
-        pass
 
     def close_safety_shutter(self, timeout):
         """
         Close the safety shutter. Give a timeout [s] if needed.
         """
-        pass
 
     def open_fast_shutter(self):
         """
         Open the fast shutter.
         """
-        pass
 
     def close_fast_shutter(self):
         """
         Close the fast shutter.
         """
-        pass
 
     def energy_scan_hook(self, energy_scan_parameters):
         """
@@ -44,7 +40,6 @@ class AbstractEnergyScan(object):
         undulator gaps, move to a given energy... These are in general
         beamline specific actions.
         """
-        pass
 
     def execute_energy_scan(self, energy_scan_parameters):
         """
@@ -52,7 +47,6 @@ class AbstractEnergyScan(object):
         parameters you need to run the raw scan (e.g start/end energy,
         counting time, energy step...).
         """
-        pass
 
     def get_static_parameters(self, config_file, element, edge):
         """
@@ -71,13 +65,11 @@ class AbstractEnergyScan(object):
         'findattEnergy' - energy to move to if you want to choose the attenuation
         for the scan.
         """
-        pass
 
     def set_mca_roi(self, eroi_min, eroi_max):
         """
         Configure the fluorescent detector ROI. The input is min/max energy.
         """
-        pass
 
     def calculate_und_gaps(self, energy):
         """
@@ -85,33 +77,28 @@ class AbstractEnergyScan(object):
         name of the undulator to chose if several possibilities. Return
         a dictionary undulator:gap in the order undulator(s)should move.
         """
-        pass
 
     def move_undulators(self, undulators):
         """
         Move the undulator(s) to gap(s), where undulators is a dictionary
         undulator:gap and should be in the order of which motor to move first.
         """
-        pass
 
     def escan_prepare(self):
         """
         Set the nesessary equipment in position for the scan. No need to know the c=scan paramets.
         """
-        pass
 
     def choose_attenuation(self, energy_scan_parameters):
         """
         Procedure to set the minimal attenuation in order no preserve
         the sample. Should be done at the energy after the edge.
         """
-        pass
 
     def move_energy(self, energy):
         """
         Move the monochromator to energy - used before and after the scan.
         """
-        pass
 
     def escan_cleanup(self):
         pass
@@ -120,7 +107,6 @@ class AbstractEnergyScan(object):
         """
         set the nesessary equipment in position after the scan
         """
-        pass
 
     def doEnergyScan(self):
         with error_cleanup(self.escan_cleanup):
@@ -189,20 +175,17 @@ class AbstractEnergyScan(object):
         pk, fppPeak, fpPeak, ip, fppInfl, fpInfl, rm,
         chooch_graph_x, chooch_graph_y1, chooch_graph_y2, title)
         """
-        pass
 
     def enable_max_transmission(self, state):
         """
         Enables/disables usage of maximal transmission set
         during the energy scan
         """
-        pass
 
     def set_max_transmission(self, value):
         """
         Sets maximal transmission used during the energy scan
         """
-        pass
 
     def adjust_transmission(self, value):
         pass

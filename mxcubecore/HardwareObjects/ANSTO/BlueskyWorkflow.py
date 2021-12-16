@@ -1,19 +1,21 @@
-import os
-import time
-import gevent
-import pprint
-import logging
-import requests
-import binascii
 import asyncio
+import binascii
+import logging
+import os
+import pprint
+import time
 from typing import List
+
+import gevent
+import requests
 from requests.exceptions import ConnectionError
 
-from mxcubecore.HardwareObjects.SecureXMLRpcRequestHandler import (
-    SecureXMLRpcRequestHandler)
 from mxcubecore import HardwareRepository as HWR
-from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
+from mxcubecore.HardwareObjects.SecureXMLRpcRequestHandler import (
+    SecureXMLRpcRequestHandler,
+)
 
 
 class State(object):
@@ -116,7 +118,6 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        pass
 
     def init(self) -> None:
         """
@@ -141,7 +142,8 @@ class BlueskyWorkflow(HardwareObject):
         except ConnectionError:
             logging.getLogger("HWR").info(
                 "Could not connect to the bluesky Run Engine,"
-                " bluesky plans will not be available.")
+                " bluesky plans will not be available."
+            )
 
     @property
     def state(self) -> State:
@@ -192,8 +194,7 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
 
-        logging.getLogger("HWR").error(
-            "Workflow '%s' Tango command failed!" % args[1])
+        logging.getLogger("HWR").error("Workflow '%s' Tango command failed!" % args[1])
         self.command_failed = True
 
     def state_changed(self, new_value: str) -> None:
@@ -210,8 +211,7 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
         new_value = str(new_value)
-        logging.getLogger("HWR").debug(
-            f"{self.name()}: state changed to {new_value}")
+        logging.getLogger("HWR").debug(f"{self.name()}: state changed to {new_value}")
         self.emit("stateChanged", (new_value,))
 
     def workflow_end(self) -> None:
@@ -276,8 +276,7 @@ class BlueskyWorkflow(HardwareObject):
             dict_workflow["name"] = str(wf.title)
             dict_workflow["path"] = str(wf.path)
             try:
-                req = [r.strip() for r in
-                       wf.get_property("requires").split(",")]
+                req = [r.strip() for r in wf.get_property("requires").split(",")]
                 dict_workflow["requires"] = req
             except (AttributeError, TypeError):
                 dict_workflow["requires"] = []
@@ -303,7 +302,7 @@ class BlueskyWorkflow(HardwareObject):
             abort_URL = f"{self.REST}/re/abort"
             response = requests.get(abort_URL)
             if response.status_code == 200:
-                workflow_status = response.text
+                response.text
         self.state.value = "ON"
 
     def generate_new_token(self) -> None:
@@ -316,7 +315,7 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
 
-        self.token = binascii.hexlify(os.urandom(5)).decode('utf-8')
+        self.token = binascii.hexlify(os.urandom(5)).decode("utf-8")
         SecureXMLRpcRequestHandler.setReferenceToken(self.token)
 
     def get_token(self) -> str:
@@ -363,8 +362,7 @@ class BlueskyWorkflow(HardwareObject):
             self.error_stream("ERROR! Odd number of input arguments!")
             return
         while index < len(list_arguments):
-            self.dict_parameters[list_arguments[index]] = \
-                list_arguments[index + 1]
+            self.dict_parameters[list_arguments[index]] = list_arguments[index + 1]
             index += 2
         logging.info("Input arguments:")
         logging.info(pprint.pformat(self.dict_parameters))
@@ -389,7 +387,8 @@ class BlueskyWorkflow(HardwareObject):
             self.start_bluesky_workflow()
             time1 = time.time()
             logging.getLogger("HWR").info(
-                f"Time to execute workflow (s): {time1 - time0}")
+                f"Time to execute workflow (s): {time1 - time0}"
+            )
 
     def start_bluesky_workflow(self) -> None:
         """
@@ -399,21 +398,18 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        logging.getLogger("HWR").info(
-            f"Starting workflow {self.workflow_name}")
+        logging.getLogger("HWR").info(f"Starting workflow {self.workflow_name}")
 
         # NOTE: we are not using self.dict_parameters because
         # we do not need it (see the original implementation
         # of the BES workflow for more details)
 
         start_URL = f"{self.REST}/queue/item/execute"
-        payload = {"item": {"name": "my_plan",
-                            "args": ["testrig", 0.5],
-                            "item_type": "plan"}
-                   }
+        payload = {
+            "item": {"name": "my_plan", "args": ["testrig", 0.5], "item_type": "plan"}
+        }
         response = requests.post(start_URL, json=payload)
-        logging.getLogger("HWR").info(
-            f"server response: {response.status_code}")
+        logging.getLogger("HWR").info(f"server response: {response.status_code}")
 
         if response.status_code == 200:
             self.state.value = "RUNNING"
@@ -424,20 +420,17 @@ class BlueskyWorkflow(HardwareObject):
 
             request_id = response.text
             logging.getLogger("HWR").info(
-                f"starting Bluesky plan, request id: {request_id}")
+                f"starting Bluesky plan, request id: {request_id}"
+            )
 
             # Update frontend values with ophyd and asyncio
             loop = asyncio.get_event_loop()
             loop.run_until_complete(
                 self.asyncio_gather(
-                    self.update_frontend_values(
-                        self.motor_z
-                        ),
-                    self.update_frontend_values(
-                        self.motor_x
-                        )
-                    )
+                    self.update_frontend_values(self.motor_z),
+                    self.update_frontend_values(self.motor_x),
                 )
+            )
 
             logging.getLogger("HWR").info("Plan executed successfully")
         else:
@@ -459,13 +452,11 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
         motor.update_specific_state(motor.SPECIFIC_STATES.MOVING)
-        re_state = requests.get(
-                f"{self.REST}/status").json()["re_state"]
+        re_state = requests.get(f"{self.REST}/status").json()["re_state"]
         logging.getLogger("HWR").info(f"Run Engine state: {re_state}")
 
         while re_state == "running":
-            re_state = requests.get(
-                f"{self.REST}/status").json()["re_state"]
+            re_state = requests.get(f"{self.REST}/status").json()["re_state"]
             time.sleep(0.2)
             motor.update_state(motor.STATES.BUSY)
             current_value = motor.get_value()
@@ -474,8 +465,9 @@ class BlueskyWorkflow(HardwareObject):
 
         motor.update_state(motor.STATES.READY)
 
-    async def asyncio_gather(self, motor_1: OphydEpicsMotor,
-                             motor_2: OphydEpicsMotor) -> None:
+    async def asyncio_gather(
+        self, motor_1: OphydEpicsMotor, motor_2: OphydEpicsMotor
+    ) -> None:
         """
         Gathers two OphydEpicsMotors
 

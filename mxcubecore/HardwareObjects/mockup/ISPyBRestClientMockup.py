@@ -255,7 +255,6 @@ class ISPyBRestClientMockup(HardwareObject):
         :returns: None
         """
         print("update_data_collection... ", mx_collection)
-        pass
 
     def store_image(self, image_dict):
         """
@@ -294,7 +293,6 @@ class ISPyBRestClientMockup(HardwareObject):
         :returns: A list with sample_ref objects.
         :rtype: list
         """
-        pass
 
     def get_bl_sample(self, bl_sample_id):
         """
@@ -307,7 +305,6 @@ class ISPyBRestClientMockup(HardwareObject):
         :rtype: BLSampleWSValue
 
         """
-        pass
 
     def disable(self):
         self.__disabled = True
@@ -328,4 +325,3 @@ class ISPyBRestClientMockup(HardwareObject):
         :returns: DataCollectionGroup id
         :rtype: int
         """
-        pass

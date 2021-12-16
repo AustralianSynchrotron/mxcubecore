@@ -31,11 +31,9 @@ __version__ = "2.3."
 __category__ = "General"
 
 
-
 class AbstractFlux(AbstractActuator):
 
     read_only = True
-
 
     def __init__(self, name):
         AbstractActuator.__init__(self, name)

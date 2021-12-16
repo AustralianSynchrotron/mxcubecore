@@ -1,7 +1,7 @@
-import time
 import logging
-from typing import Tuple
+import time
 from enum import Enum
+from typing import Tuple
 
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
@@ -105,7 +105,8 @@ class Zoom(OphydEpicsMotor, AbstractNState):
         current_value = self.get_value()
         self.update_value(current_value)
         logging.getLogger("HWR").debug(
-            f"Moving motorized zoom lens to: {current_value}")
+            f"Moving motorized zoom lens to: {current_value}"
+        )
         return value
 
     def get_value(self) -> Enum:

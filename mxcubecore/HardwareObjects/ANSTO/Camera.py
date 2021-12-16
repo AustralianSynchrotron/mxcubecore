@@ -1,14 +1,14 @@
 """
 Class for cameras connected by EPICS Area Detector
 """
-import os
 import logging
-import gevent
+import os
 from io import BytesIO
 from threading import Thread
 
-from PIL import Image
+import gevent
 import numpy as np
+from PIL import Image
 
 from mxcubecore.HardwareObjects.ANSTO.BlackFlyCam import BlackFlyCam
 from mxcubecore.HardwareObjects.ANSTO.ImgPlugin import ImgPlugin
@@ -71,8 +71,7 @@ class Camera(HardwareObject):
         self.cam = BlackFlyCam(f"{self.pv_prefix}:", name=self.username)
         self.cam.wait_for_connection(timeout=5)
 
-        self.img_plugin = ImgPlugin(
-            f"{self.pv_prefix}:image1:", name="ImagePlugin")
+        self.img_plugin = ImgPlugin(f"{self.pv_prefix}:image1:", name="ImagePlugin")
         self.img_plugin.wait_for_connection(timeout=5)
 
         self.read_sizes()
@@ -175,7 +174,7 @@ class Camera(HardwareObject):
             img_rgb = img.convert('RGB')
             # Get binary image
             with BytesIO() as f:
-                img_rgb.save(f, format='JPEG')
+                img_rgb.save(f, format="JPEG")
                 f.seek(0)
                 img_bin_str = f.getvalue()
             # Sent image to gui
@@ -559,8 +558,7 @@ class Camera(HardwareObject):
             self.liveState = live
 
             if live:
-                logging.getLogger("HWR").info(
-                    "ANSTO Camera is going to poll images")
+                logging.getLogger("HWR").info("ANSTO Camera is going to poll images")
                 # self.delay = float(int(self.getProperty("interval"))/1000.0)
                 # the "interval" property is hardcoded at the moment
                 self.delay = float(int(100.0/1000.0))
@@ -616,23 +614,24 @@ class Camera(HardwareObject):
 
         try:
             # Calculate goniometer positions where to take snapshots
-            if (collectEnd is not None and collectStart is not None):
-                interval = (collectEnd - collectStart)
+            if collectEnd is not None and collectStart is not None:
+                interval = collectEnd - collectStart
             else:
                 interval = 0
 
             # To increment in angle increment
-            increment = 0 if ((image_count - 1) ==
-                              0) else (interval / (image_count - 1))
+            increment = (
+                0 if ((image_count - 1) == 0) else (interval / (image_count - 1))
+            )
 
             for incrementPos in range(image_count):
-                if (collectStart is not None):
+                if collectStart is not None:
                     positions.append(collectStart + (incrementPos * increment))
                 else:
                     positions.append(motorHwobj.getPosition())
 
             # Create folders if not found
-            if (not os.path.exists(snapshotFilePath)):
+            if not os.path.exists(snapshotFilePath):
                 try:
                     os.makedirs(snapshotFilePath, mode=0o700)
                 except OSError as e:
@@ -641,7 +640,7 @@ class Camera(HardwareObject):
                         f" {snapshotFilePath} ({str(e)})")
 
             for index in range(image_count):
-                while (motorHwobj.getPosition() < positions[index]):
+                while motorHwobj.getPosition() < positions[index]:
                     gevent.sleep(0.02)
 
                 logging.getLogger("HWR").info(
@@ -650,11 +649,12 @@ class Camera(HardwareObject):
 
                 # Save snapshot image file
                 motor_position = str(round(motorHwobj.getPosition(), 2))
-                snapshotFileName = (f"{snapshotFilePrefix}_{motor_position}"
-                                    f"_{motorHwobj.getEgu()}_snapshot.png")
+                snapshotFileName = (
+                    f"{snapshotFilePrefix}_{motor_position}"
+                    f"_{motorHwobj.getEgu()}_snapshot.png"
+                )
 
-                imageFileName = os.path.join(
-                    snapshotFilePath, snapshotFileName)
+                imageFileName = os.path.join(snapshotFilePath, snapshotFileName)
 
                 # imageInfo = self.takeSnapshot(imageFileName)
 
@@ -663,9 +663,10 @@ class Camera(HardwareObject):
 
                 # Send a command to detector hardware-object
                 # to take snapshot of camserver execution...
-                if (logFilePath and detectorHwobj):
+                if logFilePath and detectorHwobj:
                     detectorHwobj.takeScreenshotOfXpraRunningProcess(
-                        image_path=logFilePath, run_number=runNumber)
+                        image_path=logFilePath, run_number=runNumber
+                    )
 
                 # centred_images.append((0, str(imageInfo)))
                 # centred_images.reverse()
@@ -713,9 +714,17 @@ class Camera(HardwareObject):
         """
         if image_count > 0:
             self.snapshots_procedure = gevent.spawn(
-                self.take_snapshots_procedure, image_count, snapshotFilePath,
-                snapshotFilePrefix, logFilePath, runNumber, collectStart,
-                collectEnd, motorHwobj, detectorHwobj)
+                self.take_snapshots_procedure,
+                image_count,
+                snapshotFilePath,
+                snapshotFilePrefix,
+                logFilePath,
+                runNumber,
+                collectStart,
+                collectEnd,
+                motorHwobj,
+                detectorHwobj,
+            )
 
             self.centring_status["images"] = []
 

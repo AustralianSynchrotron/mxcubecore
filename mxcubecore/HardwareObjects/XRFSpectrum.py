@@ -245,7 +245,7 @@ class XRFSpectrum(HardwareObject):
             mcaConfig["bsX"] = self.spectrumInfo["beamSizeHorizontal"]
             mcaConfig["bsY"] = self.spectrumInfo["beamSizeVertical"]
             roi = self.ctrl_hwobj.mca.get_roi()
-            #roi = self.mca_hwobj.get_roi()
+            # roi = self.mca_hwobj.get_roi()
             mcaConfig["min"] = roi["chmin"]
             mcaConfig["max"] = roi["chmax"]
             mcaConfig["legend"] = self.spectrumInfo["annotatedPymcaXfeSpectrum"]

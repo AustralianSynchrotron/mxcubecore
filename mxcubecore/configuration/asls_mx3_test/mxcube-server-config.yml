@@ -35,21 +35,21 @@ mxcube:
           role: kappa
           step: 0.1
           precision: 1
-          suffix: "°"          
+          suffix: "°"
         -
           label: Kappa Phi
           attribute: kappa_phi
           role: kappa_phi
           step: 0.1
           precision: 1
-          suffix: °          
+          suffix: °
         -
           label: X
           attribute: phix
           role: phix
           step: 0.1
           precision: 3
-          suffix: mm      
+          suffix: mm
         -
           label: Y
           attribute: phiy
@@ -119,7 +119,7 @@ mxcube:
         -
           label: Fast Shutter
           attribute: fast_shutter
-        - 
+        -
           label: Safety shutter
           attribute: safety_shutter
         -
@@ -147,7 +147,7 @@ mxcube:
           label: Cryo
           attribute: cryo
           precision: 2
-          suffix: k       
+          suffix: k
         -
           label: Wavelength
           attribute: energy.wavelength
@@ -159,18 +159,10 @@ mxcube:
           attribute: detector_distance
           step: 0.1
           precision: 1
-          suffix: mm 
+          suffix: mm
         -
           label: Flux
           attribute: flux
           precision: 2
           suffix: ph/s
           format: expo
-
-
-
-
-
-
-
-    

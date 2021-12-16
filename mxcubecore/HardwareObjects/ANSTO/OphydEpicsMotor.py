@@ -1,8 +1,10 @@
-from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
-from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
-from ophyd import EpicsMotor
 import logging
 import time
+
+from ophyd import EpicsMotor
+
+from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
+from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 
 class OphydEpicsMotor(AbstractMotor, EPICSActuator):
@@ -87,7 +89,8 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         self._nominal_limits = self.device.limits
 
         logging.getLogger("HWR").info(
-            f"Motor {self.motor_name} limits: {self._nominal_limits}")
+            f"Motor {self.motor_name} limits: {self._nominal_limits}"
+        )
         return self._nominal_limits
 
     @property

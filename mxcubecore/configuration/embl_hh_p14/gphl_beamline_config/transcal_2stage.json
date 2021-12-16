@@ -15,7 +15,7 @@
       "noRefineSOC": true,
       "useRecen": false
     },
-    
+
     {
       "#": "Settings(omega, kappa, phi) for running TransCal on a mini-Kappa (medium-length protocol)",
     

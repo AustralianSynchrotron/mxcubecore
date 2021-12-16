@@ -42,7 +42,6 @@ class AbstractMachineInfo(HardwareObject):
 
     def init(self):
         """Initialise some parameters."""
-        pass
 
     @abc.abstractmethod
     def get_current(self):

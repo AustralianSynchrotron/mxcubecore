@@ -1,5 +1,5 @@
-from ophyd.areadetector.plugins import ImagePlugin_V34
 from ophyd.areadetector.base import Component as Cpt
+from ophyd.areadetector.plugins import ImagePlugin_V34
 from ophyd.signal import EpicsSignalRO
 
 
@@ -21,6 +21,7 @@ class ImgPlugin(ImagePlugin_V34):
     height: float
            Height of the camera image
     """
+
     depth = Cpt(EpicsSignalRO, "ArraySize0_RBV")
     width = Cpt(EpicsSignalRO, "ArraySize1_RBV")
     height = Cpt(EpicsSignalRO, "ArraySize2_RBV")

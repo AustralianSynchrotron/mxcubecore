@@ -8,7 +8,7 @@
   </pseudo>
   <real>
       <device hwrid="/oh1/mono"/>
-      <device hwrid="/oh1/push111"/>  
+      <device hwrid="/oh1/push111"/>
   </real>
   </motors>
   <specname>basil:oh1</specname>

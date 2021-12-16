@@ -14,11 +14,12 @@
       
 
 
+
 Introduction
 ============
 
-While reaching the last part of the massive refactoring of the HardwareRepository 
-(renamed to `mxcubecore`), and with the aim to converge again the code in all sites, 
+While reaching the last part of the massive refactoring of the HardwareRepository
+(renamed to `mxcubecore`), and with the aim to converge again the code in all sites,
 it has been realized the need to adopt of a robust version model and release strategy in
 order to easily track the version of the library, being the core library for the MXCuBE
 `web` and `qt` applications.
@@ -58,7 +59,7 @@ Glossary
 
 Prior situation (previous to MEP1)
 ====================================
-The [canonical repository](http://www.github.com/mxcube/mxcubecore) is hosted at 
+The [canonical repository](http://www.github.com/mxcube/mxcubecore) is hosted at
 `github.com` under the `mxcube` organization. Current development guidelines are based
 on the so called [GitHub flow](https://guides.github.com/introduction/flow/). We use a
 single `master branch` to merge any `feature branch` by the mechanism of creating a PR and
@@ -80,11 +81,11 @@ The following lists the main goals taken into consideration for this proposal:
 1. A release schema has to provide a clear versioning of the code at different stages.
    This will facilitate the identification of the code used at any time.
 
-2. Each release should provide a comprehensive list of changes with all additions and 
+2. Each release should provide a comprehensive list of changes with all additions and
    changes.
-  
-3. Any non-backward compatible change on the code must be discussed and agreed by the 
-   developers, any new feature must be backward compatible with the existent code and 
+
+3. Any non-backward compatible change on the code must be discussed and agreed by the
+   developers, any new feature must be backward compatible with the existent code and
    any bug fix must be also be backward compatible.
 
 4. We need to adopt development and release guidelines according to the project nature:
@@ -92,6 +93,7 @@ The following lists the main goals taken into consideration for this proposal:
    tests covering most of the scenarios.
 5.  The scheme should be as simple in everyday use as possible, to maximise compliance.
   
+
 
 Implementation
 ==============
@@ -207,7 +209,7 @@ The changelog file will be updated manually before each merge commit the followi
 - Moving the content of the `Unreleased` section to a new `Release` section in the 
   changelog as part of the release procedure.
 
-All changes in a release will be grouped using the most appropriate category from the 
+All changes in a release will be grouped using the most appropriate category from the
 recommended list: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`.
 
 ## Procedures

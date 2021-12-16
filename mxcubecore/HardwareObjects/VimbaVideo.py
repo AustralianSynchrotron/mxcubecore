@@ -1,7 +1,7 @@
 import time
 import atexit
 import numpy as np
-from pymba import *
+from pymba import Vimba
 
 try:
     import cv2

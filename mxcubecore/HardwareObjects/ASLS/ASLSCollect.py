@@ -91,7 +91,7 @@ class ASLSCollect(AbstractMultiCollect, HardwareObject):
                     logging.getLogger("HWR").info("Successfully created the directory %s " % path)
             except OSError:
                 logging.getLogger("HWR").error("Creation of the directory %s failed." % path)
-            
+
             if not output_directory.endswith('/'):
                 output_directory = output_directory + '/'
             output_prefix =  data_collect_parameters['fileinfo']['prefix']

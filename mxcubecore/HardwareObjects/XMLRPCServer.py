@@ -16,14 +16,15 @@ import socket
 import time
 import json
 import atexit
-import traceback
 import jsonpickle
 
 from functools import reduce
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore import HardwareRepository as HWR
-from mxcubecore.HardwareObjects.SecureXMLRpcRequestHandler import SecureXMLRpcRequestHandler
+from mxcubecore.HardwareObjects.SecureXMLRpcRequestHandler import (
+    SecureXMLRpcRequestHandler,
+)
 
 if sys.version_info > (3, 0):
     from xmlrpc.server import SimpleXMLRPCServer

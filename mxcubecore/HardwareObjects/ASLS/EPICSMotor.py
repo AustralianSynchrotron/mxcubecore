@@ -77,7 +77,7 @@ class EPICSMotor(AbstractMotor, EPICSActuator):
         if self._nominal_limits in [(0, 0), (float('-inf'), float('inf'))]:
             # Treat infinite limit
             self._nominal_limits = (None, None)
-        
+
         logging.getLogger("HWR").info('Motor %s limits: %s' % (self.motor_name, self._nominal_limits))
 
         return self._nominal_limits

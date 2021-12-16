@@ -37,6 +37,7 @@ from mxcubecore.Command.exporter.ExporterStates import ExporterStates
 __copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
 
+
 class ExporterNStateMockup(AbstractNState):
     """Microdiff with Exporter implementation of AbstartNState"""
 
@@ -96,7 +97,6 @@ class ExporterNStateMockup(AbstractNState):
 
     def abort(self):
         """Stop the action."""
-        pass
 
     def _set_value(self, value):
         """Set device to value

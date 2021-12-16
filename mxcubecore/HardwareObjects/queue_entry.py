@@ -233,9 +233,9 @@ class TaskGroupQueueEntry(BaseQueueEntry):
                 sample,
                 cpos if cpos != empty_cpos else None,
             )
-            #HWR.beamline.collect.prepare_interleave(
+            # HWR.beamline.collect.prepare_interleave(
             #    interleave_item["data_model"], param_list
-            #)
+            # )
 
         self.interleave_sw_list = queue_model_objects.create_interleave_sw(
             self.interleave_items, ref_num_images, interleave_num_images
@@ -1690,8 +1690,7 @@ class XrayCenteringQueueEntry(BaseQueueEntry):
 
 
 class AdvancedConnectorQueueEntry(BaseQueueEntry):
-    """Controls different steps
-    """
+    """Controls different steps"""
 
     def __init__(self, view=None, data_model=None, view_set_queue_entry=True):
 

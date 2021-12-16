@@ -49,7 +49,9 @@ class BeamMockup(AbstractBeam):
         self._aperture = self.get_object_by_role("aperture")
         if self._aperture is not None:
             self.connect(
-                self._aperture, "diameterIndexChanged", self.aperture_diameter_changed,
+                self._aperture,
+                "diameterIndexChanged",
+                self.aperture_diameter_changed,
             )
 
             ad = self._aperture.get_diameter_size() / 1000.0

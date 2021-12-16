@@ -59,7 +59,7 @@ class P11NanoDiff(GenericDiffractometer):
 
         #using sample_centring module
         self.centring_phi = sample_centring.CentringMotor(
-            self.motor_hwobj_dict["phi"], direction=-1, 
+            self.motor_hwobj_dict["phi"], direction=-1,
         )
         self.centring_phiz = sample_centring.CentringMotor(
             self.motor_hwobj_dict["phiz"], direction=1, units='microns'
@@ -77,7 +77,7 @@ class P11NanoDiff(GenericDiffractometer):
         self.update_zoom_calibration()
 
     def update_zoom_calibration(self):
-        zoom_hwobj = self.motor_hwobj_dict['zoom'] 
+        zoom_hwobj = self.motor_hwobj_dict['zoom']
         self.pixels_per_mm_x, self.pixels_per_mm_y = zoom_hwobj.get_pixels_per_mm()
         self.log.debug("P11NanoDiff - pixels per mm are: %s x %s " % (self.pixels_per_mm_x, self.pixels_per_mm_y))
         self.emit("pixelsPerMmChanged", ((self.pixels_per_mm_x, self.pixels_per_mm_y),))
@@ -268,7 +268,7 @@ class P11NanoDiff(GenericDiffractometer):
             DX.append(dx)
             DY.append(dy)
             ANG.append(ang)
-            
+
         for i in range(n_points):
             y0 = DY[i]
             ang0 = ANG[i]
@@ -334,13 +334,13 @@ class P11NanoDiff(GenericDiffractometer):
         # calculate distance from clicked position to center in mm
         dx = (x - self.beam_position[0]) / self.pixels_per_mm_x
         dy = (y - self.beam_position[1]) / self.pixels_per_mm_y
-        
+
         phi = self.centring_phi.get_value()
 
         cphi = math.cos(math.radians(phi))
         sphi = math.sin(math.radians(phi))
 
-        samp_y = dy * cphi 
+        samp_y = dy * cphi
         samp_x = dy * sphi
 
         # convert to microns if necessary

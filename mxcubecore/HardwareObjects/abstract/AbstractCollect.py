@@ -235,7 +235,7 @@ class AbstractCollect(HardwareObject, object):
                 self.set_energy(self.current_dc_parameters["energy"])
 
             dd = self.current_dc_parameters.get("resolution")
-            if dd and dd.get('upper'):
+            if dd and dd.get("upper"):
                 resolution = dd["upper"]
                 log.info("Collection: Setting resolution to %.3f", resolution)
                 self.set_resolution(resolution)
@@ -371,70 +371,59 @@ class AbstractCollect(HardwareObject, object):
         """
         Descript. :
         """
-        pass
 
     def open_safety_shutter(self):
         """
         Descript. :
         """
-        pass
 
     def open_fast_shutter(self):
         """
         Descript. :
         """
-        pass
 
     def close_fast_shutter(self):
         """
         Descript. :
         """
-        pass
 
     def close_safety_shutter(self):
         """
         Descript. :
         """
-        pass
 
     def close_detector_cover(self):
         """
         Descript. :
         """
-        pass
 
     def set_transmission(self, value):
         """
         Descript. :
         """
-        pass
 
     def set_wavelength(self, value):
         """
         Descript. :
         """
-        pass
 
     def set_energy(self, value):
         """
         Descript. :
         """
-        pass
 
     def set_resolution(self, value):
         """
         Descript. :
         """
-        pass
 
     def move_detector(self, value):
         """
         Descript. :
         """
-        pass
 
     def get_total_absorbed_dose(self):
-        return 
+        return
 
     def get_wavelength(self):
         """
@@ -570,10 +559,7 @@ class AbstractCollect(HardwareObject, object):
                 self.current_dc_parameters[
                     "synchrotronMode"
                 ] = self.get_machine_fill_mode()
-                (
-                    collection_id,
-                    detector_id,
-                ) = HWR.beamline.lims.store_data_collection(
+                (collection_id, detector_id,) = HWR.beamline.lims.store_data_collection(
                     self.current_dc_parameters, self.bl_config
                 )
                 self.current_dc_parameters["collection_id"] = collection_id
@@ -691,9 +677,7 @@ class AbstractCollect(HardwareObject, object):
                     self.current_dc_parameters[
                         "xtalSnapshotFullPath3"
                     ] = grid_snapshot_filename
-                HWR.beamline.lims.update_data_collection(
-                    self.current_dc_parameters
-                )
+                HWR.beamline.lims.update_data_collection(self.current_dc_parameters)
             except BaseException:
                 logging.getLogger("HWR").exception(
                     "Could not store data collection into ISPyB"
@@ -796,8 +780,9 @@ class AbstractCollect(HardwareObject, object):
                 if number_of_snapshots > 1:
                     HWR.beamline.diffractometer.move_omega_relative(90)
 
-        if not HWR.beamline.diffractometer.in_plate_mode() and self.current_dc_parameters.get(
-            "take_video"
+        if (
+            not HWR.beamline.diffractometer.in_plate_mode()
+            and self.current_dc_parameters.get("take_video")
         ):
             # Add checkbox to allow enable/disable creation of gif
             logging.getLogger("user_level_log").info("Collection: Saving animated gif")
@@ -820,38 +805,31 @@ class AbstractCollect(HardwareObject, object):
         In Qt3 diffractometer has a function,
         In Qt4 graphics_manager is making crystal snapshots
         """
-        pass
 
     def _take_crystal_animation(self, animation_filename, duration_sec=1):
-        """Rotates sample by 360 and composes a gif file
-        """
-        pass
+        """Rotates sample by 360 and composes a gif file"""
 
     @abc.abstractmethod
     def data_collection_hook(self):
         """
         Descript. :
         """
-        pass
 
     @abc.abstractmethod
     def trigger_auto_processing(self, process_event, frame_number):
         """
         Descript. :
         """
-        pass
 
     def set_helical(self, arg):
         """
         Descript. :
         """
-        pass
 
     def set_helical_pos(self, arg):
         """
         Descript. :
         """
-        pass
 
     def set_fast_characterisation(self, arg):
         """
@@ -863,7 +841,6 @@ class AbstractCollect(HardwareObject, object):
         """
         Descript. :
         """
-        pass
 
     def prepare_interleave(self, data_model, param_list):
         self.current_dc_parameters = param_list[0]
@@ -891,7 +868,7 @@ class AbstractCollect(HardwareObject, object):
          - nb lines
          - nb frames per line
          - invert direction (boolean)  # NOT YET DONE
-         """
+        """
         return
 
         # self.mesh_num_lines = num_lines

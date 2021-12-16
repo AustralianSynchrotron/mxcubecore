@@ -56,7 +56,7 @@ class MotorMockup(ActuatorMockup, AbstractMotor):
         self._wrap_range = None
 
     def init(self):
-        """ Initialisation method """
+        """Initialisation method"""
         # get username, actuator_name and tolerance
         super(MotorMockup, self).init()
 
@@ -76,7 +76,7 @@ class MotorMockup(ActuatorMockup, AbstractMotor):
         self.update_state(self.STATES.READY)
 
     def _move(self, value):
-        """ Simulated motor movement
+        """Simulated motor movement
         Args:
             value (float): target position
         """

@@ -113,7 +113,6 @@ class AbstractProcedure(ConfiguredObject):
 
         Returns:
         """
-        pass
 
     def _pre_execute(self, data_model):
         """
@@ -126,7 +125,6 @@ class AbstractProcedure(ConfiguredObject):
 
         Returns:
         """
-        pass
 
     def _post_execute(self, data_model):
         """
@@ -139,7 +137,6 @@ class AbstractProcedure(ConfiguredObject):
 
         Returns:
         """
-        pass
 
     def _set_started(self):
         """

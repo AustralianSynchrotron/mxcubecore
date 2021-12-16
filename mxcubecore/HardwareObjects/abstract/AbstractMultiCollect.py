@@ -139,7 +139,9 @@ class AbstractMultiCollect(object):
 
     @abc.abstractmethod
     @task
-    def set_detector_filenames(self, is_first_frame, frame_number, start, filename, shutterless):
+    def set_detector_filenames(
+        self, is_first_frame, frame_number, start, filename, shutterless
+    ):
         pass
 
     @abc.abstractmethod
@@ -334,7 +336,6 @@ class AbstractMultiCollect(object):
         self, files_directory, prefix, run_number, process_directory
     ):
         """Return XDS input file directory"""
-        pass
 
     @abc.abstractmethod
     @task
@@ -650,10 +651,13 @@ class AbstractMultiCollect(object):
                 "Setting transmission to %f", data_collect_parameters["transmission"]
             )
             try:
-                HWR.beamline.transmission.set_value(data_collect_parameters["transmission"], timeout=30)
+                HWR.beamline.transmission.set_value(
+                    data_collect_parameters["transmission"], timeout=30
+                )
             except RuntimeError:
                 logging.getLogger("user_level_log").info(
-                "Failed to set transmission to %f", data_collect_parameters["transmission"]
+                    "Failed to set transmission to %f",
+                    data_collect_parameters["transmission"],
                 )
                 raise
 
@@ -662,10 +666,13 @@ class AbstractMultiCollect(object):
                 "Setting wavelength to %f", data_collect_parameters["wavelength"]
             )
             try:
-                HWR.beamline.energy.set_wavelength(data_collect_parameters["wavelength"], timeout=600)
+                HWR.beamline.energy.set_wavelength(
+                    data_collect_parameters["wavelength"], timeout=600
+                )
             except RuntimeError:
                 logging.getLogger("user_level_log").info(
-                "Failed to set wavelength to %f", data_collect_parameters["wavelength"]
+                    "Failed to set wavelength to %f",
+                    data_collect_parameters["wavelength"],
                 )
                 raise
         elif "energy" in data_collect_parameters:
@@ -673,7 +680,9 @@ class AbstractMultiCollect(object):
                 "Setting energy to %f", data_collect_parameters["energy"]
             )
             try:
-                HWR.beamline.energy.set_value(data_collect_parameters["energy"], timeout=60*10)
+                HWR.beamline.energy.set_value(
+                    data_collect_parameters["energy"], timeout=60 * 10
+                )
             except RuntimeError:
                 logging.getLogger("user_level_log").info(
                     "Failed to set energy to %f", data_collect_parameters["energy"]
@@ -702,7 +711,8 @@ class AbstractMultiCollect(object):
                 )
             except RuntimeError:
                 logging.getLogger("user_level_log").info(
-                    "Failed to set detector distance to %f", data_collect_parameters["detector_distance"]
+                    "Failed to set detector distance to %f",
+                    data_collect_parameters["detector_distance"],
                 )
                 raise
 
@@ -968,7 +978,7 @@ class AbstractMultiCollect(object):
                                 start_image_number + last_image_saved - 1,
                             )
                             self.emit("collectImageTaken", frame)
-                            j = wedge_size - last_image_saved                            
+                            j = wedge_size - last_image_saved
                         else:
                             j -= 1
                             self.emit("collectImageTaken", frame)
@@ -976,14 +986,13 @@ class AbstractMultiCollect(object):
                             if j == 0:
                                 break
 
-                        _total_time_spent += (time.time() - _time_start)
+                        _total_time_spent += time.time() - _time_start
 
-                        #if _total_time_spent > (wedge_size * (exptime + 0.005)) * 4:
+                        # if _total_time_spent > (wedge_size * (exptime + 0.005)) * 4:
                         #    msg = "Data collection failure, detector not responding"
                         #    logging.getLogger("user_level_log").info(msg)
                         #    HWR.beamline.detector.recover_from_failure()
                         #    raise RuntimeError(msg)
-
 
             # Bug fix for MD2/3(UP): diffractometer still has things to do even after the last frame is taken (decelerate motors and
             # possibly download diagnostics) so we cannot trigger the cleanup (that will send an abort on the diffractometer) as soon as
@@ -1032,7 +1041,9 @@ class AbstractMultiCollect(object):
                     failed = True
                     exc_type, exc_value, exc_tb = sys.exc_info()
                     logging.exception("Data collection failed")
-                    logging.getLogger("user_level_log").info("Data collection failed %s" % exc_value)
+                    logging.getLogger("user_level_log").info(
+                        "Data collection failed %s" % exc_value
+                    )
                     data_collect_parameters[
                         "status"
                     ] = "Data collection failed!"  # Message to be stored in LIMS
@@ -1271,7 +1282,7 @@ class AbstractMultiCollect(object):
          - nb lines
          - nb frames per line
          - invert direction (boolean)  # NOT YET DONE
-         """
+        """
         self.mesh_num_lines = num_lines
         self.mesh_total_nb_frames = total_nb_frames
         self.mesh_range = mesh_range_param

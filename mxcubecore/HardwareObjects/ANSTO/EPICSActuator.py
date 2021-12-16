@@ -9,8 +9,8 @@ e.g. class MotorMockup(EPICSActuator, AbstractMotor):
 """
 
 import gevent
+
 from mxcubecore.HardwareObjects.abstract import AbstractActuator
-import logging
 
 __license__ = "LGPLv3+"
 
@@ -31,7 +31,7 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
         super(EPICSActuator, self).__init__(name)
 
         self.__move_task = None
-        self._nominal_limits = (-1E4, 1E4)
+        self._nominal_limits = (-1e4, 1e4)
 
     def init(self) -> None:
         """Object initialization - executed after loading contents
@@ -60,7 +60,6 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
         float
             final actuator value (may differ from target value)
         """
-        pass
 
     def get_value(self) -> float:
         """Read the actuator position.
@@ -70,7 +69,6 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
         float
             Actuator position.
         """
-        pass
 
     def set_value(self, value: float, timeout: int = 0) -> None:
         """Set actuator to absolute value.
@@ -104,14 +102,14 @@ class EPICSActuator(AbstractActuator.AbstractActuator):
                     timeout, RuntimeError(f"Motor {self.username} timed out")
                 ):
                     self._set_value(value)
-                    new_value = self._move(value)
+                    self._move(value)
             else:
                 self._set_value(value)
                 self.__move_task = gevent.spawn(self._move, value)
         else:
             logging.getLogger("user_level_log").error(
-                f"{self.username} is out of limits."
-                f" Limits are {self.get_limits()}")
+                f"{self.username} is out of limits." f" Limits are {self.get_limits()}"
+            )
 
             raise ValueError(
                 f"Invalid value {value}; limits are {self.get_limits()}")

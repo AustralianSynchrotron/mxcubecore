@@ -9,7 +9,7 @@
   </pseudo>
   <real>
       <device hwrid="/oh/motors/mono"/>
-      <device hwrid="/oh/motors/push111"/>  
+      <device hwrid="/oh/motors/push111"/>
       <device hwrid="/oh/motors/push311"/>
   </real>
   </motors>

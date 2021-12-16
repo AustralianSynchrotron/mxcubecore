@@ -158,20 +158,17 @@ class AbstractAperture(HardwareObject):
         """
         Sets aperture in the beam
         """
-        pass
 
     def set_out(self):
         """
         Removes aperture from the beam
         """
-        pass
 
     def is_out(self):
         """
         Returns:
             bool: True if aperture is in the beam, otherwise returns false
         """
-        pass
 
     def force_emit_signals(self):
         """

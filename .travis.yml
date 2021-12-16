@@ -20,4 +20,3 @@ script:
 #  - pylint -E HardwareObjects/*py
 #  - pylint -E HardwareObjects/abstract/*py
 #  - pylint -E HardwareObjects/mockup/*py
-

@@ -1,5 +1,5 @@
 # encoding: utf-8
-# 
+#
 #  Project: MXCuBE
 #  https://github.com/mxcube
 #

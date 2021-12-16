@@ -1,15 +1,14 @@
 import ast
-import time
 import logging
 import random
+import time
 import warnings
-from gevent.event import AsyncResult
-from typing import Tuple, List
+from typing import List, Tuple
 
-from mxcubecore.HardwareObjects.GenericDiffractometer import (
-    GenericDiffractometer
-)
+from gevent.event import AsyncResult
+
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects.GenericDiffractometer import GenericDiffractometer
 
 
 class Diffractometer(GenericDiffractometer):
@@ -89,20 +88,16 @@ class Diffractometer(GenericDiffractometer):
         # self.moveMotors = self.move_motors
 
         self.connect(
-            self.motor_hwobj_dict["phi"], "positionChanged",
-            self.phi_motor_moved
+            self.motor_hwobj_dict["phi"], "positionChanged", self.phi_motor_moved
         )
         self.connect(
-            self.motor_hwobj_dict["phiy"], "positionChanged",
-            self.phiy_motor_moved
+            self.motor_hwobj_dict["phiy"], "positionChanged", self.phiy_motor_moved
         )
         self.connect(
-            self.motor_hwobj_dict["phiz"], "positionChanged",
-            self.phiz_motor_moved
+            self.motor_hwobj_dict["phiz"], "positionChanged", self.phiz_motor_moved
         )
         self.connect(
-            self.motor_hwobj_dict["kappa"], "positionChanged",
-            self.kappa_motor_moved
+            self.motor_hwobj_dict["kappa"], "positionChanged", self.kappa_motor_moved
         )
         self.connect(
             self.motor_hwobj_dict["kappa_phi"],
@@ -110,12 +105,10 @@ class Diffractometer(GenericDiffractometer):
             self.kappa_phi_motor_moved,
         )
         self.connect(
-            self.motor_hwobj_dict["sampx"], "positionChanged",
-            self.sampx_motor_moved
+            self.motor_hwobj_dict["sampx"], "positionChanged", self.sampx_motor_moved
         )
         self.connect(
-            self.motor_hwobj_dict["sampy"], "positionChanged",
-            self.sampy_motor_moved
+            self.motor_hwobj_dict["sampy"], "positionChanged", self.sampy_motor_moved
         )
 
     def getStatus(self) -> str:
@@ -281,14 +274,14 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-        if self.current_centring_procedure is None and \
-           self.centring_status["valid"]:
+        if self.current_centring_procedure is None and self.centring_status["valid"]:
             self.centring_status = {"valid": False}
             # self.emitProgressMessage("")
             self.emit("centringInvalid", ())
 
-    def get_centred_point_from_coord(self, x: float, y: float,
-                                     return_by_names: bool = True) -> dict:
+    def get_centred_point_from_coord(
+        self, x: float, y: float, return_by_names: bool = True
+    ) -> dict:
         """
         Method not implemeted. Returns a random centring position
 
@@ -352,8 +345,7 @@ class Diffractometer(GenericDiffractometer):
         """
         return self.last_centred_position[0], self.last_centred_position[1]
 
-    def moveToCentredPosition(self, centred_position,
-                              wait: bool = False) -> None:
+    def moveToCentredPosition(self, centred_position, wait: bool = False) -> None:
         """
         Descript. :
         """
@@ -513,10 +505,13 @@ class Diffractometer(GenericDiffractometer):
             centred position of motor_x and motor_z
         """
         # Update beam position
-        self.beam_position[0], self.beam_position[1] = \
-            HWR.beamline.beam.get_beam_position_on_screen()
+        (
+            self.beam_position[0],
+            self.beam_position[1],
+        ) = HWR.beamline.beam.get_beam_position_on_screen()
         logging.getLogger("HWR").info(
-            f"beam position: {self.beam_position[0]}, {self.beam_position[1]}")
+            f"beam position: {self.beam_position[0]}, {self.beam_position[1]}"
+        )
 
         # Get clicked position of mouse pointer
         self.last_centred_position[0] = x
@@ -536,9 +531,9 @@ class Diffractometer(GenericDiffractometer):
         # Move absolute
         move_motor_z += motor_z
 
-        centred_pos_dir = {'focus': move_motor_x, 'phiz': move_motor_z}
+        centred_pos_dir = {"focus": move_motor_x, "phiz": move_motor_z}
 
-        logging.getLogger("HWR").info(f'Target position = {centred_pos_dir}')
+        logging.getLogger("HWR").info(f"Target position = {centred_pos_dir}")
         return centred_pos_dir
 
     def move_to_beam(self, x: float, y: float, omega: float = None) -> dict:
@@ -561,7 +556,7 @@ class Diffractometer(GenericDiffractometer):
         """
 
         centred_pos_dir = self.calculate_move_to_beam_pos(x, y)
-        print('Moving motors to beam...')
+        print("Moving motors to beam...")
         self.move_to_motors_positions(centred_pos_dir, wait=True)
         return centred_pos_dir
 
@@ -589,8 +584,9 @@ class Diffractometer(GenericDiffractometer):
         )
         return self.move_to_beam(x, y, omega)
 
-    def start_move_to_beam(self, coord_x: float = None, coord_y: float = None,
-                           omega: float = None) -> None:
+    def start_move_to_beam(
+        self, coord_x: float = None, coord_y: float = None, omega: float = None
+    ) -> None:
         """
         Starts to move motors to beam.
 
@@ -667,8 +663,9 @@ class Diffractometer(GenericDiffractometer):
         else:
             return (-360, 360)
 
-    def get_scan_limits(self, speed=None, num_images=None,
-                        exp_time=None) -> Tuple[float, float]:
+    def get_scan_limits(
+        self, speed=None, num_images=None, exp_time=None
+    ) -> Tuple[float, float]:
         """
         Gets scan limits. Necessary for example in the plate mode
         where osc range is limited.
@@ -730,8 +727,7 @@ class Diffractometer(GenericDiffractometer):
         self.current_phase = str(phase)
         self.emit("minidiffPhaseChanged", (self.current_phase,))
 
-    def get_point_from_line(self, point_one, point_two, index,
-                            images_num) -> dict:
+    def get_point_from_line(self, point_one, point_two, index, images_num) -> dict:
         """
         Method used to get a new motor position based on a position
         between two positions. As arguments both motor positions are
@@ -796,5 +792,4 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-        self.emit("pixelsPerMmChanged", ((self.pixels_per_mm_x,
-                                          self.pixels_per_mm_y)))
+        self.emit("pixelsPerMmChanged", ((self.pixels_per_mm_x, self.pixels_per_mm_y)))

@@ -1,4 +1,4 @@
-<device class="MjpgStreamVideo"> 
+<device class="MjpgStreamVideo">
     <interval>10</interval>
     <host>haspp11camsrv</host>
     <port>8081</port>

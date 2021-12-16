@@ -42,8 +42,7 @@ class DetectorMockup(AbstractDetector):
         self._beam_centre = (xval, yval)
 
     def has_shutterless(self):
-        """Returns always True
-        """
+        """Returns always True"""
         return True
 
     def get_beam_position(self, distance=None, wavelength=None):

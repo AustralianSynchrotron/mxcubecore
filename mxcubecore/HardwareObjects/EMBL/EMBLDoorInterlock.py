@@ -60,7 +60,7 @@ class EMBLDoorInterlock(Device):
         self.door_interlock_state = "unknown"
 
         self.use_door_interlock = self.get_property("useDoorInterlock", True)
-        
+
         self.chan_state_locked = self.get_channel_object("chanStateLocked")
         self.chan_state_locked.connect_signal("update", self.state_locked_changed)
         self.chan_state_breakable = self.get_channel_object("chanStateBreakable")

@@ -10,15 +10,15 @@
     <archiveFolder>/data/pyarch/id23eh1/C3D/archive_images</archiveFolder>
     <outputFolder>/users/blissadm/applications/c3d/output</outputFolder>
     <statsFile>/users/blissadm/log/Mxautocentring_stats.log</statsFile>
-    
-    
+
+
     <calibrationMacro>minidiff_take_backgrounds</calibrationMacro>
     <maxhmove>1.3</maxhmove>
-    <maxvmove>1.3</maxvmove> 
+    <maxvmove>1.3</maxvmove>
     <maxNoise>50</maxNoise>
     <maxBackgroundDrift>8</maxBackgroundDrift>
-    <cryoShadowMargin>80</cryoShadowMargin> 
-    <ringMargin>35</ringMargin> 
+    <cryoShadowMargin>80</cryoShadowMargin>
+    <ringMargin>35</ringMargin>
     <phiyDirection>1</phiyDirection>
     <beamline>id23eh1</beamline>
     <allowPlayback>1</allowPlayback>
@@ -70,7 +70,7 @@
   <motors>
   <phi-shutter>
       <device role="phi" hwrid="/eh1/phi"></device>
-      <device role="phiz" hwrid="/eh1/phiz"></device>  
+      <device role="phiz" hwrid="/eh1/phiz"></device>
       <device hwrid="/eh1/shuty"></device>
       <device hwrid="/eh1/shutz"></device>
       <device hwrid="/eh1/shut"></device>
@@ -80,7 +80,7 @@
       <device role="light" hwrid="/eh1/light"></device>
       <device role="flight" hwrid="/eh1/flight"></device>
       <device role="focus" hwrid="/eh1/focus"></device>
-      <device role="phiy" hwrid="/eh1/length"></device>  
+      <device role="phiy" hwrid="/eh1/length"></device>
       <device role="sampx" hwrid="/eh1/sampx"></device>
       <device role="sampy" hwrid="/eh1/sampy"></device>
       <device role="kappa" hwrid="/eh1/kap1"></device>
@@ -88,8 +88,8 @@
   </sample>
   <others>
       <device hwrid="/eh1/bstopy"></device>
-      <device role="bstopz" hwrid="/eh1/bstopz"></device>  
-      <device hwrid="/eh1/DtoX"></device>  
+      <device role="bstopz" hwrid="/eh1/bstopz"></device>
+      <device hwrid="/eh1/DtoX"></device>
   </others>
   </motors>
   <aperture>/apzy</aperture>

@@ -1,4 +1,3 @@
-import logging
 from mxcubecore.HardwareObjects.abstract.AbstractSlits import AbstractSlits
 
 
@@ -6,6 +5,7 @@ class Slits(AbstractSlits):
     """
     Sets and gets the slit's horizontal and vertical gaps.
     """
+
     def __init__(self, name: str) -> None:
         """
         Parameters

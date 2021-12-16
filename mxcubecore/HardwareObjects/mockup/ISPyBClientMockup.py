@@ -305,7 +305,6 @@ class ISPyBClientMockup(HardwareObject):
         :returns beamline_setup_id: The database id of the beamline setup.
         :rtype: str
         """
-        pass
 
     def update_data_collection(self, mx_collection, wait=False):
         """
@@ -317,7 +316,6 @@ class ISPyBClientMockup(HardwareObject):
 
         :returns: None
         """
-        pass
 
     def update_bl_sample(self, bl_sample):
         """
@@ -327,7 +325,6 @@ class ISPyBClientMockup(HardwareObject):
         :type sample_dict: dict
         # NBNB update doc string
         """
-        pass
 
     def store_image(self, image_dict):
         """
@@ -338,7 +335,6 @@ class ISPyBClientMockup(HardwareObject):
 
         :returns: None
         """
-        pass
 
     def __find_sample(self, sample_ref_list, code=None, location=None):
         """
@@ -354,7 +350,6 @@ class ISPyBClientMockup(HardwareObject):
         :param location: A tuple (<basket>, <vial>) to search for.
         :type location: tuple
         """
-        pass
 
     def get_samples(self, proposal_id, session_id):
 
@@ -574,7 +569,6 @@ class ISPyBClientMockup(HardwareObject):
         :returns: A list with sample_ref objects.
         :rtype: list
         """
-        pass
 
     def get_bl_sample(self, bl_sample_id):
         """
@@ -587,7 +581,6 @@ class ISPyBClientMockup(HardwareObject):
         :rtype: BLSampleWSValue
 
         """
-        pass
 
     def create_session(self, session_dict):
         pass
@@ -610,7 +603,6 @@ class ISPyBClientMockup(HardwareObject):
 
         :rtype: dict
         """
-        pass
 
     def get_data_collection_id(self, dc_dict):
         pass
@@ -639,7 +631,6 @@ class ISPyBClientMockup(HardwareObject):
         :rtype: dict
 
         """
-        pass
 
     def disable(self):
         self.__disabled = True
@@ -652,7 +643,6 @@ class ISPyBClientMockup(HardwareObject):
         Returns the Detector3VO object with the characteristics
         matching the ones given.
         """
-        pass
 
     def store_data_collection_group(self, mx_collection):
         """
@@ -667,7 +657,6 @@ class ISPyBClientMockup(HardwareObject):
         :returns: DataCollectionGroup id
         :rtype: int
         """
-        pass
 
     def _store_data_collection_group(self, group_data):
         pass
@@ -709,4 +698,3 @@ class ISPyBClientMockup(HardwareObject):
 
     def store_robot_action(self, robot_action_dict):
         """Stores robot action"""
-        pass
