@@ -90,7 +90,7 @@ class BlueskyWorkflow(HardwareObject):
         Name of the workflow, e.g. MXPressE
     """
 
-    def __init__(self, name) -> None:
+    def __init__(self, name: str) -> None:
         """
         Parameters
         ----------
@@ -376,12 +376,7 @@ class BlueskyWorkflow(HardwareObject):
             self.error_stream("ERROR! No modelpath in input arguments!")
             return
 
-        # NOTE: All classes in mxcube are run twice. We don't want
-        # a plan to be executed twice, so we only run a plan when
-        # self.count is odd
-        self.count += 1
-
-        if self.workflow_name is not None and (self.count % 2) == 1:
+        if self.workflow_name is not None:
             self.state.value = "RUNNING"
             time0 = time.time()
             self.start_bluesky_workflow()
@@ -405,8 +400,14 @@ class BlueskyWorkflow(HardwareObject):
         # of the BES workflow for more details)
 
         start_URL = f"{self.REST}/queue/item/execute"
+        # we use 2 sim detectors to test the kafka consumer
         payload = {
-            "item": {"name": "my_plan", "args": ["testrig", 0.5], "item_type": "plan"}
+            "item": {
+                "name": "count",
+                "args": [["det1", "det2"]],
+                "kwargs": {"num": 10, "delay": 1},
+                "item_type": "plan",
+            }
         }
         response = requests.post(start_URL, json=payload)
         logging.getLogger("HWR").info(f"server response: {response.status_code}")
@@ -433,6 +434,7 @@ class BlueskyWorkflow(HardwareObject):
             )
 
             logging.getLogger("HWR").info("Plan executed successfully")
+            self.state.value = "ON"
         else:
             logging.getLogger("HWR").error("Plan didn't start!")
             request_id = None

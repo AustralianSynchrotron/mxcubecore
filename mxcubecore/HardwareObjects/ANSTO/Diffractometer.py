@@ -62,12 +62,12 @@ class Diffractometer(GenericDiffractometer):
 
         self.cancel_centring_methods = {}
         self.current_motor_positions = {
-            "phiy": 43.0,
+            "phiy": 41.0,
             "sampx": 0.0,
             "sampy": -1.0,
             "zoom": 8.53,
-            "focus": -0.42,
-            "phiz": 1.1,
+            "focus": 42,
+            "phiz": 2,
             "phi": 311.1,
             "kappa": 11,
             "kappa_phi": 22.0,
@@ -223,7 +223,7 @@ class Diffractometer(GenericDiffractometer):
         """
 
         # Names of motors to vary during centring
-        vary_motor_names = ("sampx", "sampy", "phiy")
+        vary_motor_names = ("phix", "phiz")
 
         # Range of random variation
         var_range = 0.08
@@ -242,6 +242,9 @@ class Diffractometer(GenericDiffractometer):
                     val *= 1 - var_range / var_limit
                 result[tag] = val
 
+        # The following value results in a focused image in the testrig
+        result["phiy"] = 41
+        result["zoom"] = self.motor_hwobj_dict.get("zoom").get_value()
         return result
 
     def is_ready(self) -> bool:
