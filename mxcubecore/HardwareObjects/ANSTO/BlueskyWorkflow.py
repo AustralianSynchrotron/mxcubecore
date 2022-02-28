@@ -10,6 +10,9 @@ import gevent
 import requests
 from requests.exceptions import ConnectionError
 
+import redis
+import pickle
+
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
@@ -87,7 +90,7 @@ class BlueskyWorkflow(HardwareObject):
     REST : str
         URL address of the bluesky REST server
     workflow_name : str
-        Name of the workflow, e.g. MXPressE
+        Name of the workflow, e.g. Screen
     """
 
     def __init__(self, name: str) -> None:
@@ -109,6 +112,8 @@ class BlueskyWorkflow(HardwareObject):
         self.token = None
         self.REST = "http://bluesky-queueserver-rest:8080"
         self.workflow_name = None
+        self.redis_port = 6379
+        self.redis_host = "redis"
 
     def _init(self) -> None:
         """
@@ -144,6 +149,8 @@ class BlueskyWorkflow(HardwareObject):
                 "Could not connect to the bluesky Run Engine,"
                 " bluesky plans will not be available."
             )
+
+        self.redis = redis.StrictRedis(self.redis_host, self.redis_port)
 
     @property
     def state(self) -> State:
@@ -338,8 +345,8 @@ class BlueskyWorkflow(HardwareObject):
         ----------
         list_arguments: list
             A list of arguments containing information about the current
-            mounted sample. It includes the model path, the workflow name
-            (in this case MXPressE), id of the sample, sample prefix,
+            mounted sample. It includes the model path, the workflow name,
+            id of the sample, sample prefix,
             run number, collection software, sample_node_id, sample_lims_id,
             beamline, shape and directory.
 
@@ -347,6 +354,7 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
+        self.list_arguments = list_arguments
 
         self.generate_new_token()
         if not self.gevent_event.is_set():
@@ -393,24 +401,54 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        logging.getLogger("HWR").info(f"Starting workflow {self.workflow_name}")
-
         # NOTE: we are not using self.dict_parameters because
         # we do not need it (see the original implementation
         # of the BES workflow for more details)
 
-        start_URL = f"{self.REST}/queue/item/execute"
-        # we use 2 sim detectors to test the kafka consumer
-        payload = {
-            "item": {
-                "name": "count",
-                "args": [["det1", "det2"]],
-                "kwargs": {"num": 10, "delay": 1},
-                "item_type": "plan",
+        if self.workflow_name == "Screen":
+            # Run bluesky screening plan, we set the frame_time to 4 s
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            start_URL = f"{self.REST}/queue/item/execute"
+            sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
+
+            payload = {
+                "item": {
+                    "name": "scan_plan",
+                    "args": ["dectris_detector"],
+                    "kwargs": {"detector_configuration":
+                               {"frame_time": 4, "nimages": 2},
+                               "metadata": {"username": "Jane Doe",
+                                            "sample_id": sample_id}},
+                    "item_type": "plan",
+                }
             }
-        }
-        response = requests.post(start_URL, json=payload)
-        logging.getLogger("HWR").info(f"server response: {response.status_code}")
+            response = requests.post(start_URL, json=payload)
+            logging.getLogger("HWR").info(f"server response: {response.status_code}")
+
+        elif self.workflow_name == "Collect":
+            # Run a bluesky collect plan, we set the frame_time to 8 s
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            start_URL = f"{self.REST}/queue/item/execute"
+            sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
+
+            payload = {
+                "item": {
+                    "name": "scan_plan",
+                    "args": ["dectris_detector"],
+                    "kwargs": {"detector_configuration":
+                               {"frame_time": 8, "nimages": 2},
+                               "metadata": {"username": "Jane Doe",
+                                            "sample_id": sample_id}},
+                    "item_type": "plan",
+                }
+            }
+            response = requests.post(start_URL, json=payload)
+            logging.getLogger("HWR").info(f"server response: {response.status_code}")
+
+        else:
+            logging.getLogger("HWR").error("Workflow not supported")
+            request_id = None
+            self.state.value = "ON"
 
         if response.status_code == 200:
             self.state.value = "RUNNING"
@@ -434,6 +472,11 @@ class BlueskyWorkflow(HardwareObject):
             )
 
             logging.getLogger("HWR").info("Plan executed successfully")
+
+            # Display score of the sample
+            # score = pickle.loads(self.redis.get("sequence_id_47:score"))["score"]
+            # logging.getLogger("user_level_log").warning(f"sample id score: {score}")
+
             self.state.value = "ON"
         else:
             logging.getLogger("HWR").error("Plan didn't start!")

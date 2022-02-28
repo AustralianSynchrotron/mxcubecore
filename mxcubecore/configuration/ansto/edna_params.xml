@@ -23,8 +23,8 @@
     <requires>point</requires>
   </workflow>
   <workflow>
-    <title>MXPressE</title>
-    <path>MXPressE</path>
+    <title>Screen</title>
+    <path>Screen</path>
     <requires>samplegrid</requires>
   </workflow>
   <workflow>
@@ -50,6 +50,11 @@
   <workflow>
     <title>Trouble shooting Dialog</title>
     <path>TroubleShootingWithDialog</path>
+    <requires>samplegrid</requires>
+  </workflow>
+  <workflow>
+    <title>Collect</title>
+    <path>Collect</path>
     <requires>samplegrid</requires>
   </workflow>
 </object>

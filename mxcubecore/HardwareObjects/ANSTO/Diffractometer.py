@@ -141,7 +141,6 @@ class Diffractometer(GenericDiffractometer):
         return self.mount_mode == "plate"
 
     def use_sample_changer(self) -> bool:
-
         """
         Returns True if sample changer is in use.
 
@@ -245,6 +244,7 @@ class Diffractometer(GenericDiffractometer):
         # The following value results in a focused image in the testrig
         result["phiy"] = 41
         result["zoom"] = self.motor_hwobj_dict.get("zoom").get_value()
+        result.pop("zoom")
         return result
 
     def is_ready(self) -> bool:

@@ -87,10 +87,6 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
             Low and High limits of a motor.
         """
         self._nominal_limits = self.device.limits
-
-        logging.getLogger("HWR").info(
-            f"Motor {self.motor_name} limits: {self._nominal_limits}"
-        )
         return self._nominal_limits
 
     @property
