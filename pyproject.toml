@@ -9,7 +9,7 @@ readme = "README.md"
 [[tool.poetry.source]]
 name = "cachedpypi"
 url = "https://pypi.asci.synchrotron.org.au/root/pypi/+simple"
-default = true
+secondary = true
 
 [[tool.poetry.source]]
 name = "asci-dev"
