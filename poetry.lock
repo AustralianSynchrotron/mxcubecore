@@ -1087,7 +1087,7 @@ reference = "cachedpypi"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "31d82dd30aaed645d04e5244ca73b1800bee4c401f89f50223d36b6d7186e01b"
+content-hash = "3c06527da5f265fe87e563b19c9fc84c3f0e0d5163ef2134ccc5d3b75c77a44b"
 
 [metadata.files]
 astroid = [
