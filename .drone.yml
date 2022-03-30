@@ -8,6 +8,7 @@ trigger:
 steps:
   - name: test
     image: alpine
+    commands:
       - env | sort
   
   - name: pylint
@@ -126,6 +127,7 @@ trigger:
 steps:
   - name: test
     image: alpine
+    commands:
       - env | sort
   
   - name: pylint
