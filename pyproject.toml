@@ -32,15 +32,19 @@ matplotlib = "3.5.1"
 ophyd = "1.6.3"
 numpy = "1.21.4"
 pillow = "9.0.1"
-pre-commit = "2.17.0"
 pydantic = "1.9.0"
 pydispatcher = "2.0.5"
 pyepics = "3.5.1"
-pylint = "2.12.2"
-pytest = "7.0.1"
 suds-py3 = "1.4.5.0"
 "ruamel.yaml" = "0.17.21"
 scipy = "1.7.3"
+
+[tool.poetry.dev-dependencies]
+pre-commit = "2.17.0"
+pylint = "2.12.2"
+pytest = "7.0.1"
+pytest-html = "^3.1.1"
+pytest-cov = "^3.0.0"
 
 [tool.black]
 line-length = 88
