@@ -6,10 +6,13 @@ trigger:
   ref:
     - refs/heads/main
 steps:
+  - name: test
+    image: alpine
+      - env | sort
+  
   - name: pylint
     image: python:3.9
     commands:
-      - env | sort
       - python -m pip install poetry --user
       - python -m poetry install
       - python -m poetry run pre-commit run
@@ -121,10 +124,13 @@ trigger:
   ref:
     - refs/tags/*
 steps:
+  - name: test
+    image: alpine
+      - env | sort
+  
   - name: pylint
     image: python:3.9
     commands:
-      - env | sort
       - python -m pip install poetry --user
       - python -m poetry install
       - python -m poetry run pre-commit run
