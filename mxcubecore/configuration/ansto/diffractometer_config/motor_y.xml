@@ -1,8 +1,6 @@
-<device class="ANSTO.OphydEpicsMotor">
-    <exporter_address>10.244.101.10</exporter_address>
-    <username>PhiY</username>
-    <motor_name>Motor Y</motor_name>
-    <pv_prefix>MX3:TESTRIG_Y</pv_prefix>
-    <GUIstep>0.1</GUIstep>
-    <unit>1e-1</unit>
+<device class="ANSTO.ExporterMotor">
+  <username>PhiY</username>
+  <exporter_address>10.244.101.21:9002</exporter_address>
+  <actuator_name>AlignmentY</actuator_name>
+  <tolerance>1e-2</tolerance>
 </device>

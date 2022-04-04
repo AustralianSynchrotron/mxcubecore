@@ -2,12 +2,13 @@ import sys
 import time
 import string
 import threading
+from mxcubecore.Command.exporter.ExporterClient import *
 from ExporterClient import *
 from mxcubecore.Command.exporter.StandardClient import PROTOCOL
 
 SERVER_ADDRESS = "localhost"
 SERVER_PORT = 9001
-SERVER_PROTOCOL = PROTOCOL.STREAM
+# SERVER_PROTOCOL = PROTOCOL.STREAM
 TIMEOUT = 3
 RETRIES = 1
 

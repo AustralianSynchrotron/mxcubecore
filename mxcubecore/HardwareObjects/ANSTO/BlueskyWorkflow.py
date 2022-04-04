@@ -5,6 +5,7 @@ import os
 import pprint
 import time
 from typing import List
+from random import random
 
 import gevent
 import requests
@@ -140,6 +141,8 @@ class BlueskyWorkflow(HardwareObject):
         _diffractometer = hwr.get_hardware_object("/diffractometer")
         self.motor_x = _diffractometer.alignment_x
         self.motor_z = _diffractometer.alignment_z
+
+        self.sample_view = hwr.get_hardware_object("/sample_view")
 
         # Open RunEngine
         try:
@@ -408,7 +411,6 @@ class BlueskyWorkflow(HardwareObject):
         if self.workflow_name == "Screen":
             # Run bluesky screening plan, we set the frame_time to 4 s
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            start_URL = f"{self.REST}/queue/item/execute"
             sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
 
             payload = {
@@ -422,15 +424,11 @@ class BlueskyWorkflow(HardwareObject):
                     "item_type": "plan",
                 }
             }
-            response = requests.post(start_URL, json=payload)
-            logging.getLogger("HWR").info(f"server response: {response.status_code}")
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            self.screen_and_collect_worklow(payload)
 
         elif self.workflow_name == "Collect":
-            # Run a bluesky collect plan, we set the frame_time to 8 s
-            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            start_URL = f"{self.REST}/queue/item/execute"
             sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
-
             payload = {
                 "item": {
                     "name": "scan_plan",
@@ -442,14 +440,36 @@ class BlueskyWorkflow(HardwareObject):
                     "item_type": "plan",
                 }
             }
-            response = requests.post(start_URL, json=payload)
-            logging.getLogger("HWR").info(f"server response: {response.status_code}")
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            self.screen_and_collect_worklow(payload)
+
+        elif self.workflow_name == "Raster":
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            self.raster_workflow()
 
         else:
-            logging.getLogger("HWR").error("Workflow not supported")
+            logging.getLogger("HWR").error(
+                f"Workflow {self.workflow_name} not supported")
             request_id = None
             self.state.value = "ON"
 
+    def screen_and_collect_worklow(self, payload: dict) -> None:
+        """
+        Executes a screen and collect worflow by calling the bluesky queueserver
+
+        Parameters
+        ----------
+        payload : dict
+            A dictionary containing information about a bluesky plan
+
+        Returns
+        -------
+        None
+        """
+        start_URL = f"{self.REST}/queue/item/execute"
+        response = requests.post(start_URL, json=payload)
+
+        logging.getLogger("HWR").info(f"server response: {response.status_code}")
         if response.status_code == 200:
             self.state.value = "RUNNING"
 
@@ -482,6 +502,57 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").error("Plan didn't start!")
             request_id = None
             self.state.value = "ON"
+
+    def raster_workflow(self) -> None:
+        """
+        Generates random RBGA data and passes that data to the mxcube3 frontend
+
+        Returns
+        -------
+        None
+        """
+        self.state.value = "RUNNING"
+        grid_list = self.sample_view.get_grids()
+        logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
+
+        for grid in grid_list:
+            sid = grid.id
+            num_cols = grid.num_cols
+            num_rows = grid.num_rows
+            logging.getLogger("HWR").info(f"grid id: {sid}")
+            logging.getLogger("HWR").info(
+                f"number of columns and rows: {num_cols}, {num_rows}")
+
+            heatmap = {}
+            crystalmap = {}
+
+            if grid:
+                for i in range(1, num_rows * num_cols + 1):
+                    heatmap[i] = [
+                        i,
+                        [
+                            int(random() * 255),
+                            int(random() * 255),
+                            int(random() * 255),
+                            1
+                        ]
+                    ]
+
+                    crystalmap[i] = [
+                        i,
+                        [
+                            int(random() * 255),
+                            int(random() * 255),
+                            int(random() * 255),
+                            1
+                        ]
+                    ]
+
+            heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
+            self.sample_view.set_grid_data(sid, heat_and_crystal_map)
+            logging.getLogger("HWR").info(f"grid set successfully")
+
+        self.state.value = "ON"
 
     async def update_frontend_values(self, motor: OphydEpicsMotor) -> None:
         """

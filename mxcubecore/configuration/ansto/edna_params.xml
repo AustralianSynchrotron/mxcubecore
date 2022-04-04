@@ -57,4 +57,9 @@
     <path>Collect</path>
     <requires>samplegrid</requires>
   </workflow>
+  <workflow>
+    <title>Raster</title>
+    <path>Raster</path>
+    <requires>grid</requires>
+  </workflow>
 </object>

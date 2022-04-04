@@ -8,6 +8,20 @@ from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 
 class OphydEpicsMotor(AbstractMotor, EPICSActuator):
+    """Hardware Object that uses an Ophyd layer to control Epics motors
+
+    Example of xml config file:
+
+    <device class="ANSTO.OphydEpicsMotor">
+        <exporter_address>10.244.101.10</exporter_address>
+        <username>PhiX</username>
+        <motor_name>Motor X</motor_name>
+        <pv_prefix>MX3:TESTRIG_X</pv_prefix>
+        <GUIstep>0.1</GUIstep>
+        <unit>1e-1</unit>
+    </device>
+    """
+
     def __init__(self, name: str) -> None:
         """Constructor to instantiate OphydEpicsMotor class and it's features.
 
@@ -34,7 +48,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         None
         """
         self.device = EpicsMotor(self.pv_prefix, name=self.motor_name)
-        self.device.wait_for_connection(timeout=5)  # For lazy loading.
+        self.device.wait_for_connection(timeout=300)  # For lazy loading.
 
         AbstractMotor.init(self)
         EPICSActuator.init(self)
