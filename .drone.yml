@@ -10,14 +10,14 @@ steps:
     image: alpine
     commands:
       - env | sort
-  
+
   - name: pylint
     image: python:3.9
     commands:
       - python -m pip install poetry --user
       - python -m poetry install
-      - python -m poetry run pre-commit run
- 
+      - python -m poetry run pre-commit run --all-files
+
   - name: build
     image: python:3.9
     volumes:
@@ -34,7 +34,7 @@ steps:
       - python -m poetry install
       - python -m poetry run pytest --cov=mxcubecore --html=artifacts/testing/index.html
       - python -m poetry run pytest --cov-report=html:artifacts/coverage --cov=mxcubecore
- 
+
   - name: upload-artifacts
     image: plugins/s3
     settings:
@@ -48,7 +48,7 @@ steps:
       access_key: cicd
       secret_key:
         from_secret: s3cicdKey
- 
+
   - name: publish-package
     image: plugins/pypi
     volumes:
@@ -64,7 +64,7 @@ steps:
         - sdist
         - bdist_wheel
       skip_build: true
- 
+
   - name: notify-package-upload
     image: alpine
     when:
@@ -103,7 +103,7 @@ steps:
           ]
         }
         EOF
- 
+
   - name: chat-notify
     image: plugins/webhook
     when:
@@ -113,7 +113,7 @@ steps:
         from_secret: rocketCIWebhook
       content_type: application/json
       template: file:///drone/src/.template.json
- 
+
 volumes:
   - name: dist
     temp: {}
@@ -129,14 +129,14 @@ steps:
     image: alpine
     commands:
       - env | sort
-  
+
   - name: pylint
     image: python:3.9
     commands:
       - python -m pip install poetry --user
       - python -m poetry install
-      - python -m poetry run pre-commit run
- 
+      - python -m poetry run pre-commit run --all-files
+
   - name: build
     image: python:3.9
     volumes:
@@ -151,7 +151,7 @@ steps:
       - python -m poetry build
       - echo Building docs...
       - python -m poetry install
- 
+
   - name: publish-package
     image: plugins/pypi
     volumes:
@@ -167,7 +167,7 @@ steps:
         - sdist
         - bdist_wheel
       skip_build: true
- 
+
   - name: notify-package-release
     image: alpine
     when:
@@ -206,7 +206,7 @@ steps:
           ]
         }
         EOF
- 
+
   - name: chat-notify
     image: plugins/webhook
     when:
@@ -216,7 +216,7 @@ steps:
         from_secret: rocketCIWebhook
       content_type: application/json
       template: file:///drone/src/.template.json
- 
+
 volumes:
   - name: dist
     temp: {}

@@ -1,11 +1,12 @@
-import sys
-import math
 import logging
+import math
+import sys
 
 from gevent import Timeout, sleep
-from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
+
 from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
+from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
 
 class ExporterMotor(AbstractMotor):
@@ -213,7 +214,8 @@ class ExporterMotor(AbstractMotor):
 
         if _v is None or math.isnan(_v):
             logging.getLogger("HWR").debug(
-                f"Value of {self.actuator_name} is NaN or None")
+                f"Value of {self.actuator_name} is NaN or None"
+            )
             _v = self._nominal_value
 
         self._nominal_value = _v

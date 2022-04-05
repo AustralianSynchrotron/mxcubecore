@@ -1,12 +1,14 @@
+import logging
+import os
+import time
+
+import gevent
+
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.abstract.AbstractMultiCollect import (
     AbstractMultiCollect,
 )
 from mxcubecore.TaskUtils import task
-import logging
-import time
-import os
-import gevent
 
 
 class MultiCollect(AbstractMultiCollect, HardwareObject):
@@ -79,7 +81,6 @@ class MultiCollect(AbstractMultiCollect, HardwareObject):
         """
         failed_msg = "Data collection failed!"
         failed = True
-        collections_analyse_params = []
         self.emit("collectReady", (False,))
         self.emit("collectStarted", (owner, 1))
 
@@ -363,7 +364,7 @@ class MultiCollect(AbstractMultiCollect, HardwareObject):
         if self.bl_control.machine_current is not None:
             return self.bl_control.machine_current.getFillMode()
         else:
-            ""
+            """"""
 
     def get_cryo_temperature(self) -> float:
         """

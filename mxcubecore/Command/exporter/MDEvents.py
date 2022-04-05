@@ -1,6 +1,5 @@
 import sys
 import time
-import string
 import threading
 from mxcubecore.Command.exporter.ExporterClient import *
 from ExporterClient import *

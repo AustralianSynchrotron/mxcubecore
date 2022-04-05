@@ -4,15 +4,13 @@ import logging
 import os
 import pprint
 import time
-from typing import List
 from random import random
+from typing import List
 
 import gevent
+import redis
 import requests
 from requests.exceptions import ConnectionError
-
-import redis
-import pickle
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -417,10 +415,10 @@ class BlueskyWorkflow(HardwareObject):
                 "item": {
                     "name": "scan_plan",
                     "args": ["dectris_detector"],
-                    "kwargs": {"detector_configuration":
-                               {"frame_time": 4, "nimages": 2},
-                               "metadata": {"username": "Jane Doe",
-                                            "sample_id": sample_id}},
+                    "kwargs": {
+                        "detector_configuration": {"frame_time": 4, "nimages": 2},
+                        "metadata": {"username": "Jane Doe", "sample_id": sample_id},
+                    },
                     "item_type": "plan",
                 }
             }
@@ -433,10 +431,10 @@ class BlueskyWorkflow(HardwareObject):
                 "item": {
                     "name": "scan_plan",
                     "args": ["dectris_detector"],
-                    "kwargs": {"detector_configuration":
-                               {"frame_time": 8, "nimages": 2},
-                               "metadata": {"username": "Jane Doe",
-                                            "sample_id": sample_id}},
+                    "kwargs": {
+                        "detector_configuration": {"frame_time": 8, "nimages": 2},
+                        "metadata": {"username": "Jane Doe", "sample_id": sample_id},
+                    },
                     "item_type": "plan",
                 }
             }
@@ -449,8 +447,8 @@ class BlueskyWorkflow(HardwareObject):
 
         else:
             logging.getLogger("HWR").error(
-                f"Workflow {self.workflow_name} not supported")
-            request_id = None
+                f"Workflow {self.workflow_name} not supported"
+            )
             self.state.value = "ON"
 
     def screen_and_collect_worklow(self, payload: dict) -> None:
@@ -521,7 +519,8 @@ class BlueskyWorkflow(HardwareObject):
             num_rows = grid.num_rows
             logging.getLogger("HWR").info(f"grid id: {sid}")
             logging.getLogger("HWR").info(
-                f"number of columns and rows: {num_cols}, {num_rows}")
+                f"number of columns and rows: {num_cols}, {num_rows}"
+            )
 
             heatmap = {}
             crystalmap = {}
@@ -534,8 +533,8 @@ class BlueskyWorkflow(HardwareObject):
                             int(random() * 255),
                             int(random() * 255),
                             int(random() * 255),
-                            1
-                        ]
+                            1,
+                        ],
                     ]
 
                     crystalmap[i] = [
@@ -544,13 +543,13 @@ class BlueskyWorkflow(HardwareObject):
                             int(random() * 255),
                             int(random() * 255),
                             int(random() * 255),
-                            1
-                        ]
+                            1,
+                        ],
                     ]
 
             heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
             self.sample_view.set_grid_data(sid, heat_and_crystal_map)
-            logging.getLogger("HWR").info(f"grid set successfully")
+            logging.getLogger("HWR").info("grid set successfully")
 
         self.state.value = "ON"
 
