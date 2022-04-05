@@ -280,7 +280,7 @@ class GraphicsItemBeam(GraphicsItem):
                 self.beam_position[0] + self.beam_size_pix[0] / 2 + 2,
                 self.beam_position[1] + self.beam_size_pix[1] / 2 + 10,
                 "%d x %d %sm"
-                % (self.beam_size_mm[0] * 1000, self.beam_size_mm[1] * 1000, u"\u00B5"),
+                % (self.beam_size_mm[0] * 1000, self.beam_size_mm[1] * 1000, "\u00B5"),
             )
         if None not in self.detected_beam_info_dict:
             painter.drawLine(
@@ -1596,7 +1596,7 @@ class GraphicsItemScale(GraphicsItem):
         GraphicsItem.__init__(self, parent, position_x=0, position_y=0)
         self.__scale_len = 0
         self.__scale_len_pix = 0
-        self.__scale_unit = u"\u00B5"
+        self.__scale_unit = "\u00B5"
         self.__display_grid = False
 
         if anchor is None:
@@ -1721,7 +1721,7 @@ class GraphicsItemScale(GraphicsItem):
                 and self.pixels_per_mm[0] * line_len / 1000 > 50
             ):
                 self.__scale_len = line_len
-                self.__scale_unit = u"\u00B5"
+                self.__scale_unit = "\u00B5"
                 self.__scale_len_pix = int(
                     self.pixels_per_mm[0] * self.__scale_len / 1000
                 )
@@ -1784,7 +1784,7 @@ class GraphicsItemOmegaReference(GraphicsItem):
             painter.drawText(
                 self.end_coord[0] - 40,
                 self.end_coord[1] - 10,
-                "%d %s" % (self.phi_position, u"\u00b0"),
+                "%d %s" % (self.phi_position, "\u00b0"),
             )
 
     def set_phi_position(self, phi_position):
@@ -2063,7 +2063,7 @@ class GraphicsItemBeamDefine(GraphicsItem):
         painter.drawText(
             self.end_coord[0] + 7,
             self.end_coord[1],
-            "%d x %d %sm" % (self.width_microns, self.height_microns, u"\u00B5"),
+            "%d x %d %sm" % (self.width_microns, self.height_microns, "\u00B5"),
         )
 
         self.custom_pen.setColor(qt_import.Qt.red)
@@ -2121,7 +2121,7 @@ class GraphicsItemMeasureDistance(GraphicsItem):
 
         self.setFlags(qt_import.QGraphicsItem.ItemIsSelectable)
         self.do_measure = None
-        self.measure_unit = u"\u00B5"
+        self.measure_unit = "\u00B5"
         self.measure_points = None
         self.measured_distance = None
         self.custom_pen_color = SELECTED_COLOR
@@ -2183,7 +2183,7 @@ class GraphicsItemMeasureDistance(GraphicsItem):
                 self.measured_distance /= 1000
                 self.measure_unit = "mm"
             else:
-                self.measure_unit = u"\u00B5"
+                self.measure_unit = "\u00B5"
             self.scene().update()
 
     def store_coord(self, position_x, position_y):
@@ -2240,7 +2240,7 @@ class GraphicsItemMeasureAngle(GraphicsItem):
                 painter.drawText(
                     self.measure_points[2].x() + 10,
                     self.measure_points[2].y() + 10,
-                    "%.2f %s" % (self.measured_angle, u"\u00B0"),
+                    "%.2f %s" % (self.measured_angle, "\u00B0"),
                 )
 
     def set_start_position(self, position_x, position_y):
@@ -2320,7 +2320,7 @@ class GraphicsItemMeasureArea(GraphicsItem):
         painter.drawText(
             self.current_point.x() + 10,
             self.current_point.y() + 10,
-            "%.2f %s" % (self.measured_area, u"\u00B5"),
+            "%.2f %s" % (self.measured_area, "\u00B5"),
         )
 
         if self.min_max_coord:
@@ -2343,7 +2343,7 @@ class GraphicsItemMeasureArea(GraphicsItem):
             painter.drawText(
                 self.min_max_coord[0][0] - 40,
                 self.min_max_coord[0][1],
-                "%.1f %s" % (ver_size, u"\u00B5"),
+                "%.1f %s" % (ver_size, "\u00B5"),
             )
             painter.drawLine(
                 self.min_max_coord[0][0],
@@ -2354,7 +2354,7 @@ class GraphicsItemMeasureArea(GraphicsItem):
             painter.drawText(
                 self.min_max_coord[1][0],
                 self.min_max_coord[1][1] + 25,
-                "%.1f %s" % (hor_size, u"\u00B5"),
+                "%.1f %s" % (hor_size, "\u00B5"),
             )
 
     def set_start_position(self, pos_x, pos_y):

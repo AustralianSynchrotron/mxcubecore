@@ -505,7 +505,7 @@ if qt_variant in ("PyQt4", "PyQt5", "PySide"):
         def __init__(self, orientation=Qt.Horizontal, parent=None):
             super(QSlider, self).__init__(orientation, parent)
             self.decimals = 5
-            self._max_int = 10 ** self.decimals
+            self._max_int = 10**self.decimals
 
             super(QSlider, self).setMinimum(0)
             super(QSlider, self).setMaximum(self._max_int)
