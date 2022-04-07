@@ -235,6 +235,7 @@ class BlueskyWorkflow(HardwareObject):
             self.gevent_event.set()
         self.state.value = "ON"
 
+    """
     def open_dialog(self, dict_dialog):
         # TODO: This method is currently not used by start_bluesky_workflow
         # If necessary unblock dialog
@@ -256,6 +257,45 @@ class BlueskyWorkflow(HardwareObject):
                 self.gevent_event.wait()
                 time.sleep(0.1)
         return self.params_dict
+    """
+
+    def open_dialog(self, dict_dialog):
+        # TODO: This method is currently not used by start_bluesky_workflow
+        # If necessary unblock dialog
+        if not self.gevent_event.is_set():
+            self.gevent_event.set()
+        self.emit("parametersNeeded", (dict_dialog,))
+        self.params_dict = dict_dialog
+
+        self.state.value = "OPEN"
+        self.gevent_event.clear()
+
+        while not self.gevent_event.is_set():
+            self.gevent_event.wait()
+            time.sleep(0.1)
+        return self.params_dict
+
+    def test_workflow_dialog(self):
+        dialog = {
+            "properties": {
+                "name": {"title": "Task name", "type": "string", "minLength": 2},
+                "description": {
+                    "title": "Description",
+                    "type": "string",
+                    "widget": "textarea",
+                },
+                "dueTo": {
+                    "title": "Due to",
+                    "type": "string",
+                    "widget": "compatible-datetime",
+                    "format": "date-time",
+                },
+            },
+            "required": ["name"],
+            "dialogName": "Trouble shooting !",
+        }
+
+        return dialog
 
     def get_values_map(self):
         # TODO: this method is currently not used by start_bluesky_workflow
@@ -509,6 +549,41 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
+        field_list = field_list = {"a": {
+            "variableName": "_info",
+            "uiLabel": "Raster plan",
+            "type": "textarea",
+            "defaultValue": "info_text"},
+            "b": {
+            "variableName": "experiment_time",
+            "uiLabel": "Experiment duration (s)",
+            "type": "floatstring",
+            "defaultValue": 2,
+            "decimals": 1,
+            "readOnly": True},
+            "c": {
+            "variableName": "budget_required",
+            "uiLabel": "% of dose budget required",
+            "type": "floatstring",
+            "defaultValue": 0.0,
+            "lowerBound": 0.0,
+            "upperBound": 100.0,
+            "decimals": 2,
+            "readOnly": True},
+        }
+
+        # field_list[-1]["NEW_COLUMN"] = "True"
+        logging.getLogger("HWR").debug("opening dialog")
+
+        test = self.test_workflow_dialog()
+        self.open_dialog(field_list)
+        self.emit("open_dialog", test)
+        self.emit("workflowParametersDialog", test)
+
+        # self.open_dialog(test)
+
+        logging.getLogger("HWR").debug("dialog opened")
+
         self.state.value = "RUNNING"
         grid_list = self.sample_view.get_grids()
         logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
