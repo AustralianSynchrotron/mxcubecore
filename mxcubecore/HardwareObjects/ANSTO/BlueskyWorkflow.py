@@ -235,33 +235,23 @@ class BlueskyWorkflow(HardwareObject):
             self.gevent_event.set()
         self.state.value = "ON"
 
-    """
-    def open_dialog(self, dict_dialog):
-        # TODO: This method is currently not used by start_bluesky_workflow
-        # If necessary unblock dialog
-        if not self.gevent_event.is_set():
-            self.gevent_event.set()
-        self.params_dict = dict()
-        if "reviewData" in dict_dialog and "inputMap" in dict_dialog:
-            review_data = dict_dialog["reviewData"]
-            for dict_entry in dict_dialog["inputMap"]:
-                if "value" in dict_entry:
-                    value = dict_entry["value"]
-                else:
-                    value = dict_entry["defaultValue"]
-                self.params_dict[dict_entry["variableName"]] = str(value)
-            self.emit("parametersNeeded", (review_data,))
-            self.state.value = "OPEN"
-            self.gevent_event.clear()
-            while not self.gevent_event.is_set():
-                self.gevent_event.wait()
-                time.sleep(0.1)
-        return self.params_dict
-    """
+    def open_dialog(self, dict_dialog: dict):
+        """Opens a dialog in the mxcube3 front end.
 
-    def open_dialog(self, dict_dialog):
-        # TODO: This method is currently not used by start_bluesky_workflow
-        # If necessary unblock dialog
+        A dict_dialog example is defined in the test_workflow_dialog
+        method.
+
+        Parameters
+        ----------
+        dict_dialog : dict
+            A dictionary following the JSON schems
+
+        Returns
+        -------
+        dict
+            An updated dictionaty containing parameters passed by the user from
+            the mxcube3 frontend
+        """
         if not self.gevent_event.is_set():
             self.gevent_event.set()
         self.emit("parametersNeeded", (dict_dialog,))
@@ -276,6 +266,14 @@ class BlueskyWorkflow(HardwareObject):
         return self.params_dict
 
     def test_workflow_dialog(self):
+        """
+        Workflow dialog box. Returns a dictionary that follows a JSON schema
+
+        Returns
+        -------
+        dialog : dict
+            A dictionary following the JSON schema.
+        """
         dialog = {
             "properties": {
                 "name": {"title": "Task name", "type": "string", "minLength": 2},
@@ -284,15 +282,13 @@ class BlueskyWorkflow(HardwareObject):
                     "type": "string",
                     "widget": "textarea",
                 },
-                "dueTo": {
-                    "title": "Due to",
-                    "type": "string",
-                    "widget": "compatible-datetime",
-                    "format": "date-time",
-                },
+                "parameterA": {"title": "parameterA", "type": "number",
+                               "minimum": 0,
+                               "exclusiveMaximum": 100, "default": 20,
+                               "widget": "textarea"}
             },
-            "required": ["name"],
-            "dialogName": "Trouble shooting !",
+            "required": ["name", "parameterA"],
+            "dialogName": "Raster parameters",
         }
 
         return dialog
@@ -549,40 +545,11 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        field_list = field_list = {"a": {
-            "variableName": "_info",
-            "uiLabel": "Raster plan",
-            "type": "textarea",
-            "defaultValue": "info_text"},
-            "b": {
-            "variableName": "experiment_time",
-            "uiLabel": "Experiment duration (s)",
-            "type": "floatstring",
-            "defaultValue": 2,
-            "decimals": 1,
-            "readOnly": True},
-            "c": {
-            "variableName": "budget_required",
-            "uiLabel": "% of dose budget required",
-            "type": "floatstring",
-            "defaultValue": 0.0,
-            "lowerBound": 0.0,
-            "upperBound": 100.0,
-            "decimals": 2,
-            "readOnly": True},
-        }
 
-        # field_list[-1]["NEW_COLUMN"] = "True"
-        logging.getLogger("HWR").debug("opening dialog")
-
-        test = self.test_workflow_dialog()
-        self.open_dialog(field_list)
-        self.emit("open_dialog", test)
-        self.emit("workflowParametersDialog", test)
-
-        # self.open_dialog(test)
-
-        logging.getLogger("HWR").debug("dialog opened")
+        # Open a workflow dialog box
+        test_dialog = self.test_workflow_dialog()
+        result = self.open_dialog(test_dialog)
+        logging.getLogger("HWR").debug(f"new parameters: {result}")
 
         self.state.value = "RUNNING"
         grid_list = self.sample_view.get_grids()
