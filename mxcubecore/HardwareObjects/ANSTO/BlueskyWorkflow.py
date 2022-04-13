@@ -11,6 +11,9 @@ import gevent
 import redis
 import requests
 from requests.exceptions import ConnectionError
+from bluesky_queueserver_api.http import REManagerAPI
+from bluesky_queueserver_api import BPlan
+from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -142,14 +145,21 @@ class BlueskyWorkflow(HardwareObject):
 
         self.sample_view = hwr.get_hardware_object("/sample_view")
 
-        # Open RunEngine
         try:
-            requests.post(f"{self.REST}/environment/open")
-        except ConnectionError:
+            self.RM = REManagerAPI(http_server_uri=self.REST)
+        except RequestError:
             logging.getLogger("HWR").info(
-                "Could not connect to the bluesky Run Engine,"
+                "Could not connect to the Bluesky Run Engine,"
                 " bluesky plans will not be available."
             )
+
+        # Open RunEngine
+        try:
+            self.RM.environment_open()
+            self.RM.wait_for_idle()
+        except (RequestFailedError, RequestError):
+            logging.getLogger("HWR").info(
+                "Run engine is already open or Run Engine does not exist")
 
         self.redis = redis.StrictRedis(self.redis_host, self.redis_port)
 
@@ -550,6 +560,13 @@ class BlueskyWorkflow(HardwareObject):
         test_dialog = self.test_workflow_dialog()
         result = self.open_dialog(test_dialog)
         logging.getLogger("HWR").debug(f"new parameters: {result}")
+
+        item = BPlan("grid_scan", ["dectris_detector"], "motor_z", 65, 67, 4,
+                     "motor_x", 27, 30, 4, md={"sample_id": "test"})
+        self.RM.item_add(item)
+
+        self.RM.queue_start()
+        # self.RM.wait_for_idle()
 
         self.state.value = "RUNNING"
         grid_list = self.sample_view.get_grids()
