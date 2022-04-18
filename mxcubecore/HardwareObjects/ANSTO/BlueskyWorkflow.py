@@ -451,11 +451,11 @@ class BlueskyWorkflow(HardwareObject):
         # NOTE: we are not using self.dict_parameters because
         # we do not need it (see the original implementation
         # of the BES workflow for more details)
+        sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
 
         if self.workflow_name == "Screen":
             # Run bluesky screening plan, we set the frame_time to 4 s
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
 
             payload = {
                 "item": {
@@ -472,7 +472,6 @@ class BlueskyWorkflow(HardwareObject):
             self.screen_and_collect_worklow(payload)
 
         elif self.workflow_name == "Collect":
-            sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
             payload = {
                 "item": {
                     "name": "scan_plan",
@@ -489,7 +488,7 @@ class BlueskyWorkflow(HardwareObject):
 
         elif self.workflow_name == "Raster":
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.raster_workflow()
+            self.raster_workflow("test")
 
         else:
             logging.getLogger("HWR").error(
@@ -547,7 +546,7 @@ class BlueskyWorkflow(HardwareObject):
             request_id = None
             self.state.value = "ON"
 
-    def raster_workflow(self) -> None:
+    def raster_workflow(self, sample_id: str) -> None:
         """
         Generates random RBGA data and passes that data to the mxcube3 frontend
 
@@ -562,7 +561,7 @@ class BlueskyWorkflow(HardwareObject):
         logging.getLogger("HWR").debug(f"new parameters: {result}")
 
         item = BPlan("grid_scan", ["dectris_detector"], "motor_z", 65, 67, 4,
-                     "motor_x", 27, 30, 4, md={"sample_id": "test"})
+                     "motor_x", 27, 30, 4, md={"sample_id": sample_id})
         self.RM.item_add(item)
 
         self.RM.queue_start()
