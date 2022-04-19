@@ -546,12 +546,6 @@ class BlueskyWorkflow(HardwareObject):
 
         self.state.value = "RUNNING"
 
-        item = BPlan("grid_scan", ["dectris_detector"], "motor_z", 65, 67, 4,
-                     "motor_x", 27, 30, 4, md={"sample_id": "test"})
-
-        # Run bluesky plan
-        asyncio.run(self.run_bluesky_plan(item))
-
         logging.getLogger("HWR").info("Plan executed successfully")
 
         grid_list = self.sample_view.get_grids()
@@ -561,6 +555,33 @@ class BlueskyWorkflow(HardwareObject):
             sid = grid.id
             num_cols = grid.num_cols
             num_rows = grid.num_rows
+            beam_position = grid.beam_pos
+            # pixels_per_mm = grid.pixels_per_mm
+            pixels_per_mm = [292.87, 292.87]
+            screen_coordinate = grid.screen_coord
+            width = grid.width
+            height = grid.height
+
+            initial_motor_x_value = self.motor_x.get_value() + (
+                screen_coordinate[0] - beam_position[0]) / pixels_per_mm[0]
+            final_motor_x_value = initial_motor_x_value + width / pixels_per_mm[0]
+
+            initial_motor_z_value = self.motor_z.get_value() + (
+                screen_coordinate[1] - beam_position[1]) / pixels_per_mm[1]
+            final_motor_z_value = initial_motor_z_value + height / pixels_per_mm[1]
+
+            item = BPlan(
+                "grid_scan", ["dectris_detector"],
+                "motor_z", initial_motor_z_value, final_motor_z_value, num_rows,
+                "motor_x", initial_motor_x_value, final_motor_x_value, num_cols,
+                md={"sample_id": "test"})
+
+            # Run bluesky plan
+            asyncio.run(self.run_bluesky_plan(item))
+
+            logging.getLogger("HWR").debug(
+                f"new vals: {beam_position}, {pixels_per_mm}, {screen_coordinate}")
+            logging.getLogger("HWR").info(f"grid {dir(grid)}")
             logging.getLogger("HWR").info(f"grid id: {sid}")
             logging.getLogger("HWR").info(
                 f"number of columns and rows: {num_cols}, {num_rows}"
