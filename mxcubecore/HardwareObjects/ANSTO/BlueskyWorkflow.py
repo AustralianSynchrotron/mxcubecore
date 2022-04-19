@@ -11,7 +11,7 @@ import gevent
 import redis
 import requests
 from requests.exceptions import ConnectionError
-from bluesky_queueserver_api.http import REManagerAPI
+from bluesky_queueserver_api.http.aio import REManagerAPI
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
 
@@ -144,7 +144,7 @@ class BlueskyWorkflow(HardwareObject):
         self.motor_z = _diffractometer.alignment_z
 
         self.sample_view = hwr.get_hardware_object("/sample_view")
-
+        """
         try:
             self.RM = REManagerAPI(http_server_uri=self.REST)
         except RequestError:
@@ -160,7 +160,7 @@ class BlueskyWorkflow(HardwareObject):
         except (RequestFailedError, RequestError):
             logging.getLogger("HWR").info(
                 "Run engine is already open or Run Engine does not exist")
-
+        """
         self.redis = redis.StrictRedis(self.redis_host, self.redis_port)
 
     @property
@@ -560,14 +560,29 @@ class BlueskyWorkflow(HardwareObject):
         result = self.open_dialog(test_dialog)
         logging.getLogger("HWR").debug(f"new parameters: {result}")
 
-        item = BPlan("grid_scan", ["dectris_detector"], "motor_z", 65, 67, 4,
-                     "motor_x", 27, 30, 4, md={"sample_id": sample_id})
-        self.RM.item_add(item)
-
-        self.RM.queue_start()
+        # self.RM.queue_start()
         # self.RM.wait_for_idle()
 
         self.state.value = "RUNNING"
+
+        # Sleep for 1 second until the RM changes the status to executing_plan
+        # time.sleep(1)
+        # Update frontend values
+        item = BPlan("grid_scan", ["dectris_detector"], "motor_z", 65, 67, 4,
+                     "motor_x", 27, 30, 4, md={"sample_id": "test"})
+
+        asyncio.run(self.run_plan_2(item))
+        # loop = asyncio.get_event_loop()
+        # loop.run_until_complete(
+        # self.asyncio_gather(
+        #       self.run_plan_2(item),
+        #       self.update_frontend_values(self.motor_z),
+        #       self.update_frontend_values(self.motor_x),
+        #   )
+        # )
+
+        logging.getLogger("HWR").info("Plan executed successfully")
+
         grid_list = self.sample_view.get_grids()
         logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
 
@@ -611,6 +626,79 @@ class BlueskyWorkflow(HardwareObject):
 
         self.state.value = "ON"
 
+    async def run_plan_2(self, item):
+        self.RM = REManagerAPI(http_server_uri=self.REST)
+
+        await self.RM.item_add(item)
+
+        await self.RM.environment_open()
+        await self.RM.wait_for_idle()
+
+        await self.RM.queue_start()
+        time.sleep(1)
+        RM_status = await self.RM.status()
+        while RM_status['worker_environment_state'] == "executing_plan":
+            time.sleep(0.2)
+            # await self.update_frontend_values_2(self.motor_x)
+            # await self.update_frontend_values_2(self.motor_z)
+            await asyncio.gather(self.update_frontend_values_2(self.motor_x),
+                                 self.update_frontend_values_2(self.motor_z))
+
+            RM_status = await self.RM.status()
+        else:
+            self.motor_x.update_state(self.motor_x.STATES.READY)
+            self.motor_z.update_state(self.motor_z.STATES.READY)
+
+            # await self.update_frontend_values(self.motor_z)
+
+        await self.RM.wait_for_idle()
+
+        await self.RM.environment_close()
+        await self.RM.wait_for_idle()
+
+    async def run_plan(self, item):
+        logging.getLogger("HWR").debug(
+            f"start async plan:")
+        await self.RM.item_add(item)
+        logging.getLogger("HWR").debug(
+            f"passed start async plan:")
+
+        # await self.RM.environment_open()
+        # await self.RM.wait_for_idle()
+
+        await self.RM.queue_start()
+        # self.RM.wait_for_idle()
+
+        time.sleep(1)
+        # self.RM.status()
+        logging.getLogger("HWR").debug(
+            f"self.RM_status run plan: {self.RM.status()['worker_environment_state']}")
+
+        # await RM.environment_close()
+        # await RM.wait_for_idle()
+
+        # await RM.close()
+
+    async def update_frontend_values_2(self, motor: OphydEpicsMotor) -> None:
+        """
+        Asynchronously updates the motor values in the Web UI
+
+        Parameters
+        ----------
+        motor : OphydEpicsMotor
+            An OphydEpicsMotor object
+
+        Returns
+        -------
+        None
+        """
+        motor.update_specific_state(motor.SPECIFIC_STATES.MOVING)
+
+        motor.update_state(motor.STATES.BUSY)
+        current_value = motor.get_value()
+        motor.update_value(current_value)
+        await asyncio.sleep(0.01)
+
     async def update_frontend_values(self, motor: OphydEpicsMotor) -> None:
         """
         Asynchronously updates the motor values in the Web UI
@@ -625,11 +713,26 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
         motor.update_specific_state(motor.SPECIFIC_STATES.MOVING)
-        re_state = requests.get(f"{self.REST}/status").json()["re_state"]
-        logging.getLogger("HWR").info(f"Run Engine state: {re_state}")
+        """
+        RM_status = self.RM.status()["worker_environment_state"]
+        logging.getLogger("HWR").info(f"Run Engine status: {RM_status}")
 
-        while re_state == "running":
-            re_state = requests.get(f"{self.REST}/status").json()["re_state"]
+        while RM_status == "executing_plan":
+            RM_status = self.RM.status()["worker_environment_state"]
+            time.sleep(0.2)
+            motor.update_state(motor.STATES.BUSY)
+            current_value = motor.get_value()
+            motor.update_value(current_value)
+            await asyncio.sleep(0.01)
+        """
+        # count_tmp = 0
+        # logging.getLogger("HWR").info(f"Run Engine status: {RM_status}")
+        # logging.getLogger("HWR").debug(
+        #    f"front end values state: {RM['worker_environment_state']}")
+
+        while self.RM.status()["worker_environment_state"] == "executing_plan":
+            # RM_status = self.RM.status()["worker_environment_state"]
+            # count_tmp += 1
             time.sleep(0.2)
             motor.update_state(motor.STATES.BUSY)
             current_value = motor.get_value()
@@ -639,7 +742,7 @@ class BlueskyWorkflow(HardwareObject):
         motor.update_state(motor.STATES.READY)
 
     async def asyncio_gather(
-        self, motor_1: OphydEpicsMotor, motor_2: OphydEpicsMotor
+        self, bluesky_plan, motor_1: OphydEpicsMotor, motor_2: OphydEpicsMotor
     ) -> None:
         """
         Gathers two OphydEpicsMotors
@@ -655,4 +758,4 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        await asyncio.gather(motor_1, motor_2)
+        await asyncio.gather(bluesky_plan, motor_1, motor_2)
