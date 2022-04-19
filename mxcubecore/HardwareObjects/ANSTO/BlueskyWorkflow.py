@@ -562,30 +562,39 @@ class BlueskyWorkflow(HardwareObject):
             width = grid.width
             height = grid.height
 
-            initial_motor_x_value = self.motor_x.get_value() + (
-                screen_coordinate[0] - beam_position[0]) / pixels_per_mm[0]
-            final_motor_x_value = initial_motor_x_value + width / pixels_per_mm[0]
+            current_motor_x_value = self.motor_x.get_value()
+            current_motor_z_value = self.motor_z.get_value()
 
-            initial_motor_z_value = self.motor_z.get_value() + (
+            initial_motor_x_grid_value = current_motor_x_value + (
+                screen_coordinate[0] - beam_position[0]) / pixels_per_mm[0]
+            final_motor_x_grid_value = initial_motor_x_grid_value + \
+                width / pixels_per_mm[0]
+
+            initial_motor_z_grid_value = current_motor_z_value + (
                 screen_coordinate[1] - beam_position[1]) / pixels_per_mm[1]
-            final_motor_z_value = initial_motor_z_value + height / pixels_per_mm[1]
+            final_motor_z_grid_value = initial_motor_z_grid_value + \
+                height / pixels_per_mm[1]
 
             item = BPlan(
                 "grid_scan", ["dectris_detector"],
-                "motor_z", initial_motor_z_value, final_motor_z_value, num_rows,
-                "motor_x", initial_motor_x_value, final_motor_x_value, num_cols,
+                "motor_z", initial_motor_z_grid_value, final_motor_z_grid_value,
+                num_rows,
+                "motor_x", initial_motor_x_grid_value, final_motor_x_grid_value,
+                num_cols,
                 md={"sample_id": "test"})
 
             # Run bluesky plan
             asyncio.run(self.run_bluesky_plan(item))
 
-            logging.getLogger("HWR").debug(
-                f"new vals: {beam_position}, {pixels_per_mm}, {screen_coordinate}")
-            logging.getLogger("HWR").info(f"grid {dir(grid)}")
             logging.getLogger("HWR").info(f"grid id: {sid}")
             logging.getLogger("HWR").info(
                 f"number of columns and rows: {num_cols}, {num_rows}"
             )
+
+            # Move back the motors to inital position
+            # FIXME, move motors using a bluesky plan
+            self.motor_x.set_value(current_motor_x_value)
+            self.motor_z.set_value(current_motor_z_value)
 
             heatmap = {}
             crystalmap = {}

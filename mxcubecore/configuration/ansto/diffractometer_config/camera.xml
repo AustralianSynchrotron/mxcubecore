@@ -1,7 +1,23 @@
-<device class="ANSTO.Camera">
+<device class="ANSTO.EPICSCamera">
+    <!-- Channels -->
+    <channel type="epics" name="epicsCameraSample_data" auto_monitor="False">01TR1:image1:ArrayData</channel>
+    <channel type="epics" name="epicsCameraSample_img_pixel_size">01TR1:image1:ArraySize0_RBV</channel>
+    <channel type="epics" name="epicsCameraSample_img_width">01TR1:image1:ArraySize1_RBV</channel>
+    <channel type="epics" name="epicsCameraSample_img_height">01TR1:image1:ArraySize2_RBV</channel>
+    <channel type="epics" name="epicsCameraSample_back">01TR1:image1:ArrayCallbacks</channel>
+    <channel type="epics" name="epicsCameraSample_en_back">01TR1:image1:EnableCallbacks</channel>
+    <channel type="epics" name="epicsCameraSample_acq_stop">01TR1:cam1:Acquire</channel>
+    <channel type="epics" name="epicsCameraSample_acq_start">01TR1:cam1:Acquire</channel>
+    <channel type="epics" name="epicsCameraSample_acq_time">01TR1:cam1:AcquireTime</channel>
+    <channel type="epics" name="epicsCameraSample_acq_time_rbv">01TR1:cam1:AcquireTime_RBV</channel>
+    <channel type="epics" name="epicsCameraSample_gain">01TR1:cam1:Gain</channel>
+    <channel type="epics" name="epicsCameraSample_gain_rbv">01TR1:cam1:Gain_RBV</channel>
+    <channel type="epics" name="epicsCameraSample_auto_gain">01TR1:cam1:GainAuto</channel>
+    <channel type="epics" name="epicsCameraSample_auto_gain_rbv">01TR1:cam1:GainAuto_RBV</channel>
+    <channel type="epics" name="epicsCameraSample_frames_per_second">01TR1:cam1:FrameRate</channel>
+    <channel type="epics" name="epicsCameraSample_frames_per_second_rbv">01TR1:cam1:ArrayRate_RBV</channel>
     <!-- Properties -->
     <username>Camera</username>
-    <pv_prefix>01TR1</pv_prefix>
     <source>/usr/local/src/mxcube/ExampleFiles/fakeimg.jpg</source>
     <interval>100</interval>
     <exporter_address>10.244.101.10</exporter_address>
