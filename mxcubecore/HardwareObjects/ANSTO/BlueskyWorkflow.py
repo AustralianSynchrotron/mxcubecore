@@ -15,6 +15,8 @@ from requests.exceptions import ConnectionError
 from bluesky_queueserver_api.http.aio import REManagerAPI
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
+import numpy as np
+import matplotlib.pyplot as plt
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -620,6 +622,9 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").debug(
                 f"number_of_spots_list {number_of_spots_list}")
 
+            heatmap_array = self.create_heatmap(
+                num_cols, num_rows, number_of_spots_list)
+
             heatmap = {}
             crystalmap = {}
 
@@ -627,12 +632,7 @@ class BlueskyWorkflow(HardwareObject):
                 for i in range(1, num_rows * num_cols + 1):
                     heatmap[i] = [
                         i,
-                        [
-                            int(random() * 255),
-                            int(random() * 255),
-                            int(random() * 255),
-                            1,
-                        ],
+                        list(heatmap_array[i - 1])
                     ]
 
                     crystalmap[i] = [
@@ -650,6 +650,29 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").info("grid set successfully")
 
         self.state.value = "ON"
+
+    def create_heatmap(self, num_cols, num_rows, number_of_spots_list):
+        x = np.arange(num_cols)
+        y = np.arange(num_rows)
+
+        y, x = np.meshgrid(x, y)
+        z = np.array([number_of_spots_list]).reshape(num_rows, num_cols)
+
+        z_min = np.min(z)
+        z_max = np.max(z)
+
+        _, ax = plt.subplots()
+
+        heatmap = ax.pcolormesh(x, y, z, cmap='seismic', vmin=z_min, vmax=z_max)
+        heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
+
+        result = np.ones(heatmap.shape)
+        for i in range(num_rows * num_cols):
+            for j in range(4):
+                if heatmap[i][j] != 1.:
+                    result[i][j] = heatmap[i][j] * 255
+
+        return result
 
     async def run_bluesky_plan(self, item: dict):
         """Asynchronously run a bluesky plan
