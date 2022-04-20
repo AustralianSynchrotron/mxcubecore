@@ -653,8 +653,8 @@ class BlueskyWorkflow(HardwareObject):
         RM_status = await self.RM.status()
         while RM_status['worker_environment_state'] == "executing_plan":
             time.sleep(0.2)
-            await asyncio.gather(self.update_frontend_values(self.motor_x),
-                                 self.update_frontend_values(self.motor_z))
+            await asyncio.gather(self.update_frontend_values(self.motor_z),
+                                 self.update_frontend_values(self.motor_x))
 
             RM_status = await self.RM.status()
         else:
