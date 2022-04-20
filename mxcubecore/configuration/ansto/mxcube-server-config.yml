@@ -11,6 +11,7 @@ server:
     - "http://mx3-dev-fhv.mx3.beamline.synchrotron.org.au"
     - "http://acquire-dev.mx3.beamline.synchrotron.org.au"
     - "http://jacob-dev1.mx3.beamline.synchrotron.org.au"
+    - "http://MX3-DEV-DE.mx3.beamline.synchrotron.org.au"
 
 mxcube:
   VIDEO_FORMAT: MJPEG
