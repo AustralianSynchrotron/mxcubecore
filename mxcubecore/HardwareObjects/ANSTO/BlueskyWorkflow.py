@@ -10,6 +10,7 @@ from typing import List
 import gevent
 import redis
 import requests
+import pickle
 from requests.exceptions import ConnectionError
 from bluesky_queueserver_api.http.aio import REManagerAPI
 from bluesky_queueserver_api import BPlan
@@ -145,7 +146,7 @@ class BlueskyWorkflow(HardwareObject):
 
         self.sample_view = hwr.get_hardware_object("/sample_view")
 
-        self.redis = redis.StrictRedis(self.redis_host, self.redis_port)
+        self.redis_con = redis.StrictRedis(self.redis_host, self.redis_port)
 
     @property
     def state(self) -> State:
@@ -270,7 +271,8 @@ class BlueskyWorkflow(HardwareObject):
         """
         dialog = {
             "properties": {
-                "name": {"title": "Task name", "type": "string", "minLength": 2},
+                "name": {"title": "Task name", "type": "string", "minLength": 2,
+                         "default": "Test"},
                 "description": {
                     "title": "Description",
                     "type": "string",
@@ -521,7 +523,7 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").info("Plan executed successfully")
 
             # Display score of the sample
-            # score = pickle.loads(self.redis.get("sequence_id_47:score"))["score"]
+            # score = pickle.loads(self.redis_con.get("sequence_id_47:score"))["score"]
             # logging.getLogger("user_level_log").warning(f"sample id score: {score}")
 
             self.state.value = "ON"
@@ -545,8 +547,6 @@ class BlueskyWorkflow(HardwareObject):
         logging.getLogger("HWR").debug(f"new parameters: {result}")
 
         self.state.value = "RUNNING"
-
-        logging.getLogger("HWR").info("Plan executed successfully")
 
         grid_list = self.sample_view.get_grids()
         logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
@@ -595,6 +595,30 @@ class BlueskyWorkflow(HardwareObject):
             # FIXME, move motors using a bluesky plan
             self.motor_x.set_value(current_motor_x_value)
             self.motor_z.set_value(current_motor_z_value)
+
+            sequence_id = pickle.loads(
+                self.redis_con.get(
+                    f"sample_id_{sample_id}_bluesky_doc:start"))["sequence_id"]
+
+            number_of_spots_list = []
+
+            logging.getLogger("HWR").debug("Processing data...")
+            for i in range(1, num_rows * num_cols + 1):
+                while True:
+                    time.sleep(0.01)
+                    try:
+                        number_of_spots = pickle.loads(
+                            self.redis_con.get(f"sequence_id_{sequence_id}"
+                                               f"_sequence_number_{i}_zmq_stream"
+                                               ":number_of_spots"))["number_of_spots"]
+                        number_of_spots_list.append(number_of_spots)
+                        logging.getLogger(f"number_of_spots: {number_of_spots}")
+                    except TypeError:
+                        continue
+                    break
+
+            logging.getLogger("HWR").debug(
+                f"number_of_spots_list {number_of_spots_list}")
 
             heatmap = {}
             crystalmap = {}
