@@ -5,7 +5,6 @@ import os
 import pprint
 import time
 from random import random
-from typing import List
 
 import gevent
 import redis
@@ -17,6 +16,7 @@ from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
 import numpy as np
 import matplotlib.pyplot as plt
+import numpy.typing as npt
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -301,7 +301,7 @@ class BlueskyWorkflow(HardwareObject):
         self.params_dict = params
         self.gevent_event.set()
 
-    def get_available_workflows(self) -> List[dict]:
+    def get_available_workflows(self) -> list[dict]:
         """
         Gets the available workflows specified in the edna_params.xml file
 
@@ -372,7 +372,7 @@ class BlueskyWorkflow(HardwareObject):
         """
         return self.token
 
-    def start(self, list_arguments: List[str]) -> None:
+    def start(self, list_arguments: list[str]) -> None:
         """
         Starts a workflow in mxcube
 
@@ -536,7 +536,10 @@ class BlueskyWorkflow(HardwareObject):
 
     def raster_workflow(self, sample_id: str) -> None:
         """
-        Generates random RBGA data and passes that data to the mxcube3 frontend
+        Executes a raster workflow. First a dialog box is opened, then a
+        bluesky plan is executed and finally the data produced by the
+        Sim-plon API is analysed and converted to a heatmap containing RGBA values.
+        The heatmap is displayed in MXCuBE.
 
         Returns
         -------
@@ -614,7 +617,8 @@ class BlueskyWorkflow(HardwareObject):
                                                f"_sequence_number_{i}_zmq_stream"
                                                ":number_of_spots"))["number_of_spots"]
                         number_of_spots_list.append(number_of_spots)
-                        logging.getLogger(f"number_of_spots: {number_of_spots}")
+                        logging.getLogger("HWR").debug(
+                            f"number_of_spots: {number_of_spots}")
                     except TypeError:
                         continue
                     break
@@ -651,7 +655,28 @@ class BlueskyWorkflow(HardwareObject):
 
         self.state.value = "ON"
 
-    def create_heatmap(self, num_cols, num_rows, number_of_spots_list):
+    def create_heatmap(
+            self, num_cols: int, num_rows: int,
+            number_of_spots_list: list[int]) -> npt.NDArray:
+        """
+        Creates a heatmap from the number of spots, number of columns
+        and number of rows of a grid.
+
+        Parameters
+        ----------
+        num_cols : int
+            Number of columns
+        num_rows : int
+            Number of rows
+        number_of_spots_list : list[int]
+            List containing number of spots
+
+        Returns
+        -------
+        result : npt.NDArray
+            An array containing a heatmap with rbga values
+        """
+
         x = np.arange(num_cols)
         y = np.arange(num_rows)
 
@@ -666,6 +691,7 @@ class BlueskyWorkflow(HardwareObject):
         heatmap = ax.pcolormesh(x, y, z, cmap='seismic', vmin=z_min, vmax=z_max)
         heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
 
+        # The following can be done more efficiently without using for loops
         result = np.ones(heatmap.shape)
         for i in range(num_rows * num_cols):
             for j in range(4):
@@ -674,13 +700,13 @@ class BlueskyWorkflow(HardwareObject):
 
         return result
 
-    async def run_bluesky_plan(self, item: dict):
+    async def run_bluesky_plan(self, item: BPlan) -> None:
         """Asynchronously run a bluesky plan
 
         Parameters
         ----------
-        item : dict
-            Dictionary containing information about a bluesky plan
+        item : BPlan
+            A Bplan object containing information about a bluesky plan
 
         Returns
         -------
@@ -695,7 +721,7 @@ class BlueskyWorkflow(HardwareObject):
 
         await self.RM.queue_start()
 
-        # Sleep for 1 second until the RM changes the state to executing_plan
+        # Sleep for 1 second until the RM changes the status to executing_plan
         time.sleep(1)
         RM_status = await self.RM.status()
         while RM_status['worker_environment_state'] == "executing_plan":
