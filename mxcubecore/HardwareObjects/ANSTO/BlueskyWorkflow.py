@@ -607,7 +607,7 @@ class BlueskyWorkflow(HardwareObject):
 
             number_of_spots_list = []
 
-            logging.getLogger("HWR").debug("Processing data...")
+            logging.getLogger("user_level_log").warning("Processing data...")
             for i in range(1, num_rows * num_cols + 1):
                 while True:
                     time.sleep(0.01)
@@ -617,11 +617,11 @@ class BlueskyWorkflow(HardwareObject):
                                                f"_sequence_number_{i}_zmq_stream"
                                                ":number_of_spots"))["number_of_spots"]
                         number_of_spots_list.append(number_of_spots)
-                        logging.getLogger("HWR").debug(
-                            f"number_of_spots: {number_of_spots}")
                     except TypeError:
                         continue
                     break
+
+            logging.getLogger("user_level_log").warning("Data processing finished")
 
             logging.getLogger("HWR").debug(
                 f"number_of_spots_list {number_of_spots_list}")
@@ -696,7 +696,7 @@ class BlueskyWorkflow(HardwareObject):
         for i in range(num_rows * num_cols):
             for j in range(4):
                 if heatmap[i][j] != 1.:
-                    result[i][j] = heatmap[i][j] * 255
+                    result[i][j] = int(heatmap[i][j] * 255)
 
         return result
 
