@@ -597,9 +597,9 @@ class BlueskyWorkflow(HardwareObject):
             )
 
             # Move back the motors to inital position
-            # FIXME, move motors using a bluesky plan
-            self.motor_x.set_value(current_motor_x_value)
-            self.motor_z.set_value(current_motor_z_value)
+            item = BPlan("mv", "motor_z", current_motor_z_value,
+                         "motor_x", current_motor_x_value)
+            asyncio.run(self.run_bluesky_plan(item))
 
             sequence_id = pickle.loads(
                 self.redis_con.get(
