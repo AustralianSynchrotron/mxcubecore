@@ -2,19 +2,19 @@ import asyncio
 import binascii
 import logging
 import os
+import pickle
 import pprint
 import time
 from random import random
 
 import gevent
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.typing as npt
 import redis
 import requests
-import pickle
-from bluesky_queueserver_api.http.aio import REManagerAPI
 from bluesky_queueserver_api import BPlan
-import numpy as np
-import matplotlib.pyplot as plt
-import numpy.typing as npt
+from bluesky_queueserver_api.http.aio import REManagerAPI
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -271,17 +271,25 @@ class BlueskyWorkflow(HardwareObject):
         """
         dialog = {
             "properties": {
-                "name": {"title": "Task name", "type": "string", "minLength": 2,
-                         "default": "Test"},
+                "name": {
+                    "title": "Task name",
+                    "type": "string",
+                    "minLength": 2,
+                    "default": "Test",
+                },
                 "description": {
                     "title": "Description",
                     "type": "string",
                     "widget": "textarea",
                 },
-                "parameterA": {"title": "parameterA", "type": "number",
-                               "minimum": 0,
-                               "exclusiveMaximum": 100, "default": 20,
-                               "widget": "textarea"}
+                "parameterA": {
+                    "title": "parameterA",
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMaximum": 100,
+                    "default": 20,
+                    "widget": "textarea",
+                },
             },
             "required": ["name", "parameterA"],
             "dialogName": "Raster parameters",
@@ -437,24 +445,30 @@ class BlueskyWorkflow(HardwareObject):
         # NOTE: we are not using self.dict_parameters because
         # we do not need it (see the original implementation
         # of the BES workflow for more details)
-        sample_id = self.list_arguments[3].split("RAW_DATA/")[1]
+        self.list_arguments[3].split("RAW_DATA/")[1]
 
         if self.workflow_name == "Screen":
             # Run bluesky screening plan, we set the frame_time to 4 s
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
-            item = BPlan("scan_plan", detector="dectris_detector",
-                         detector_configuration={"frame_time": 4, "nimages": 2},
-                         metadata={"username": "Jane Doe", "sample_id": "test"})
+            item = BPlan(
+                "scan_plan",
+                detector="dectris_detector",
+                detector_configuration={"frame_time": 4, "nimages": 2},
+                metadata={"username": "Jane Doe", "sample_id": "test"},
+            )
 
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
             self.screen_and_collect_worklow(item)
 
         elif self.workflow_name == "Collect":
-            item = BPlan("scan_plan", detector="dectris_detector",
-                         detector_configuration={"frame_time": 8, "nimages": 2},
-                         metadata={"username": "Jane Doe", "sample_id": "test"})
+            item = BPlan(
+                "scan_plan",
+                detector="dectris_detector",
+                detector_configuration={"frame_time": 8, "nimages": 2},
+                metadata={"username": "Jane Doe", "sample_id": "test"},
+            )
 
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
@@ -526,23 +540,35 @@ class BlueskyWorkflow(HardwareObject):
             current_motor_x_value = self.motor_x.get_value()
             current_motor_z_value = self.motor_z.get_value()
 
-            initial_motor_x_grid_value = current_motor_x_value + (
-                screen_coordinate[0] - beam_position[0]) / pixels_per_mm[0]
-            final_motor_x_grid_value = initial_motor_x_grid_value + \
-                width / pixels_per_mm[0]
+            initial_motor_x_grid_value = (
+                current_motor_x_value
+                + (screen_coordinate[0] - beam_position[0]) / pixels_per_mm[0]
+            )
+            final_motor_x_grid_value = (
+                initial_motor_x_grid_value + width / pixels_per_mm[0]
+            )
 
-            initial_motor_z_grid_value = current_motor_z_value + (
-                screen_coordinate[1] - beam_position[1]) / pixels_per_mm[1]
-            final_motor_z_grid_value = initial_motor_z_grid_value + \
-                height / pixels_per_mm[1]
+            initial_motor_z_grid_value = (
+                current_motor_z_value
+                + (screen_coordinate[1] - beam_position[1]) / pixels_per_mm[1]
+            )
+            final_motor_z_grid_value = (
+                initial_motor_z_grid_value + height / pixels_per_mm[1]
+            )
 
             item = BPlan(
-                "grid_scan", ["dectris_detector"],
-                "motor_z", initial_motor_z_grid_value, final_motor_z_grid_value,
+                "grid_scan",
+                ["dectris_detector"],
+                "motor_z",
+                initial_motor_z_grid_value,
+                final_motor_z_grid_value,
                 num_rows,
-                "motor_x", initial_motor_x_grid_value, final_motor_x_grid_value,
+                "motor_x",
+                initial_motor_x_grid_value,
+                final_motor_x_grid_value,
                 num_cols,
-                md={"sample_id": sample_id})
+                md={"sample_id": sample_id},
+            )
 
             # Run bluesky plan
             asyncio.run(self.run_bluesky_plan(item))
@@ -555,13 +581,14 @@ class BlueskyWorkflow(HardwareObject):
             # Move back the motors to inital position.
             # This step can be added as as part of the grid_scan plan, which will make
             # the execution of the raster worflow faster
-            item = BPlan("mv", "motor_z", current_motor_z_value,
-                         "motor_x", current_motor_x_value)
+            item = BPlan(
+                "mv", "motor_z", current_motor_z_value, "motor_x", current_motor_x_value
+            )
             asyncio.run(self.run_bluesky_plan(item))
 
             sequence_id = pickle.loads(
-                self.redis_con.get(
-                    f"sample_id_{sample_id}_bluesky_doc:start"))["sequence_id"]
+                self.redis_con.get(f"sample_id_{sample_id}_bluesky_doc:start")
+            )["sequence_id"]
 
             number_of_spots_list = []
 
@@ -571,9 +598,12 @@ class BlueskyWorkflow(HardwareObject):
                     time.sleep(0.01)
                     try:
                         number_of_spots = pickle.loads(
-                            self.redis_con.get(f"sequence_id_{sequence_id}"
-                                               f"_sequence_number_{i}_zmq_stream"
-                                               ":number_of_spots"))["number_of_spots"]
+                            self.redis_con.get(
+                                f"sequence_id_{sequence_id}"
+                                f"_sequence_number_{i}_zmq_stream"
+                                ":number_of_spots"
+                            )
+                        )["number_of_spots"]
                         number_of_spots_list.append(number_of_spots)
                     except TypeError:
                         continue
@@ -582,20 +612,19 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("user_level_log").warning("Data processing finished")
 
             logging.getLogger("HWR").debug(
-                f"number_of_spots_list {number_of_spots_list}")
+                f"number_of_spots_list {number_of_spots_list}"
+            )
 
             heatmap_array = self.create_heatmap(
-                num_cols, num_rows, number_of_spots_list)
+                num_cols, num_rows, number_of_spots_list
+            )
 
             heatmap = {}
             crystalmap = {}
 
             if grid:
                 for i in range(1, num_rows * num_cols + 1):
-                    heatmap[i] = [
-                        i,
-                        list(heatmap_array[i - 1])
-                    ]
+                    heatmap[i] = [i, list(heatmap_array[i - 1])]
 
                     crystalmap[i] = [
                         i,
@@ -614,8 +643,8 @@ class BlueskyWorkflow(HardwareObject):
         self.state.value = "ON"
 
     def create_heatmap(
-            self, num_cols: int, num_rows: int,
-            number_of_spots_list: list[int]) -> npt.NDArray:
+        self, num_cols: int, num_rows: int, number_of_spots_list: list[int]
+    ) -> npt.NDArray:
         """
         Creates a heatmap from the number of spots, number of columns
         and number of rows of a grid.
@@ -646,14 +675,14 @@ class BlueskyWorkflow(HardwareObject):
 
         _, ax = plt.subplots()
 
-        heatmap = ax.pcolormesh(x, y, z, cmap='seismic', vmin=z_min, vmax=z_max)
+        heatmap = ax.pcolormesh(x, y, z, cmap="seismic", vmin=z_min, vmax=z_max)
         heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
 
         # The following could probably be done more efficiently without using for loops
         result = np.ones(heatmap.shape)
         for i in range(num_rows * num_cols):
             for j in range(4):
-                if heatmap[i][j] != 1.:
+                if heatmap[i][j] != 1.0:
                     result[i][j] = int(heatmap[i][j] * 255)
 
         return result
@@ -682,10 +711,12 @@ class BlueskyWorkflow(HardwareObject):
         # Sleep for 1 second until the RM changes the status to executing_plan
         time.sleep(1)
         RM_status = await self.RM.status()
-        while RM_status['worker_environment_state'] == "executing_plan":
+        while RM_status["worker_environment_state"] == "executing_plan":
             time.sleep(0.2)
-            await asyncio.gather(self.update_frontend_values(self.motor_z),
-                                 self.update_frontend_values(self.motor_x))
+            await asyncio.gather(
+                self.update_frontend_values(self.motor_z),
+                self.update_frontend_values(self.motor_x),
+            )
 
             RM_status = await self.RM.status()
         else:
