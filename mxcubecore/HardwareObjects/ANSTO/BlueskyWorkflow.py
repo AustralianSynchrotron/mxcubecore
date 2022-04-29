@@ -10,10 +10,8 @@ import gevent
 import redis
 import requests
 import pickle
-from requests.exceptions import ConnectionError
 from bluesky_queueserver_api.http.aio import REManagerAPI
 from bluesky_queueserver_api import BPlan
-from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy.typing as npt
@@ -445,34 +443,22 @@ class BlueskyWorkflow(HardwareObject):
             # Run bluesky screening plan, we set the frame_time to 4 s
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
-            payload = {
-                "item": {
-                    "name": "scan_plan",
-                    "args": ["dectris_detector"],
-                    "kwargs": {
-                        "detector_configuration": {"frame_time": 4, "nimages": 2},
-                        "metadata": {"username": "Jane Doe", "sample_id": sample_id},
-                    },
-                    "item_type": "plan",
-                }
-            }
+            item = BPlan("scan_plan", detector="dectris_detector",
+                         detector_configuration={"frame_time": 4, "nimages": 2},
+                         metadata={"username": "Jane Doe", "sample_id": "test"})
+
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.screen_and_collect_worklow(payload)
+
+            self.screen_and_collect_worklow(item)
 
         elif self.workflow_name == "Collect":
-            payload = {
-                "item": {
-                    "name": "scan_plan",
-                    "args": ["dectris_detector"],
-                    "kwargs": {
-                        "detector_configuration": {"frame_time": 8, "nimages": 2},
-                        "metadata": {"username": "Jane Doe", "sample_id": sample_id},
-                    },
-                    "item_type": "plan",
-                }
-            }
+            item = BPlan("scan_plan", detector="dectris_detector",
+                         detector_configuration={"frame_time": 8, "nimages": 2},
+                         metadata={"username": "Jane Doe", "sample_id": "test"})
+
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.screen_and_collect_worklow(payload)
+
+            self.screen_and_collect_worklow(item)
 
         elif self.workflow_name == "Raster":
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
@@ -484,7 +470,7 @@ class BlueskyWorkflow(HardwareObject):
             )
             self.state.value = "ON"
 
-    def screen_and_collect_worklow(self, payload: dict) -> None:
+    def screen_and_collect_worklow(self, item: BPlan) -> None:
         """
         Executes a screen and collect worflow by calling the bluesky queueserver
 
@@ -497,42 +483,12 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        start_URL = f"{self.REST}/queue/item/execute"
-        response = requests.post(start_URL, json=payload)
+        self.state.value = "RUNNING"
 
-        logging.getLogger("HWR").info(f"server response: {response.status_code}")
-        if response.status_code == 200:
-            self.state.value = "RUNNING"
+        # Run bluesky plan
+        asyncio.run(self.run_bluesky_plan(item))
 
-            # Sleep for 1 seconds until the RE state
-            # changes from "idle" to "running"
-            time.sleep(1)
-
-            request_id = response.text
-            logging.getLogger("HWR").info(
-                f"starting Bluesky plan, request id: {request_id}"
-            )
-
-            # Update frontend values with ophyd and asyncio
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(
-                self.asyncio_gather(
-                    self.update_frontend_values(self.motor_z),
-                    self.update_frontend_values(self.motor_x),
-                )
-            )
-
-            logging.getLogger("HWR").info("Plan executed successfully")
-
-            # Display score of the sample
-            # score = pickle.loads(self.redis_con.get("sequence_id_47:score"))["score"]
-            # logging.getLogger("user_level_log").warning(f"sample id score: {score}")
-
-            self.state.value = "ON"
-        else:
-            logging.getLogger("HWR").error("Plan didn't start!")
-            request_id = None
-            self.state.value = "ON"
+        self.state.value = "ON"
 
     def raster_workflow(self, sample_id: str) -> None:
         """
@@ -586,7 +542,7 @@ class BlueskyWorkflow(HardwareObject):
                 num_rows,
                 "motor_x", initial_motor_x_grid_value, final_motor_x_grid_value,
                 num_cols,
-                md={"sample_id": "test"})
+                md={"sample_id": sample_id})
 
             # Run bluesky plan
             asyncio.run(self.run_bluesky_plan(item))
@@ -596,7 +552,9 @@ class BlueskyWorkflow(HardwareObject):
                 f"number of columns and rows: {num_cols}, {num_rows}"
             )
 
-            # Move back the motors to inital position
+            # Move back the motors to inital position.
+            # This step can be added as as part of the grid_scan plan, which will make
+            # the execution of the raster worflow faster
             item = BPlan("mv", "motor_z", current_motor_z_value,
                          "motor_x", current_motor_x_value)
             asyncio.run(self.run_bluesky_plan(item))
@@ -691,7 +649,7 @@ class BlueskyWorkflow(HardwareObject):
         heatmap = ax.pcolormesh(x, y, z, cmap='seismic', vmin=z_min, vmax=z_max)
         heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
 
-        # The following can be done more efficiently without using for loops
+        # The following could probably be done more efficiently without using for loops
         result = np.ones(heatmap.shape)
         for i in range(num_rows * num_cols):
             for j in range(4):
