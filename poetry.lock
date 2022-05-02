@@ -1110,15 +1110,15 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "pims"
-version = "0.5"
+version = "0.6.0"
 description = "Python Image Sequence"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 
 [package.dependencies]
-numpy = ">=1.7"
-six = ">=1.8"
+imageio = "*"
+numpy = ">=1.19"
 slicerator = ">=0.9.8"
 
 [[package]]
@@ -1949,7 +1949,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "34d76d0dd14739f82b8bd0bdfe03f4b5771eb308fd279b859952ad87fe0cab5f"
+content-hash = "97e0c2985dcf35621bf95e921df169c3270113a6d32dc5700d79e1da7ce1bdb0"
 
 [metadata.files]
 aioredis = [
@@ -2857,7 +2857,8 @@ pillow = [
     {file = "Pillow-9.0.1.tar.gz", hash = "sha256:6c8bc8238a7dfdaf7a75f5ec5a663f4173f8c367e5a39f87e720495e1eed75fa"},
 ]
 pims = [
-    {file = "PIMS-0.5.tar.gz", hash = "sha256:a02cdcbb153e2792042fb0bae7df4f30878bbba1f2d176114a87ee0dc18715a0"},
+    {file = "PIMS-0.6.0-py3-none-any.whl", hash = "sha256:64d37e436e1f9c6ace5fe568ce8d401b20828702ec4cab649a3532da73759f60"},
+    {file = "PIMS-0.6.0.tar.gz", hash = "sha256:1102742d642c8b8acc710d35d502b5d7085ee1288c3618373ef8c472030bc683"},
 ]
 pint = [
     {file = "Pint-0.19.tar.gz", hash = "sha256:7c3afe8488aeda03bbeb3ffc74f3b3ba7b16903161356eb0cfecf5828f3aed2f"},
