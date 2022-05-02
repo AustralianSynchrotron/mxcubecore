@@ -490,8 +490,8 @@ class BlueskyWorkflow(HardwareObject):
 
         Parameters
         ----------
-        payload : dict
-            A dictionary containing information about a bluesky plan
+        item : Bplan
+            A Bplan object containing information about a bluesky plan
 
         Returns
         -------
