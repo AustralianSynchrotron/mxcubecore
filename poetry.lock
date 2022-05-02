@@ -1884,7 +1884,7 @@ viz = ["matplotlib", "seaborn", "nc-time-axis"]
 
 [[package]]
 name = "zarr"
-version = "2.11.3"
+version = "2.10.3"
 description = "An implementation of chunked, compressed, N-dimensional arrays for Python."
 category = "main"
 optional = false
@@ -1950,7 +1950,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "5f99bd78c6082a020d71845adee6831217681772f521048abcf82321edf0a1a8"
+content-hash = "4cfb08460410122278faa23a03411b10fbdc7262d681635ae656e60220fe44af"
 
 [metadata.files]
 aioredis = [
@@ -3460,8 +3460,8 @@ xarray = [
     {file = "xarray-2022.3.0.tar.gz", hash = "sha256:398344bf7d170477aaceff70210e11ebd69af6b156fe13978054d25c48729440"},
 ]
 zarr = [
-    {file = "zarr-2.11.3-py3-none-any.whl", hash = "sha256:2a3937902018a3e6bf0c25757ed2b2716150f10b9acc3589dda67ae43b436146"},
-    {file = "zarr-2.11.3.tar.gz", hash = "sha256:6ee84547aec60fd06fc9356e9194302ebbdb2fd912fd365a0a652ad5c69636f5"},
+    {file = "zarr-2.10.3-py3-none-any.whl", hash = "sha256:1354d6de15683a3f7ea9c47e7bfa5772da445d25298988bacc8e499db8896186"},
+    {file = "zarr-2.10.3.tar.gz", hash = "sha256:76932665c2146ebdf15f6dba254f9e0030552fbfcf9322dea822bff96fbce693"},
 ]
 zict = [
     {file = "zict-2.1.0-py3-none-any.whl", hash = "sha256:3b7cf8ba91fb81fbe525e5aeb37e71cded215c99e44335eec86fea2e3c43ef41"},
