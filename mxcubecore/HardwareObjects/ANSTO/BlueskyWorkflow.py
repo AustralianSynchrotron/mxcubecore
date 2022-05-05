@@ -12,9 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import redis
 from bluesky_queueserver_api import BPlan
+from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
 from bluesky_queueserver_api.http.aio import REManagerAPI
-from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
-
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
