@@ -1,5 +1,4 @@
 import asyncio
-import binascii
 import logging
 import os
 import pickle
@@ -18,9 +17,6 @@ from bluesky_queueserver_api.http.aio import REManagerAPI
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
-from mxcubecore.HardwareObjects.SecureXMLRpcRequestHandler import (
-    SecureXMLRpcRequestHandler,
-)
 
 
 class State(object):
