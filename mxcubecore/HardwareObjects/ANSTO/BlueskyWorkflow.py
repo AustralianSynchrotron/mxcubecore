@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import redis
-import requests
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http.aio import REManagerAPI
 
@@ -88,12 +87,18 @@ class BlueskyWorkflow(HardwareObject):
         State of a Hardware Object
     command_failed : bool
         The command_failed state
-    token : str
-        Random generated token
     REST : str
         URL address of the bluesky REST server
     workflow_name : str
         Name of the workflow, e.g. Screen
+    redis_port : int
+        Redis port
+    redis_host : str
+        Redis host
+    bluesky_plan_aborted : bool
+        True if a bluesky plan has been aborted, False otherwise
+    mxcubecore_workflow_aborted : bool
+        True if a mxcubecore workflow has been aborted, False otherwise
     """
 
     def __init__(self, name: str) -> None:
@@ -110,13 +115,13 @@ class BlueskyWorkflow(HardwareObject):
         HardwareObject.__init__(self, name)
         self._state = State(self)
         self.command_failed = False
-        self.bes_workflow_id = None
         self.gevent_event = None
-        self.token = None
         self.REST = "http://bluesky-queueserver-rest:8080"
         self.workflow_name = None
         self.redis_port = 6379
         self.redis_host = "redis"
+        self.bluesky_plan_aborted = False
+        self.mxcubecore_workflow_aborted = False
 
     def _init(self) -> None:
         """
@@ -340,43 +345,14 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        self.generate_new_token()
         logging.getLogger("HWR").info("Aborting current workflow")
         # If necessary unblock dialog
         if not self.gevent_event.is_set():
             self.gevent_event.set()
-        self.command_failed = False
-        if self.bes_workflow_id is not None:
-            abort_URL = f"{self.REST}/re/abort"
-            response = requests.get(abort_URL)
-            if response.status_code == 200:
-                response.text
+
+        self.bluesky_plan_aborted = True
+        self.mxcubecore_workflow_aborted = True
         self.state.value = "ON"
-
-    def generate_new_token(self) -> None:
-        """
-        Generates a new Token.
-        This method is currently not used by the BlueskyWorflow.
-
-        Returns
-        -------
-        None
-        """
-
-        self.token = binascii.hexlify(os.urandom(5)).decode("utf-8")
-        SecureXMLRpcRequestHandler.setReferenceToken(self.token)
-
-    def get_token(self) -> str:
-        """
-        This method is currently not used by BlueskyWorflow.
-        Updates the value of self.token
-
-        Returns
-        -------
-        self.token : str
-            The token value
-        """
-        return self.token
 
     def start(self, list_arguments: list[str]) -> None:
         """
@@ -397,7 +373,6 @@ class BlueskyWorkflow(HardwareObject):
         """
         self.list_arguments = list_arguments
 
-        self.generate_new_token()
         if not self.gevent_event.is_set():
             self.gevent_event.set()
         self.state.value = "ON"
@@ -586,61 +561,63 @@ class BlueskyWorkflow(HardwareObject):
             )
             asyncio.run(self.run_bluesky_plan(item))
 
-            sequence_id = pickle.loads(
-                self.redis_con.get(f"sample_id_{sample_id}_bluesky_doc:start")
-            )["sequence_id"]
+            if not self.mxcubecore_workflow_aborted:
+                sequence_id = pickle.loads(
+                    self.redis_con.get(f"sample_id_{sample_id}_bluesky_doc:start")
+                )["sequence_id"]
 
-            number_of_spots_list = []
+                number_of_spots_list = []
 
-            logging.getLogger("user_level_log").warning("Processing data...")
-            for i in range(1, num_rows * num_cols + 1):
-                while True:
-                    time.sleep(0.01)
-                    try:
-                        number_of_spots = pickle.loads(
-                            self.redis_con.get(
-                                f"sequence_id_{sequence_id}"
-                                f"_sequence_number_{i}_zmq_stream"
-                                ":number_of_spots"
-                            )
-                        )["number_of_spots"]
-                        number_of_spots_list.append(number_of_spots)
-                    except TypeError:
-                        continue
-                    break
-
-            logging.getLogger("user_level_log").warning("Data processing finished")
-
-            logging.getLogger("HWR").debug(
-                f"number_of_spots_list {number_of_spots_list}"
-            )
-
-            heatmap_array = self.create_heatmap(
-                num_cols, num_rows, number_of_spots_list
-            )
-
-            heatmap = {}
-            crystalmap = {}
-
-            if grid:
+                logging.getLogger("user_level_log").warning("Processing data...")
                 for i in range(1, num_rows * num_cols + 1):
-                    heatmap[i] = [i, list(heatmap_array[i - 1])]
+                    while True:
+                        time.sleep(0.01)
+                        try:
+                            number_of_spots = pickle.loads(
+                                self.redis_con.get(
+                                    f"sequence_id_{sequence_id}"
+                                    f"_sequence_number_{i}_zmq_stream"
+                                    ":number_of_spots"
+                                )
+                            )["number_of_spots"]
+                            number_of_spots_list.append(number_of_spots)
+                        except TypeError:
+                            continue
+                        break
 
-                    crystalmap[i] = [
-                        i,
-                        [
-                            int(random() * 255),
-                            int(random() * 255),
-                            int(random() * 255),
-                            1,
-                        ],
-                    ]
+                logging.getLogger("user_level_log").warning("Data processing finished")
 
-            heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
-            self.sample_view.set_grid_data(sid, heat_and_crystal_map)
-            logging.getLogger("HWR").info("grid set successfully")
+                logging.getLogger("HWR").debug(
+                    f"number_of_spots_list {number_of_spots_list}"
+                )
+
+                heatmap_array = self.create_heatmap(
+                    num_cols, num_rows, number_of_spots_list
+                )
+
+                heatmap = {}
+                crystalmap = {}
+
+                if grid:
+                    for i in range(1, num_rows * num_cols + 1):
+                        heatmap[i] = [i, list(heatmap_array[i - 1])]
+
+                        crystalmap[i] = [
+                            i,
+                            [
+                                int(random() * 255),
+                                int(random() * 255),
+                                int(random() * 255),
+                                1,
+                            ],
+                        ]
+
+                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
+                self.sample_view.set_grid_data(sid, heat_and_crystal_map)
+                logging.getLogger("HWR").info("grid set successfully")
 
         self.state.value = "ON"
+        self.mxcubecore_workflow_aborted = False
 
     def create_heatmap(
         self, num_cols: int, num_rows: int, number_of_spots_list: list[int]
@@ -712,13 +689,35 @@ class BlueskyWorkflow(HardwareObject):
         time.sleep(1)
         RM_status = await self.RM.status()
         while RM_status["worker_environment_state"] == "executing_plan":
-            time.sleep(0.2)
-            await asyncio.gather(
-                self.update_frontend_values(self.motor_z),
-                self.update_frontend_values(self.motor_x),
-            )
+            if not self.bluesky_plan_aborted:
+                time.sleep(0.2)
+                await asyncio.gather(
+                    self.update_frontend_values(self.motor_z),
+                    self.update_frontend_values(self.motor_x),
+                )
 
-            RM_status = await self.RM.status()
+                RM_status = await self.RM.status()
+            else:
+                # Abort bluesky plan
+                self.bluesky_plan_aborted = False
+
+                await self.RM.re_pause()
+                await self.RM.wait_for_idle_or_paused()
+
+                await self.RM.re_abort()
+                await self.RM.wait_for_idle()
+
+                await self.RM.queue_clear()
+                await self.RM.wait_for_idle()
+
+                await asyncio.gather(
+                    self.update_frontend_values(self.motor_z),
+                    self.update_frontend_values(self.motor_x),
+                )
+
+                self.motor_x.update_state(self.motor_x.STATES.READY)
+                self.motor_z.update_state(self.motor_z.STATES.READY)
+                break
         else:
             self.motor_x.update_state(self.motor_x.STATES.READY)
             self.motor_z.update_state(self.motor_z.STATES.READY)
