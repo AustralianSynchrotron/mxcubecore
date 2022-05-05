@@ -13,6 +13,8 @@ import numpy.typing as npt
 import redis
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http.aio import REManagerAPI
+from bluesky_queueserver_api.comm_base import RequestFailedError, RequestError
+
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -697,11 +699,14 @@ class BlueskyWorkflow(HardwareObject):
                 # Abort bluesky plan
                 self.bluesky_plan_aborted = False
 
-                await self.RM.re_pause()
-                await self.RM.wait_for_idle_or_paused()
+                try:
+                    await self.RM.re_pause()
+                    await self.RM.wait_for_idle_or_paused()
 
-                await self.RM.re_abort()
-                await self.RM.wait_for_idle()
+                    await self.RM.re_abort()
+                    await self.RM.wait_for_idle()
+                except (RequestFailedError, RequestError) as e:
+                    logging.getLogger("HWR").info(f"Abort error: {e}")
 
                 await self.RM.queue_clear()
                 await self.RM.wait_for_idle()
