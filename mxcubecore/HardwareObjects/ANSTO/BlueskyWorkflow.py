@@ -350,7 +350,6 @@ class BlueskyWorkflow(HardwareObject):
 
         self.bluesky_plan_aborted = True
         self.mxcubecore_workflow_aborted = True
-        self.state.value = "ON"
 
     def start(self, list_arguments: list[str]) -> None:
         """
@@ -476,6 +475,7 @@ class BlueskyWorkflow(HardwareObject):
         asyncio.run(self.run_bluesky_plan(item))
 
         self.state.value = "ON"
+        self.mxcubecore_workflow_aborted = False
 
     def raster_workflow(self, sample_id: str) -> None:
         """
