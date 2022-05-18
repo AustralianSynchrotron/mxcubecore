@@ -21,15 +21,20 @@ name = "asci-prod"
 url = "https://pypi.asci.synchrotron.org.au/asci/prod/+simple"
 secondary = true
 
+[[tool.poetry.source]]
+name = "mx3dev"
+url = "https://pypi.asci.synchrotron.org.au/mx3/dev/+simple"
+secondary = true
+
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.9,<3.11"
 gevent = "21.12.0"
 greenlet = "1.1.2"
 jsonpickle = "2.1.0"
 jsonschema = "4.4.0"
 lxml = "4.7.1"
 matplotlib = "3.5.1"
-ophyd = "1.6.3"
+ophyd = "1.6.4"
 numpy = "1.21.4"
 Pillow = "9.0.1"
 pydantic = "1.9.0"
@@ -44,6 +49,7 @@ zarr = "2.10.3"
 setuptools = "62.1.0"
 setuptools-scm = "6.3.2"
 PIMS = "0.6.0"
+mx3-beamline-library = "0.1.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "2.17.0"
