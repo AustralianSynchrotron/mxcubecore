@@ -115,8 +115,8 @@ class BlueskyWorkflow(HardwareObject):
         self.gevent_event = None
         self.REST = "http://bluesky-queueserver-rest:8080"
         self.workflow_name = None
-        self.redis_port = 6379
-        self.redis_host = "redis"
+        self.redis_port = int(os.environ.get("DATA_PROCESSING_REDIS_PORT", "6379"))
+        self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "redis")
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
 

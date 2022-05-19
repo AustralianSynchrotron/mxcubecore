@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mxcubecore"
-version = "0.2.1"
+version = "0.2.2"
 description = "Core libraries for the MXCuBE application"
 authors = ["The MXCuBE developers <mxcube@mxcube.org>"]
 maintainers = ["ANSTO, Clayton Synchrotron"]
