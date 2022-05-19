@@ -49,12 +49,8 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        logging.getLogger("HWR").debug(f"first: {self.motor_name}............")
         self.device = getattr(motors, self.device_name)
-        logging.getLogger("HWR").debug(f"self.device_name: {self.device_name}")
         self.motor = getattr(self.device, self.motor_name)
-        logging.getLogger("HWR").debug(f"self.motor_name: {self.motor_name}")
-        logging.getLogger("HWR").debug(f"self.motor_name: {type(self.motor)}")
         self.motor.wait_for_connection(timeout=300)  # For lazy loading.
 
         AbstractMotor.init(self)
