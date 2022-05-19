@@ -1,8 +1,8 @@
 <device class="ANSTO.Zoom">
   <exporter_address>10.244.101.10</exporter_address>
   <username>zoom</username>
-  <motor_name>zoom</motor_name>
-  <pv_prefix>MXCUBE:m1</pv_prefix>
+  <motor_name>m1</motor_name>
+  <device_name>mxcube_sim_PVs</device_name>
   <values>{"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8}</values>
   <!-- There is not a zoom motor in the testrig, so mm_per_pixel_x/y are constant -->
   <!-- The following values work assuming that motor_y = 40.3  -->

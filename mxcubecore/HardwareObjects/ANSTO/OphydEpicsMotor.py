@@ -1,6 +1,8 @@
+import logging
 import time
 
 from ophyd import EpicsMotor
+from mx3_beamline_library.devices import motors
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
@@ -38,6 +40,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
 
         self._wrap_range = None
         self.device = None
+        self.motor = None
 
     def init(self) -> None:
         """Object initialization - executed after loading contents
@@ -46,8 +49,13 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        self.device = EpicsMotor(self.pv_prefix, name=self.motor_name)
-        self.device.wait_for_connection(timeout=300)  # For lazy loading.
+        logging.getLogger("HWR").debug(f"first: {self.motor_name}............")
+        self.device = getattr(motors, self.device_name)
+        logging.getLogger("HWR").debug(f"self.device_name: {self.device_name}")
+        self.motor = getattr(self.device, self.motor_name)
+        logging.getLogger("HWR").debug(f"self.motor_name: {self.motor_name}")
+        logging.getLogger("HWR").debug(f"self.motor_name: {type(self.motor)}")
+        self.motor.wait_for_connection(timeout=300)  # For lazy loading.
 
         AbstractMotor.init(self)
         EPICSActuator.init(self)
@@ -71,7 +79,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         """
         self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
-        while self.device.moving:
+        while self.motor.moving:
             time.sleep(0.2)
             self.update_state(self.STATES.BUSY)
             current_value = self.get_value()
@@ -87,7 +95,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        self.device.stop(success=True)
+        self.motor.stop(success=True)
         self._set_value(self.get_value())
         self.update_state(self.STATES.READY)
 
@@ -99,7 +107,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         tuple
             Low and High limits of a motor.
         """
-        self._nominal_limits = self.device.limits
+        self._nominal_limits = self.motor.limits
         return self._nominal_limits
 
     @property
@@ -111,7 +119,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         float
             Velocity of the motor
         """
-        self._velocity = self.device.velocity.get()
+        self._velocity = self.motor.velocity.get()
         return self._velocity
 
     @velocity.setter
@@ -127,7 +135,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        self.device.velocity.put(value)
+        self.motor.velocity.put(value)
 
     def get_value(self) -> float:
         """Get the current position of the motor.
@@ -137,7 +145,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         float
             Position of the motor.
         """
-        return self.device.user_readback.get()
+        return self.motor.user_readback.get()
 
     def _set_value(self, value: float) -> None:
         """Set the motor to a positions
@@ -151,7 +159,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        self.device.user_setpoint.put(value, wait=False)
+        self.motor.user_setpoint.put(value, wait=False)
 
         self.update_value(value)
         self.update_state(self.STATES.READY)
