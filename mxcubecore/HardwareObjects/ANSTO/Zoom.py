@@ -118,7 +118,7 @@ class Zoom(OphydEpicsMotor, AbstractNState):
         current_enum : Enum
             The current value of a motor
         """
-        current_val = self.motor.user_readback.get()
+        current_val = self.motor.position
         current_enum = self.value_to_enum(current_val)
         return current_enum
 
@@ -137,7 +137,7 @@ class Zoom(OphydEpicsMotor, AbstractNState):
         """
         target_val = value.value
 
-        self.motor.user_setpoint.put(target_val, wait=False)
+        self.motor.move(target_val, wait=False)
         self.update_value(target_val)
         self.update_state(self.STATES.READY)
 

@@ -1,7 +1,5 @@
-import logging
 import time
 
-from ophyd import EpicsMotor
 from mx3_beamline_library.devices import motors
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
@@ -141,7 +139,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         float
             Position of the motor.
         """
-        return self.motor.user_readback.get()
+        return self.motor.position
 
     def _set_value(self, value: float) -> None:
         """Set the motor to a positions
@@ -155,7 +153,7 @@ class OphydEpicsMotor(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        self.motor.user_setpoint.put(value, wait=False)
+        self.motor.move(value, wait=False)
 
         self.update_value(value)
         self.update_state(self.STATES.READY)
