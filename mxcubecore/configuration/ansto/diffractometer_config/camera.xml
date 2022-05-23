@@ -1,7 +1,6 @@
 <device class="ANSTO.Camera">
     <!-- Properties -->
     <username>Camera</username>
-    <pv_prefix>01TR1</pv_prefix>
     <source>/usr/local/src/mxcube/ExampleFiles/fakeimg.jpg</source>
     <interval>100</interval>
     <exporter_address>10.244.101.10</exporter_address>

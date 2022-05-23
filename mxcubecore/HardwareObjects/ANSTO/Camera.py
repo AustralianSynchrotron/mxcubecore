@@ -8,10 +8,10 @@ from threading import Thread
 
 import gevent
 import numpy as np
+from mx3_beamline_library.devices import detectors
 from PIL import Image
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.HardwareObjects.ANSTO.BlackFlyCam import BlackFlyCam
 
 
 class Camera(HardwareObject):
@@ -65,7 +65,7 @@ class Camera(HardwareObject):
         -------
         None
         """
-        self.cam = BlackFlyCam(f"{self.pv_prefix}", name=self.username)
+        self.cam = detectors.blackfly_camera
         self.cam.wait_for_connection(timeout=5)
 
         self.read_sizes()
