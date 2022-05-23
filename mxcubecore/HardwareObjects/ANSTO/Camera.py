@@ -12,7 +12,6 @@ from PIL import Image
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.ANSTO.BlackFlyCam import BlackFlyCam
-from mxcubecore.HardwareObjects.ANSTO.ImgPlugin import ImgPlugin
 
 
 class Camera(HardwareObject):
@@ -48,7 +47,6 @@ class Camera(HardwareObject):
         self._print_cam_error_format = True
 
         self.cam = None
-        self.img_plugin = None
 
     def _init(self) -> None:
         """Object initialization - executed before loading contents
@@ -67,11 +65,8 @@ class Camera(HardwareObject):
         -------
         None
         """
-        self.cam = BlackFlyCam(f"{self.pv_prefix}:", name=self.username)
+        self.cam = BlackFlyCam(f"{self.pv_prefix}", name=self.username)
         self.cam.wait_for_connection(timeout=5)
-
-        self.img_plugin = ImgPlugin(f"{self.pv_prefix}:image1:", name="ImagePlugin")
-        self.img_plugin.wait_for_connection(timeout=5)
 
         self.read_sizes()
         # Start camera image acquisition
@@ -125,7 +120,7 @@ class Camera(HardwareObject):
         int
             Returns -1 for error and 0 for success
         """
-        self.imgArray = self.img_plugin.array_data.get()
+        self.imgArray = self.cam.array_data.get()
         if self.imgArray is None:
             if self._print_cam_error_null:
                 logging.getLogger("HWR").error(
@@ -165,13 +160,12 @@ class Camera(HardwareObject):
 
         try:
             # Get data
-            data = self.img_plugin.array_data.get().reshape(
+            data = self.cam.array_data.get().reshape(
                 self.height, self.width, self.depth
             )
             arr = data.astype(np.uint8)
             # Convert data to rgb image
             img = Image.fromarray(arr)
-            # img_rot = img.rotate(angle=0, expand=True)
             img_rgb = img.convert("RGB")
             # Get binary image
             with BytesIO() as f:
@@ -212,7 +206,7 @@ class Camera(HardwareObject):
         """
         depth = 1
         try:
-            depth = self.img_plugin.depth.get()
+            depth = self.cam.depth.get()
             if depth is None or depth <= 0:
                 depth = 1
         except Exception:
@@ -231,7 +225,7 @@ class Camera(HardwareObject):
         """
         width = 0
         try:
-            width = self.img_plugin.width.get()
+            width = self.cam.width.get()
             if width is None:
                 width = 0
         except Exception:
@@ -251,7 +245,7 @@ class Camera(HardwareObject):
         """
         height = 0
         try:
-            height = self.img_plugin.height.get()
+            height = self.cam.height.get()
             if height is None:
                 height = 0
         except Exception:
@@ -477,7 +471,7 @@ class Camera(HardwareObject):
         """
         try:
             self.cam.array_callbacks.put(1)  # ArrayCallbacks
-            self.img_plugin.enable.put(1)  # EnableCallbacks
+            self.cam.enable.put(1)  # EnableCallbacks
             self.cam.acquire.put(0)  # Stop the aquisition
             self.cam.acquire.put(1)  # Start the aquisition
         except Exception as e:
