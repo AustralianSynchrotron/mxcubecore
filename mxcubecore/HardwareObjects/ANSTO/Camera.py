@@ -165,7 +165,9 @@ class Camera(HardwareObject):
 
         try:
             # Get data
-            data = self.img_plugin.shaped_image.get()
+            data = self.img_plugin.array_data.get().reshape(
+                self.height, self.width, self.depth
+            )
             arr = data.astype(np.uint8)
             # Convert data to rgb image
             img = Image.fromarray(arr)

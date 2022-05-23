@@ -1,9 +1,9 @@
-from ophyd.areadetector.base import Component as Cpt
-from ophyd.areadetector.plugins import ImagePlugin_V34
+from ophyd.areadetector.base import Component as Cpt, NDDerivedSignal
+from ophyd import Device
 from ophyd.signal import EpicsSignalRO
 
 
-class ImgPlugin(ImagePlugin_V34):
+class ImgPlugin(Device):
     """Ophyd has the following order:
     width, height, depth = ArraySize0_RBV, ArraySize1_RBV, ArraySize2_RBV
 
@@ -25,3 +25,4 @@ class ImgPlugin(ImagePlugin_V34):
     depth = Cpt(EpicsSignalRO, "ArraySize0_RBV")
     width = Cpt(EpicsSignalRO, "ArraySize1_RBV")
     height = Cpt(EpicsSignalRO, "ArraySize2_RBV")
+    array_data = Cpt(EpicsSignalRO, "ArrayData")
