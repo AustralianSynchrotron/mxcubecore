@@ -160,9 +160,7 @@ class Camera(HardwareObject):
 
         try:
             # Get data
-            data = self.cam.array_data.get().reshape(
-                self.height, self.width, self.depth
-            )
+            data = self.imgArray.reshape(self.height, self.width, self.depth)
             arr = data.astype(np.uint8)
             # Convert data to rgb image
             img = Image.fromarray(arr)
