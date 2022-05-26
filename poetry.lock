@@ -987,7 +987,7 @@ numpy = ">=1.9.0"
 
 [[package]]
 name = "mx3-beamline-library"
-version = "0.1.3"
+version = "0.1.4"
 description = "Ophyd devices and bluesky plans."
 category = "main"
 optional = false
@@ -2015,7 +2015,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "3ec9549794bd86719b2229e122df541cf4e322a1ee7a03943cbd4567c3552287"
+content-hash = "fedb7cbfbaab04eec11a703d7efeee951352db537ef99c4630071c9352d0416a"
 
 [metadata.files]
 aioredis = [
@@ -2748,8 +2748,8 @@ msgpack-numpy = [
     {file = "msgpack_numpy-0.4.7.1-py2.py3-none-any.whl", hash = "sha256:50d9e456d034ead6de53d9596a64bac4c9b0e15a682c4dce0efc556dc9d786fe"},
 ]
 mx3-beamline-library = [
-    {file = "mx3-beamline-library-0.1.3.tar.gz", hash = "sha256:86b664d1a90e1a2dea266544a71ab95856ecd48c1aceeab8f8a0ce870355a603"},
-    {file = "mx3_beamline_library-0.1.3-py3-none-any.whl", hash = "sha256:387daf02f7c7ce56f4dbf61919305e58be1b9e54a2188143c18f9ff68c5cb493"},
+    {file = "mx3-beamline-library-0.1.4.tar.gz", hash = "sha256:bd9ce987d07c13356519f62b8351347368fd0484924de236cfbddeb153e14192"},
+    {file = "mx3_beamline_library-0.1.4-py3-none-any.whl", hash = "sha256:5876ad01d58e130c6bf15ddadaa3861665068b77e8cb57f02755e1c77f75e5e9"},
 ]
 mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
