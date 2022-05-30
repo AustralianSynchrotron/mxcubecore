@@ -108,6 +108,37 @@ default_acquisition_parameters:
         cell_spacing: vertical, horizontal
         mesh_center: top-left
 
+    default_ansto:
+        # The commented parameteres refer to the `plan` parameters
+        # defined in Daniel's experiment.yml file.
+        # We follow mxcube naming convention for now
+        # See the SUPPORTED_ACQ_PARAMETERS in the Bseamline class
+        # to see the supported acquisition parameters. Additional parameters
+        # can be added depending on the workflow
+
+        # MXCUBE SUPPORTED_ACQ_PARAMETERS
+        exp_time: 18.0 # exposure_time
+        osc_range: 0.1 # delta
+        num_passes: 1 # NOT defined in the experiment.yml file ???
+        run_number: 1 # NOT defined in the experiment.yml file ???
+        overlap: 0 # NOT defined in the experiment.yml file ???
+        num_images: 1800 # no_frames
+        inverse_beam: false # NOT defined in the experiment.yml file ???
+        take_dark_current: true # NOT defined in the experiment.yml file ???
+        skip_existing_images: true # NOT defined in the experiment.yml file ???
+        take_snapshots: true # NOT defined in the experiment.yml file ???
+
+        # Additional parameters
+        additional_parameters:
+            attenuation_setpoint: 90.0
+            beamstop_setpoint: 48.998
+            distance_setpoint: 260.957675331
+            energy_setpoint: 12.999881743
+            frequency: 100.0
+            osc_rate: 10.0
+            start_frame: 1
+            wedge: 180.0
+
 available_methods:
     datacollection: True
     characterisation: True
