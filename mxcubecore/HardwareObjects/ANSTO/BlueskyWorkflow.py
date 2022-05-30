@@ -148,6 +148,8 @@ class BlueskyWorkflow(HardwareObject):
 
         self.sample_view = hwr.get_hardware_object("/sample_view")
 
+        self.beamline = HWR.beamline
+
         self.redis_con = redis.StrictRedis(self.redis_host, self.redis_port)
 
     @property
@@ -368,6 +370,7 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
         self.list_arguments = list_arguments
+        logging.getLogger("HWR").debug(f"LIST ARGUMETS: {self.list_arguments}")
 
         if not self.gevent_event.is_set():
             self.gevent_event.set()
@@ -446,8 +449,21 @@ class BlueskyWorkflow(HardwareObject):
             self.screen_and_collect_worklow(item)
 
         elif self.workflow_name == "Raster":
+            acquisition_parameters = self.beamline.get_default_acquisition_parameters(
+                acquisition_type="default_ansto"
+            ).as_dict()
+            acquisition_parameters["wavelenght"] = self.beamline.energy.get_wavelength()
+
+            acquisition_parameters["sample_id"] = "test"
+
+            # Bluesky does not like empty strigs
+            if not acquisition_parameters["comments"]:
+                acquisition_parameters["comments"] = None
+
+            logging.getLogger("HWR").debug(f"ACQ params: {acquisition_parameters}")
+
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.raster_workflow("test")
+            self.raster_workflow(metadata=acquisition_parameters)
 
         else:
             logging.getLogger("HWR").error(
@@ -476,12 +492,17 @@ class BlueskyWorkflow(HardwareObject):
         self.state.value = "ON"
         self.mxcubecore_workflow_aborted = False
 
-    def raster_workflow(self, sample_id: str) -> None:
+    def raster_workflow(self, metadata: dict) -> None:
         """
         Executes a raster workflow. First a dialog box is opened, then a
         bluesky plan is executed and finally the data produced by the
         Sim-plon API is analysed and converted to a heatmap containing RGBA values.
         The heatmap is displayed in MXCuBE.
+
+        Parameteres
+        -----------
+        metadata : dict
+            A metadata dictionary sent from mxcube to the bluesky queueserver
 
         Returns
         -------
@@ -539,7 +560,7 @@ class BlueskyWorkflow(HardwareObject):
                 initial_motor_x_grid_value,
                 final_motor_x_grid_value,
                 num_cols,
-                md={"sample_id": sample_id},
+                md=metadata,
             )
 
             # Run bluesky plan
@@ -560,7 +581,9 @@ class BlueskyWorkflow(HardwareObject):
 
             if not self.mxcubecore_workflow_aborted:
                 sequence_id = pickle.loads(
-                    self.redis_con.get(f"sample_id_{sample_id}_bluesky_doc:start")
+                    self.redis_con.get(
+                        f"sample_id_{metadata['sample_id']}_bluesky_doc:start"
+                    )
                 )["sequence_id"]
 
                 number_of_spots_list = []
