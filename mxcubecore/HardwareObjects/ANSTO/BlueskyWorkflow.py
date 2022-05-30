@@ -113,7 +113,9 @@ class BlueskyWorkflow(HardwareObject):
         self._state = State(self)
         self.command_failed = False
         self.gevent_event = None
-        self.REST = os.environ.get("BLUESKY_QUEUESERVER_API", "http://bluesky-queueserver-rest:8080")
+        self.REST = os.environ.get(
+            "BLUESKY_QUEUESERVER_API", "http://bluesky-queueserver-rest:8080"
+        )
         self.workflow_name = None
         self.redis_port = int(os.environ.get("DATA_PROCESSING_REDIS_PORT", "6379"))
         self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "redis")
