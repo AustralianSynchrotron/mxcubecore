@@ -1,16 +1,14 @@
-<object class="ISPyBRestClientMockup">
+<object class="ANSTO.ISPyBRestClient">
   <restRoot>
-   https://your.lims.org
+   http://ispyb:8002
   </restRoot>
   <site>
-   ESRF
+   ANSTO
   </site>
   <exi_root>
-   https://your.exi.org
+   http://ispyb:8002
   </exi_root>
   <restUserName></restUserName>
   <restPass></restPass>
-
   <object role="session" href="/session"/>
-
 </object>
