@@ -1,4 +1,4 @@
-<object class="ISPyBClientMockup">
+<object class="ANSTO.ISPyBClient">
   <object hwrid="./lims_rest" role="lims_rest"/>
   <ws_root>
     http://ispyb:8002
