@@ -372,7 +372,6 @@ class BlueskyWorkflow(HardwareObject):
         None
         """
         self.list_arguments = list_arguments
-        logging.getLogger("HWR").debug(f"LIST ARGUMETS: {self.list_arguments}")
 
         if not self.gevent_event.is_set():
             self.gevent_event.set()
