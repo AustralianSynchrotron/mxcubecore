@@ -2,6 +2,7 @@
 A client for ISPyB Webservices.
 """
 
+from distutils.log import debug
 import logging
 import datetime
 import time
@@ -219,7 +220,11 @@ class ISPyBClient(HardwareObject):
 
     def echo(self):
         """Mockup for the echo method."""
-        return True
+        response = requests.get(f"{self.REST}/v1/proposal/echo")
+        logging.getLogger("HWR").debug(f"response.status_code: {response.status_code}")
+        if response.status_code == 200:
+            return True
+        return False
 
     def get_proposal(self, proposal_code, proposal_number):
         """
@@ -235,7 +240,9 @@ class ISPyBClient(HardwareObject):
         :returns: The dict (Proposal, Person, Laboratory, Sessions, Status).
         :rtype: dict
         """
-        return self.__test_proposal
+        response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
+        logging.getLogger("HWR").debug(f"RESPONSE: {response.json()}")
+        return response.json()
 
     def get_proposals_by_user(self, user_name):
         return [self.__test_proposal]
@@ -364,8 +371,8 @@ class ISPyBClient(HardwareObject):
         """
 
     def get_samples(self, proposal_id, session_id):
-        lab = requests.get(f"{self.REST}/v1/proposal/get_samples")
-        return lab.json()
+        response = requests.get(f"{self.REST}/v1/proposal/get_samples")
+        return response.json()
 
     def get_session_samples(self, proposal_id, session_id, sample_refs):
         """
