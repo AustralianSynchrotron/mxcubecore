@@ -1,44 +1,51 @@
-"""
-A client for ISPyB Webservices.
-"""
-
-from distutils.log import debug
+import json
 import logging
-import datetime
 import time
-
-from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore import HardwareRepository as HWR
-
 from urllib.parse import urljoin
 
 import requests
-import json
 
-# to simulate wrong loginID, use anything else than idtest
-# to simulate wrong psd, use "wrong" for password
-# to simulate ispybDown, but ldap login succeeds, use "ispybDown" for password
-# to simulate no session scheduled, use "nosession" for password
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
-class ISPyBClient(HardwareObject):
+class LimsClient(HardwareObject):
     """
-    Web-service client for ISPyB.
+    Client for the mx-lims-bff
+
+    To simulate wrong loginID, use anything else than idtest
+    To simulate wrong psd, use "wrong" for password
+    To simulate ispybDown, but ldap login succeeds, use "ispybDown" for password
+    To simulate no session scheduled, use "nosession" for password
+
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str):
+        """
+        Parameters
+        ----------
+        name : str
+            Name of a Hardware object, e.g. `/lims`
+
+        Returns
+        -------
+        None
+        """
         HardwareObject.__init__(self, name)
         self.__translations = {}
         self.__disabled = False
-        self.__test_proposal = None
         self.loginType = None
         self.base_result_url = None
         self.lims_rest = None
         self.REST = None
 
-    def init(self):
+    def init(self) -> None:
         """
         Init method declared by HardwareObject.
+
+        Returns
+        -------
+        None
         """
         self.lims_rest = self.get_object_by_role("lims_rest")
         self.authServerType = self.get_property("authServerType") or "ldap"
@@ -58,53 +65,48 @@ class ISPyBClient(HardwareObject):
         except AttributeError:
             pass
 
-        self.__test_proposal = {
-            "status": {"code": "ok"},
-            "Person": {
-                "personId": 1,
-                "laboratoryId": 1,
-                "login": None,
-                "familyName": "operator on IDTESTeh1",
-            },
-            "Proposal": {
-                "code": "idtest",
-                "title": "operator on IDTESTeh1",
-                "personId": 1,
-                "number": "0",
-                "proposalId": 1,
-                "type": "MX",
-            },
-            "Session": [
-                {
-                    "scheduled": 0,
-                    "startDate": "2013-06-11 00:00:00",
-                    "endDate": "2023-06-12 07:59:59",
-                    "beamlineName": self.beamline_name,
-                    "timeStamp": datetime.datetime(2013, 6, 11, 9, 40, 36),
-                    "comments": "Session created by the BCM",
-                    "sessionId": 34591,
-                    "proposalId": 1,
-                    "nbShifts": 3,
-                }
-            ],
-            "Laboratory": {"laboratoryId": 1, "name": "TEST eh1"},
-        }
+    def get_login_type(self) -> str:
+        """Gets the login type
 
-    def get_login_type(self):
+        Returns
+        -------
+        str
+            returns the login type
+        """
         self.loginType = self.get_property("loginType") or "proposal"
         return self.loginType
 
-    def login(self, loginID, psd, ldap_connection=None, create_session=True):
-        # to simulate wrong loginID
+    def login(self, loginID: str, psd: str,
+              ldap_connection=None, create_session: bool = True) -> dict:
+        """Login method
+
+        Parameters
+        ----------
+        loginID : str
+            login ID
+        psd : str
+            passward
+        ldap_connection : optional
+            ldap connection, by default None
+        create_session : bool, optional
+            creates a new session, by default True
+
+        Returns
+        -------
+        dict
+            dictionary containing information about the status,
+            proposal, session, local contact, person and laboratory
+        """
 
         auth_url = f"{self.REST}/v1/authenticate"
 
         dict_data = {"user": loginID, "password": psd}
-        logging.getLogger("HWR").debug(f"LOGIN DETAILS: {dict_data}")
         data_json = json.dumps(dict_data)
 
-        response = requests.post(auth_url, data=data_json)
+        # Simulate authenticate endpoint?
+        requests.post(auth_url, data=data_json)
 
+        # simulate correct password
         if loginID != "idtest0":
             return {
                 "status": {"code": "error", "msg": "loginID 'wrong' does not exist!"},
@@ -118,7 +120,8 @@ class ISPyBClient(HardwareObject):
                 "Proposal": None,
                 "Session": None,
             }
-            # to simulate ispybDown, but login succeed
+
+        # to simulate ispybDown, but login succeed
         if psd == "ispybDown":
             return {
                 "status": {"code": "ispybDown", "msg": "ispyb is down"},
@@ -143,7 +146,19 @@ class ISPyBClient(HardwareObject):
             "Laboratory": prop["Laboratory"],
         }
 
-    def get_todays_session(self, prop):
+    def get_todays_session(self, prop: dict) -> dict:
+        """Gets todays session
+
+        Parameters
+        ----------
+        prop : dict
+            Proposal dictionary
+
+        Returns
+        -------
+        dict
+            dictionary containing todays session
+        """
         try:
             sessions = prop["Session"]
         except KeyError:
@@ -201,13 +216,12 @@ class ISPyBClient(HardwareObject):
             new_session_dict["sessionId"] = None
 
             todays_session = new_session_dict
-            localcontact = None
             logging.getLogger("HWR").debug("create new session")
 
         else:
             session_id = todays_session["sessionId"]
             logging.getLogger("HWR").debug("getting local contact for %s" % session_id)
-            localcontact = self.get_session_local_contact(session_id)
+            self.get_session_local_contact(session_id)
 
         is_inhouse = HWR.beamline.session.is_inhouse(
             prop["Proposal"]["code"], prop["Proposal"]["number"]
@@ -218,41 +232,81 @@ class ISPyBClient(HardwareObject):
             "is_inhouse": is_inhouse,
         }
 
-    def echo(self):
-        """Mockup for the echo method."""
+    def echo(self) -> bool:
+        """Returns true if the connection to the mx-lims-bff is successful
+
+        Returns
+        -------
+        bool
+            True if the connection is successful
+        """
         response = requests.get(f"{self.REST}/v1/proposal/echo")
         logging.getLogger("HWR").debug(f"response.status_code: {response.status_code}")
         if response.status_code == 200:
             return True
         return False
 
-    def get_proposal(self, proposal_code, proposal_number):
+    def get_proposal(self, proposal_code: str, proposal_number: int) -> dict:
         """
-        Returns the tuple (Proposal, Person, Laboratory, Session, Status).
+        Returns a dictionary containg Proposal, Person, Laboratory, Session and Status.
         Containing the data from the coresponding tables in the database
         the status of the database operations are returned in Status.
 
-        :param proposal_code: The proposal code
-        :type proposal_code: str
-        :param proposal_number: The proposal number
-        :type propsoal_number: int
+        Parameters
+        ----------
+        proposal_code : str
+            The proposal code
+        proposal_number : int
+            The proposal number
 
-        :returns: The dict (Proposal, Person, Laboratory, Sessions, Status).
+        Returns
+        -------
+        dict
+            A dictionary containing Proposal, Person, Laboratory, Sessions
+            and Status.
         :rtype: dict
         """
         response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
         return response.json()
 
-    def get_proposals_by_user(self, user_name):
+    def get_proposals_by_user(self, user_name: str) -> list[dict]:
+        """Gets proposal by user
+
+        Parameters
+        ----------
+        user_name : str
+            User name
+
+        Returns
+        -------
+        list[dict]
+            a list of proposals containing information about Proposal, Person,
+            Laboratory, Sessions and Status.
+        """
         response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
         return [response.json()]
 
-    def get_session_local_contact(self, session_id):
+    def get_session_local_contact(self, session_id: int) -> dict:
+        """Gets the session local contact
+
+        Parameters
+        ----------
+        session_id : int
+            The session id
+
+        Returns
+        -------
+        dict
+            A dictionary containing inforamtion about the Person
+            running the experiment
+        """
         response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
         return response.json()["Person"]
 
     def translate(self, code, what):
         """
+        TODO: Method not yet reviewed!!!
+
         Given a proposal code, returns the correct code to use in the GUI,
         or what to send to LDAP, user office database, or the ISPyB database.
         """
@@ -263,18 +317,22 @@ class ISPyBClient(HardwareObject):
 
         return translated
 
-    def isInhouseUser(self, proposal_code, proposal_number):
+    def isInhouseUser(self, proposal_code: str, proposal_number: str) -> bool:
         """
         Returns True if the proposal is considered to be a
         in-house user.
 
-        :param proposal_code:
-        :type proposal_code: str
+        Parameters
+        ----------
+        proposal_code : str
+            Proposal code
+        proposal_number : str
+            Proposal number
 
-        :param proposal_number:
-        :type proposal_number: str
-
-        :rtype: bool
+        Returns
+        -------
+        bool
+            True if the proposal is considered to be an in-house user
         """
         for proposal in self["inhouse"]:
             if proposal_code == proposal.code:
@@ -282,25 +340,29 @@ class ISPyBClient(HardwareObject):
                     return True
         return False
 
-    def store_data_collection(self, mx_collection, bl_config=None):
+    def store_data_collection(self, mx_collection: dict, bl_config: dict = None):
         """
+        TODO: Method not yet Implemented!!!
+
         Stores the data collection mx_collection, and the beamline setup
         if provided.
 
-        :param mx_collection: The data collection parameters.
-        :type mx_collection: dict
+        Parameters
+        ----------
+        mx_collection : dict
+            The data collection parameters.
+        bl_config : dict
+            The beamline setup.
 
-        :param bl_config: The beamline setup.
-        :type bl_config: dict
-
-        :returns: None
-
+        Returns
+        -------
+        None
         """
         logging.getLogger("HWR").debug(
-            "Data collection parameters stored " + "in ISPyB: %s" % str(mx_collection)
+            f"Data collection parameters stored: {str(mx_collection)}"
         )
         logging.getLogger("HWR").debug(
-            "Beamline setup stored in ISPyB: %s" % str(bl_config)
+            f"Beamline setup stored: {str(bl_config)}"
         )
 
         return None, None

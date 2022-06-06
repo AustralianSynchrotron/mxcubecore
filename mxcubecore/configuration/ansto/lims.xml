@@ -1,10 +1,10 @@
-<object class="ANSTO.ISPyBClient">
+<object class="ANSTO.LimsClient">
   <object hwrid="./lims_rest" role="lims_rest"/>
   <ws_root>
-    http://ispyb:8002
+    http://mx-lims-bff:8002
   </ws_root>
   <base_result_url>
-    http://ispyb:8002/results
+    http://mx-lims-bff:8002/results
   </base_result_url>
   <ws_username></ws_username>
   <ws_password></ws_password>
