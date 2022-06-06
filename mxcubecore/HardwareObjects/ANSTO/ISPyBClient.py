@@ -241,19 +241,15 @@ class ISPyBClient(HardwareObject):
         :rtype: dict
         """
         response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
-        logging.getLogger("HWR").debug(f"RESPONSE: {response.json()}")
         return response.json()
 
     def get_proposals_by_user(self, user_name):
-        return [self.__test_proposal]
+        response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
+        return [response.json()]
 
     def get_session_local_contact(self, session_id):
-        return {
-            "personId": 1,
-            "laboratoryId": 1,
-            "login": None,
-            "familyName": "operator on ID14eh1",
-        }
+        response = requests.get(f"{self.REST}/v1/proposal/get_proposal")
+        return response.json()["Person"]
 
     def translate(self, code, what):
         """
