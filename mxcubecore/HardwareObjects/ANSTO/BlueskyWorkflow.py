@@ -635,7 +635,6 @@ class BlueskyWorkflow(HardwareObject):
 
                 heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
                 self.sample_view.set_grid_data(sid, heat_and_crystal_map)
-                logging.getLogger("HWR").info("grid set successfully")
 
         self.state.value = "ON"
         self.mxcubecore_workflow_aborted = False

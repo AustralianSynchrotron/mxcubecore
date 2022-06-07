@@ -76,8 +76,9 @@ class LimsClient(HardwareObject):
         self.loginType = self.get_property("loginType") or "proposal"
         return self.loginType
 
-    def login(self, loginID: str, psd: str,
-              ldap_connection=None, create_session: bool = True) -> dict:
+    def login(
+        self, loginID: str, psd: str, ldap_connection=None, create_session: bool = True
+    ) -> dict:
         """Login method
 
         Parameters
@@ -361,9 +362,7 @@ class LimsClient(HardwareObject):
         logging.getLogger("HWR").debug(
             f"Data collection parameters stored: {str(mx_collection)}"
         )
-        logging.getLogger("HWR").debug(
-            f"Beamline setup stored: {str(bl_config)}"
-        )
+        logging.getLogger("HWR").debug(f"Beamline setup stored: {str(bl_config)}")
 
         return None, None
 
