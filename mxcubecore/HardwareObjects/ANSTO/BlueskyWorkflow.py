@@ -4,7 +4,7 @@ import os
 import pprint
 import time
 
-from gevent.event import Event
+import gevent
 import redis
 from bluesky_queueserver_api import BPlan
 
@@ -135,7 +135,7 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        self.gevent_event = Event()
+        self.gevent_event = gevent.event.Event()
         self._state.value = "ON"
         self.count = 0
 
@@ -218,6 +218,40 @@ class BlueskyWorkflow(HardwareObject):
         new_value = str(new_value)
         logging.getLogger("HWR").debug(f"{self.name()}: state changed to {new_value}")
         self.emit("stateChanged", (new_value,))
+
+    def open_dialog(self, dict_dialog: dict):
+        """Opens a dialog in the mxcube3 front end.
+
+        A dict_dialog example is defined in the workflow_dialog
+        method.
+
+        Parameters
+        ----------
+        dict_dialog : dict
+            A dictionary following the JSON schems
+
+        Returns
+        -------
+        dict
+            An updated dictionaty containing parameters passed by the user from
+            the mxcube3 frontend
+        """
+        if not self.gevent_event.is_set():
+            self.gevent_event.set()
+        self.emit("parametersNeeded", (dict_dialog,))
+        self.params_dict = dict_dialog
+
+        self._state.value = "OPEN"
+        self.gevent_event.clear()
+        logging.getLogger("HWR").debug(f"Opening {self._state.value}")
+        while not self.gevent_event.is_set():
+            self.gevent_event.wait()
+            time.sleep(0.1)
+
+        self._state.value = "ON"
+        logging.getLogger("HWR").debug(f"Parameters set {self._state.value}")
+
+        return self.params_dict
 
     def workflow_end(self) -> None:
         """
@@ -398,7 +432,10 @@ class BlueskyWorkflow(HardwareObject):
                 motor_x=self.motor_x, motor_z=self.motor_z,
                 sample_view=self.sample_view,
                 state=self._state, redis_connection=self.redis_connection,
-                gevent_event=self.gevent_event)
+                REST=self.REST)
+
+            updated_parameters = self.open_dialog(self.raster_workflow.raster_dialog())
+            self.raster_workflow.dialog_box_parameters = updated_parameters
 
             self.raster_workflow.run(metadata=acquisition_parameters)
 

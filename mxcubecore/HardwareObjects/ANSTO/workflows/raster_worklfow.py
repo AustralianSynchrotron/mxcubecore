@@ -8,7 +8,6 @@ import time
 import pickle
 # from mxcubecore.HardwareObjects.ANSTO.BlueskyWorkflow import State
 import redis
-from mxcubecore.BaseHardwareObjects import HardwareObject
 from gevent.event import Event
 from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
 from bluesky_queueserver_api.http.aio import REManagerAPI
@@ -16,18 +15,20 @@ from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
 
 
-class RasterWorflow(HardwareObject):
+class RasterWorflow:
     def __init__(
             self, motor_x: OphydEpicsMotor, motor_z: OphydEpicsMotor,
             sample_view: SampleView, state,
             redis_connection: redis.StrictRedis,
-            gevent_event: Event) -> None:
+            REST: str,
+            dialog_box_parameters: dict = None) -> None:
         self.motor_x = motor_x
         self.motor_z = motor_z
         self.sample_view = sample_view
-        self.state = state
+        self._state = state
         self.redis_connection = redis_connection
-        self.gevent_event = gevent_event
+        self.REST = REST
+        self.dialog_box_parameters = dialog_box_parameters
 
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
@@ -50,11 +51,10 @@ class RasterWorflow(HardwareObject):
         """
 
         # Open a workflow dialog box
-        test_dialog = self.workflow_dialog()
-        result = self.open_dialog(test_dialog)
-        logging.getLogger("HWR").debug(f"new parameters: {result}")
+        # These values are not yet used in the workflow
+        logging.getLogger("HWR").debug(f"new parameters: {self.dialog_box_parameters}")
 
-        self.state.value = "RUNNING"
+        self._state.value = "RUNNING"
 
         grid_list: list[Grid] = self.sample_view.get_grids()
         logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
@@ -175,7 +175,7 @@ class RasterWorflow(HardwareObject):
                 heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
                 self.sample_view.set_grid_data(sid, heat_and_crystal_map)
 
-        self.state.value = "ON"
+        self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
 
     def create_heatmap(
@@ -223,7 +223,7 @@ class RasterWorflow(HardwareObject):
 
         return result
 
-    def workflow_dialog(self):
+    def raster_dialog(self) -> dict:
         """
         Workflow dialog box. Returns a dictionary that follows a JSON schema
 
@@ -259,38 +259,6 @@ class RasterWorflow(HardwareObject):
         }
 
         return dialog
-
-    def open_dialog(self, dict_dialog: dict):
-        """Opens a dialog in the mxcube3 front end.
-
-        A dict_dialog example is defined in the workflow_dialog
-        method.
-
-        Parameters
-        ----------
-        dict_dialog : dict
-            A dictionary following the JSON schems
-
-        Returns
-        -------
-        dict
-            An updated dictionaty containing parameters passed by the user from
-            the mxcube3 frontend
-        """
-        if not self.gevent_event.is_set():
-            self.gevent_event.set()
-        self.emit("parametersNeeded", (dict_dialog,))
-        self.params_dict = dict_dialog
-
-        self.state.value = "OPEN"
-        self.gevent_event.clear()
-
-        while not self.gevent_event.is_set():
-            self.gevent_event.wait()
-            time.sleep(0.1)
-
-        self.state.value = "ON"
-        return self.params_dict
 
     async def run_bluesky_plan(self, item: BPlan) -> None:
         """Asynchronously run a bluesky plan
@@ -428,6 +396,34 @@ class RasterWorflow(HardwareObject):
         None
         """
         self._mxcubecore_workflow_aborted = value
+
+    @property
+    def dialog_box_parameters(self) -> dict:
+        """
+        Gets the dialog box parameters
+
+        Returns
+        -------
+        self._value: dcit
+            The dialog box parameters
+        """
+        return self._dialog_box_parameters
+
+    @dialog_box_parameters.setter
+    def dialog_box_parameters(self, value: dict) -> None:
+        """
+        Sets the updated dialog box parameters
+
+        Parameters
+        ----------
+        value : dict
+            The updated parameters for rastering
+
+        Returns
+        -------
+        None
+        """
+        self._dialog_box_parameters = value
 
     @property
     def state(self):
