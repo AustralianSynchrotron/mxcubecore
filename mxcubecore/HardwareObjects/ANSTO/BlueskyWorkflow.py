@@ -1,23 +1,19 @@
 import asyncio
 import logging
 import os
-import pickle
 import pprint
 import time
-from random import random
 
-import gevent
-import matplotlib.pyplot as plt
-import numpy as np
-import numpy.typing as npt
+from gevent.event import Event
 import redis
 from bluesky_queueserver_api import BPlan
-from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
-from bluesky_queueserver_api.http.aio import REManagerAPI
+
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
+from .workflows.raster_worklfow import RasterWorflow
+from mxcubecore.HardwareObjects.SampleView import SampleView
+from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
 
 
 class State(object):
@@ -139,20 +135,20 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        self.gevent_event = gevent.event.Event()
+        self.gevent_event = Event()
         self._state.value = "ON"
         self.count = 0
 
         hwr = HWR.get_hardware_repository()
-        _diffractometer = hwr.get_hardware_object("/diffractometer")
+        _diffractometer: Diffractometer = hwr.get_hardware_object("/diffractometer")
         self.motor_x = _diffractometer.alignment_x
         self.motor_z = _diffractometer.alignment_z
 
-        self.sample_view = hwr.get_hardware_object("/sample_view")
+        self.sample_view: SampleView = hwr.get_hardware_object("/sample_view")
 
         self.beamline = HWR.beamline
 
-        self.redis_con = redis.StrictRedis(self.redis_host, self.redis_port)
+        self.redis_connection = redis.StrictRedis(self.redis_host, self.redis_port)
 
     @property
     def state(self) -> State:
@@ -236,73 +232,6 @@ class BlueskyWorkflow(HardwareObject):
             self.gevent_event.set()
         self.state.value = "ON"
 
-    def open_dialog(self, dict_dialog: dict):
-        """Opens a dialog in the mxcube3 front end.
-
-        A dict_dialog example is defined in the test_workflow_dialog
-        method.
-
-        Parameters
-        ----------
-        dict_dialog : dict
-            A dictionary following the JSON schems
-
-        Returns
-        -------
-        dict
-            An updated dictionaty containing parameters passed by the user from
-            the mxcube3 frontend
-        """
-        if not self.gevent_event.is_set():
-            self.gevent_event.set()
-        self.emit("parametersNeeded", (dict_dialog,))
-        self.params_dict = dict_dialog
-
-        self.state.value = "OPEN"
-        self.gevent_event.clear()
-
-        while not self.gevent_event.is_set():
-            self.gevent_event.wait()
-            time.sleep(0.1)
-        return self.params_dict
-
-    def test_workflow_dialog(self):
-        """
-        Workflow dialog box. Returns a dictionary that follows a JSON schema
-
-        Returns
-        -------
-        dialog : dict
-            A dictionary following the JSON schema.
-        """
-        dialog = {
-            "properties": {
-                "name": {
-                    "title": "Task name",
-                    "type": "string",
-                    "minLength": 2,
-                    "default": "Test",
-                },
-                "description": {
-                    "title": "Description",
-                    "type": "string",
-                    "widget": "textarea",
-                },
-                "parameterA": {
-                    "title": "parameterA",
-                    "type": "number",
-                    "minimum": 0,
-                    "exclusiveMaximum": 100,
-                    "default": 20,
-                    "widget": "textarea",
-                },
-            },
-            "required": ["name", "parameterA"],
-            "dialogName": "Raster parameters",
-        }
-
-        return dialog
-
     def get_values_map(self):
         # TODO: this method is currently not used by start_bluesky_workflow
 
@@ -351,8 +280,8 @@ class BlueskyWorkflow(HardwareObject):
         if not self.gevent_event.is_set():
             self.gevent_event.set()
 
-        self.bluesky_plan_aborted = True
-        self.mxcubecore_workflow_aborted = True
+        self.raster_workflow.bluesky_plan_aborted = True
+        self.raster_workflow.mxcubecore_workflow_aborted = True
 
     def start(self, list_arguments: list[str]) -> None:
         """
@@ -420,7 +349,7 @@ class BlueskyWorkflow(HardwareObject):
         # NOTE: we are not using self.dict_parameters because
         # we do not need it (see the original implementation
         # of the BES workflow for more details)
-        self.list_arguments[3].split("RAW_DATA/")[1]
+        # self.list_arguments[3].split("RAW_DATA/")[1]
 
         if self.workflow_name == "Screen":
             # Run bluesky screening plan, we set the frame_time to 4 s
@@ -464,7 +393,14 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").debug(f"ACQ params: {acquisition_parameters}")
 
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.raster_workflow(metadata=acquisition_parameters)
+
+            self.raster_workflow = RasterWorflow(
+                motor_x=self.motor_x, motor_z=self.motor_z,
+                sample_view=self.sample_view,
+                state=self._state, redis_connection=self.redis_connection,
+                gevent_event=self.gevent_event)
+
+            self.raster_workflow.run(metadata=acquisition_parameters)
 
         else:
             logging.getLogger("HWR").error(
@@ -492,280 +428,3 @@ class BlueskyWorkflow(HardwareObject):
 
         self.state.value = "ON"
         self.mxcubecore_workflow_aborted = False
-
-    def raster_workflow(self, metadata: dict) -> None:
-        """
-        Executes a raster workflow. First a dialog box is opened, then a
-        bluesky plan is executed and finally the data produced by the
-        Sim-plon API is analysed and converted to a heatmap containing RGBA values.
-        The heatmap is displayed in MXCuBE.
-
-        Parameteres
-        -----------
-        metadata : dict
-            A metadata dictionary sent from mxcube to the bluesky queueserver
-
-        Returns
-        -------
-        None
-        """
-
-        # Open a workflow dialog box
-        test_dialog = self.test_workflow_dialog()
-        result = self.open_dialog(test_dialog)
-        logging.getLogger("HWR").debug(f"new parameters: {result}")
-
-        self.state.value = "RUNNING"
-
-        grid_list = self.sample_view.get_grids()
-        logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
-
-        for grid in grid_list:
-            sid = grid.id
-            num_cols = grid.num_cols
-            num_rows = grid.num_rows
-            beam_position = grid.beam_pos
-            # pixels_per_mm = grid.pixels_per_mm
-            pixels_per_mm = [292.87, 292.87]
-            screen_coordinate = grid.screen_coord
-            width = grid.width
-            height = grid.height
-
-            current_motor_x_value = self.motor_x.get_value()
-            current_motor_z_value = self.motor_z.get_value()
-
-            initial_motor_x_grid_value = (
-                current_motor_x_value
-                + (screen_coordinate[0] - beam_position[0]) / pixels_per_mm[0]
-            )
-            final_motor_x_grid_value = (
-                initial_motor_x_grid_value + width / pixels_per_mm[0]
-            )
-
-            initial_motor_z_grid_value = (
-                current_motor_z_value
-                + (screen_coordinate[1] - beam_position[1]) / pixels_per_mm[1]
-            )
-            final_motor_z_grid_value = (
-                initial_motor_z_grid_value + height / pixels_per_mm[1]
-            )
-
-            item = BPlan(
-                "grid_scan",
-                ["dectris_detector"],
-                "motor_z",
-                initial_motor_z_grid_value,
-                final_motor_z_grid_value,
-                num_rows,
-                "motor_x",
-                initial_motor_x_grid_value,
-                final_motor_x_grid_value,
-                num_cols,
-                md=metadata,
-            )
-
-            # Run bluesky plan
-            asyncio.run(self.run_bluesky_plan(item))
-
-            logging.getLogger("HWR").info(f"grid id: {sid}")
-            logging.getLogger("HWR").info(
-                f"number of columns and rows: {num_cols}, {num_rows}"
-            )
-
-            # Move back the motors to inital position.
-            # This step can be added as as part of the grid_scan plan, which will make
-            # the execution of the raster worflow faster
-            item = BPlan(
-                "mv", "motor_z", current_motor_z_value, "motor_x", current_motor_x_value
-            )
-            asyncio.run(self.run_bluesky_plan(item))
-
-            if not self.mxcubecore_workflow_aborted:
-                sequence_id = pickle.loads(
-                    self.redis_con.get(
-                        f"sample_id_{metadata['sample_id']}_bluesky_doc:start"
-                    )
-                )["sequence_id"]
-
-                number_of_spots_list = []
-
-                logging.getLogger("user_level_log").warning("Processing data...")
-                for i in range(1, num_rows * num_cols + 1):
-                    while True:
-                        time.sleep(0.01)
-                        try:
-                            number_of_spots = pickle.loads(
-                                self.redis_con.get(
-                                    f"sequence_id_{sequence_id}"
-                                    f"_sequence_number_{i}_zmq_stream"
-                                    ":number_of_spots"
-                                )
-                            )["number_of_spots"]
-                            number_of_spots_list.append(number_of_spots)
-                        except TypeError:
-                            continue
-                        break
-
-                logging.getLogger("user_level_log").warning("Data processing finished")
-
-                logging.getLogger("HWR").debug(
-                    f"number_of_spots_list {number_of_spots_list}"
-                )
-
-                heatmap_array = self.create_heatmap(
-                    num_cols, num_rows, number_of_spots_list
-                )
-
-                heatmap = {}
-                crystalmap = {}
-
-                if grid:
-                    for i in range(1, num_rows * num_cols + 1):
-                        heatmap[i] = [i, list(heatmap_array[i - 1])]
-
-                        crystalmap[i] = [
-                            i,
-                            [
-                                int(random() * 255),
-                                int(random() * 255),
-                                int(random() * 255),
-                                1,
-                            ],
-                        ]
-
-                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
-                self.sample_view.set_grid_data(sid, heat_and_crystal_map)
-
-        self.state.value = "ON"
-        self.mxcubecore_workflow_aborted = False
-
-    def create_heatmap(
-        self, num_cols: int, num_rows: int, number_of_spots_list: list[int]
-    ) -> npt.NDArray:
-        """
-        Creates a heatmap from the number of spots, number of columns
-        and number of rows of a grid.
-
-        Parameters
-        ----------
-        num_cols : int
-            Number of columns
-        num_rows : int
-            Number of rows
-        number_of_spots_list : list[int]
-            List containing number of spots
-
-        Returns
-        -------
-        result : npt.NDArray
-            An array containing a heatmap with rbga values
-        """
-
-        x = np.arange(num_cols)
-        y = np.arange(num_rows)
-
-        y, x = np.meshgrid(x, y)
-        z = np.array([number_of_spots_list]).reshape(num_rows, num_cols)
-
-        z_min = np.min(z)
-        z_max = np.max(z)
-
-        _, ax = plt.subplots()
-
-        heatmap = ax.pcolormesh(x, y, z, cmap="seismic", vmin=z_min, vmax=z_max)
-        heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
-
-        # The following could probably be done more efficiently without using for loops
-        result = np.ones(heatmap.shape)
-        for i in range(num_rows * num_cols):
-            for j in range(4):
-                if heatmap[i][j] != 1.0:
-                    result[i][j] = int(heatmap[i][j] * 255)
-
-        return result
-
-    async def run_bluesky_plan(self, item: BPlan) -> None:
-        """Asynchronously run a bluesky plan
-
-        Parameters
-        ----------
-        item : BPlan
-            A Bplan object containing information about a bluesky plan
-
-        Returns
-        -------
-        None
-        """
-        self.RM = REManagerAPI(http_server_uri=self.REST)
-
-        await self.RM.item_add(item)
-
-        await self.RM.environment_open()
-        await self.RM.wait_for_idle()
-
-        await self.RM.queue_start()
-
-        # Sleep for 1 second until the RM changes the status to executing_plan
-        time.sleep(1)
-        RM_status = await self.RM.status()
-        while RM_status["worker_environment_state"] == "executing_plan":
-            if not self.bluesky_plan_aborted:
-                time.sleep(0.2)
-                await asyncio.gather(
-                    self.update_frontend_values(self.motor_z),
-                    self.update_frontend_values(self.motor_x),
-                )
-
-                RM_status = await self.RM.status()
-            else:
-                # Abort bluesky plan
-                self.bluesky_plan_aborted = False
-
-                try:
-                    await self.RM.re_pause()
-                    await self.RM.wait_for_idle_or_paused()
-
-                    await self.RM.re_abort()
-                    await self.RM.wait_for_idle()
-                except (RequestFailedError, RequestError) as e:
-                    logging.getLogger("HWR").info(f"Abort error: {e}")
-
-                await self.RM.queue_clear()
-                await self.RM.wait_for_idle()
-
-                await asyncio.gather(
-                    self.update_frontend_values(self.motor_z),
-                    self.update_frontend_values(self.motor_x),
-                )
-
-                self.motor_x.update_state(self.motor_x.STATES.READY)
-                self.motor_z.update_state(self.motor_z.STATES.READY)
-                break
-        else:
-            self.motor_x.update_state(self.motor_x.STATES.READY)
-            self.motor_z.update_state(self.motor_z.STATES.READY)
-
-        await self.RM.wait_for_idle()
-
-        await self.RM.environment_close()
-        await self.RM.wait_for_idle()
-
-    async def update_frontend_values(self, motor: OphydEpicsMotor) -> None:
-        """
-        Update the motor values in the Web UI
-
-        Parameters
-        ----------
-        motor : OphydEpicsMotor
-            An OphydEpicsMotor object
-
-        Returns
-        -------
-        None
-        """
-        motor.update_specific_state(motor.SPECIFIC_STATES.MOVING)
-
-        motor.update_state(motor.STATES.BUSY)
-        current_value = motor.get_value()
-        motor.update_value(current_value)
-        await asyncio.sleep(0.01)
