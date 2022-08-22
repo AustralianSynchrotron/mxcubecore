@@ -4,7 +4,7 @@ import os
 import pprint
 import time
 
-import gevent
+from gevent.event import Event
 import redis
 from bluesky_queueserver_api import BPlan
 
@@ -135,7 +135,7 @@ class BlueskyWorkflow(HardwareObject):
         -------
         None
         """
-        self.gevent_event = gevent.event.Event()
+        self.gevent_event = Event()
         self._state.value = "ON"
         self.count = 0
 
@@ -219,7 +219,7 @@ class BlueskyWorkflow(HardwareObject):
         logging.getLogger("HWR").debug(f"{self.name()}: state changed to {new_value}")
         self.emit("stateChanged", (new_value,))
 
-    def open_dialog(self, dict_dialog: dict):
+    def open_dialog(self, dict_dialog: dict) -> dict:
         """Opens a dialog in the mxcube3 front end.
 
         A dict_dialog example is defined in the workflow_dialog
@@ -249,8 +249,6 @@ class BlueskyWorkflow(HardwareObject):
             time.sleep(0.1)
 
         self._state.value = "ON"
-        logging.getLogger("HWR").debug(f"Parameters set {self._state.value}")
-
         return self.params_dict
 
     def workflow_end(self) -> None:
@@ -314,8 +312,13 @@ class BlueskyWorkflow(HardwareObject):
         if not self.gevent_event.is_set():
             self.gevent_event.set()
 
-        self.raster_workflow.bluesky_plan_aborted = True
-        self.raster_workflow.mxcubecore_workflow_aborted = True
+        if self.workflow_name == "Raster":
+            self.raster_workflow.bluesky_plan_aborted = True
+            self.raster_workflow.mxcubecore_workflow_aborted = True
+
+        else:
+            raise NotImplementedError(
+                "Only Raster workflows can be aborted at the moment")
 
     def start(self, list_arguments: list[str]) -> None:
         """

@@ -5,6 +5,7 @@ import asyncio
 
 class AbstractBlueskyWorflow(ABC):
     def __init__(self, state, REST: str) -> None:
+
         super().__init__()
 
         self._state = state
