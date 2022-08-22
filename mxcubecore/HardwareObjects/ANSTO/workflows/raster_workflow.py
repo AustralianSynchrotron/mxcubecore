@@ -8,30 +8,30 @@ import time
 import pickle
 # from mxcubecore.HardwareObjects.ANSTO.BlueskyWorkflow import State
 import redis
-from gevent.event import Event
-from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
-from bluesky_queueserver_api.http.aio import REManagerAPI
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
+from .base_workflow import AbstractBlueskyWorflow
+from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
+from bluesky_queueserver_api.http.aio import REManagerAPI
+import time
+import logging
+from bluesky_queueserver_api import BPlan
 
 
-class RasterWorflow:
+class RasterWorflow(AbstractBlueskyWorflow):
     def __init__(
-            self, motor_x: OphydEpicsMotor, motor_z: OphydEpicsMotor,
-            sample_view: SampleView, state,
+            self, state, REST: str,
+            motor_x: OphydEpicsMotor, motor_z: OphydEpicsMotor,
             redis_connection: redis.StrictRedis,
-            REST: str,
-            dialog_box_parameters: dict = None) -> None:
+            sample_view: SampleView) -> None:
+        super().__init__(state, REST)
+
         self.motor_x = motor_x
         self.motor_z = motor_z
         self.sample_view = sample_view
         self._state = state
         self.redis_connection = redis_connection
         self.REST = REST
-        self.dialog_box_parameters = dialog_box_parameters
-
-        self.bluesky_plan_aborted = False
-        self.mxcubecore_workflow_aborted = False
 
     def run(self, metadata: dict) -> None:
         """
@@ -223,7 +223,7 @@ class RasterWorflow:
 
         return result
 
-    def raster_dialog(self) -> dict:
+    def dialog_box(self) -> dict:
         """
         Workflow dialog box. Returns a dictionary that follows a JSON schema
 
@@ -325,130 +325,3 @@ class RasterWorflow:
 
         await self.RM.environment_close()
         await self.RM.wait_for_idle()
-
-    async def update_frontend_values(self, motor: OphydEpicsMotor) -> None:
-        """
-        Update the motor values in the Web UI
-
-        Parameters
-        ----------
-        motor : OphydEpicsMotor
-            An OphydEpicsMotor object
-
-        Returns
-        -------
-        None
-        """
-        motor.update_specific_state(motor.SPECIFIC_STATES.MOVING)
-
-        motor.update_state(motor.STATES.BUSY)
-        current_value = motor.get_value()
-        motor.update_value(current_value)
-        await asyncio.sleep(0.01)
-
-    @property
-    def bluesky_plan_aborted(self) -> bool:
-        """
-        Gets the state of the bluesky plan
-
-        Returns
-        -------
-        self._value : bool
-            The state of the bluesky plan
-        """
-        return self._bluesky_plan_aborted
-
-    @bluesky_plan_aborted.setter
-    def bluesky_plan_aborted(self, value: bool) -> None:
-        """
-        Sets the state of the bluesky plan
-
-        Parameters
-        ----------
-        value : bool
-            The state of the bluesky plan
-
-        Returns
-        -------
-        None
-        """
-        self._bluesky_plan_aborted = value
-
-    @property
-    def mxcubecore_workflow_aborted(self) -> bool:
-        """
-        Gets the state of the bluesky plan
-
-        Returns
-        -------
-        self._value: bool
-            The state of the mxcubecore workflow
-        """
-        return self._mxcubecore_workflow_aborted
-
-    @mxcubecore_workflow_aborted.setter
-    def mxcubecore_workflow_aborted(self, value: bool) -> None:
-        """
-        Sets the state of the mxcubecore workflow
-
-        Returns
-        -------
-        None
-        """
-        self._mxcubecore_workflow_aborted = value
-
-    @property
-    def dialog_box_parameters(self) -> dict:
-        """
-        Gets the dialog box parameters
-
-        Returns
-        -------
-        self._value: dcit
-            The dialog box parameters
-        """
-        return self._dialog_box_parameters
-
-    @dialog_box_parameters.setter
-    def dialog_box_parameters(self, value: dict) -> None:
-        """
-        Sets the updated dialog box parameters
-
-        Parameters
-        ----------
-        value : dict
-            The updated parameters for rastering
-
-        Returns
-        -------
-        None
-        """
-        self._dialog_box_parameters = value
-
-    @property
-    def state(self):
-        """
-        Gets the state of the workflow
-
-        Returns
-        -------
-        _state : State
-            The state of the workflow
-        """
-        return self._state
-
-    @state.setter
-    def state(self, new_state) -> None:
-        """
-        Sets the state of the workflow
-
-        Parameters
-        ----------
-        new_state : State
-            The state of the workflow
-
-        Returns
-        -------
-        None
-        """
-        self._state = new_state

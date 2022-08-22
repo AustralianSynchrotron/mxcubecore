@@ -11,7 +11,7 @@ from bluesky_queueserver_api import BPlan
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
-from .workflows.raster_worklfow import RasterWorflow
+from .workflows.raster_workflow import RasterWorflow
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
 
@@ -434,7 +434,7 @@ class BlueskyWorkflow(HardwareObject):
                 state=self._state, redis_connection=self.redis_connection,
                 REST=self.REST)
 
-            updated_parameters = self.open_dialog(self.raster_workflow.raster_dialog())
+            updated_parameters = self.open_dialog(self.raster_workflow.dialog_box())
             self.raster_workflow.dialog_box_parameters = updated_parameters
 
             self.raster_workflow.run(metadata=acquisition_parameters)
