@@ -11,8 +11,6 @@ import redis
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
 from .base_workflow import AbstractBlueskyWorflow
-from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
-from bluesky_queueserver_api.http.aio import REManagerAPI
 import time
 import logging
 from bluesky_queueserver_api import BPlan
@@ -20,14 +18,13 @@ from bluesky_queueserver_api import BPlan
 
 class RasterWorflow(AbstractBlueskyWorflow):
     def __init__(
-            self, state, REST: str,
-            motor_x: OphydEpicsMotor, motor_z: OphydEpicsMotor,
+            self, motor_dict: dict[str, OphydEpicsMotor],
+            state, REST: str,
             redis_connection: redis.StrictRedis,
             sample_view: SampleView) -> None:
-        super().__init__(state, REST)
+        super().__init__(motor_dict, state, REST)
 
-        self.motor_x = motor_x
-        self.motor_z = motor_z
+        self.motor_dict = motor_dict
         self.sample_view = sample_view
         self._state = state
         self.redis_connection = redis_connection
@@ -70,8 +67,8 @@ class RasterWorflow(AbstractBlueskyWorflow):
             width = grid.width
             height = grid.height
 
-            current_motor_x_value = self.motor_x.get_value()
-            current_motor_z_value = self.motor_z.get_value()
+            current_motor_x_value = self.motor_dict["motor_x"].get_value()
+            current_motor_z_value = self.motor_dict["motor_z"].get_value()
 
             initial_motor_x_grid_value = (
                 current_motor_x_value
@@ -92,11 +89,11 @@ class RasterWorflow(AbstractBlueskyWorflow):
             item = BPlan(
                 "grid_scan",
                 ["dectris_detector"],
-                "motor_z",
+                "mxcube_motor_z",
                 initial_motor_z_grid_value,
                 final_motor_z_grid_value,
                 num_rows,
-                "motor_x",
+                "mxcube_motor_x",
                 initial_motor_x_grid_value,
                 final_motor_x_grid_value,
                 num_cols,
@@ -259,69 +256,3 @@ class RasterWorflow(AbstractBlueskyWorflow):
         }
 
         return dialog
-
-    async def run_bluesky_plan(self, item: BPlan) -> None:
-        """Asynchronously run a bluesky plan
-
-        Parameters
-        ----------
-        item : BPlan
-            A Bplan object containing information about a bluesky plan
-
-        Returns
-        -------
-        None
-        """
-        self.RM = REManagerAPI(http_server_uri=self.REST)
-
-        await self.RM.item_add(item)
-
-        await self.RM.environment_open()
-        await self.RM.wait_for_idle()
-
-        await self.RM.queue_start()
-
-        # Sleep for 1 second until the RM changes the status to executing_plan
-        time.sleep(1)
-        RM_status = await self.RM.status()
-        while RM_status["worker_environment_state"] == "executing_plan":
-            if not self.bluesky_plan_aborted:
-                time.sleep(0.2)
-                await asyncio.gather(
-                    self.update_frontend_values(self.motor_z),
-                    self.update_frontend_values(self.motor_x),
-                )
-
-                RM_status = await self.RM.status()
-            else:
-                # Abort bluesky plan
-                self.bluesky_plan_aborted = False
-
-                try:
-                    await self.RM.re_pause()
-                    await self.RM.wait_for_idle_or_paused()
-
-                    await self.RM.re_abort()
-                    await self.RM.wait_for_idle()
-                except (RequestFailedError, RequestError) as e:
-                    logging.getLogger("HWR").info(f"Abort error: {e}")
-
-                await self.RM.queue_clear()
-                await self.RM.wait_for_idle()
-
-                await asyncio.gather(
-                    self.update_frontend_values(self.motor_z),
-                    self.update_frontend_values(self.motor_x),
-                )
-
-                self.motor_x.update_state(self.motor_x.STATES.READY)
-                self.motor_z.update_state(self.motor_z.STATES.READY)
-                break
-        else:
-            self.motor_x.update_state(self.motor_x.STATES.READY)
-            self.motor_z.update_state(self.motor_z.STATES.READY)
-
-        await self.RM.wait_for_idle()
-
-        await self.RM.environment_close()
-        await self.RM.wait_for_idle()

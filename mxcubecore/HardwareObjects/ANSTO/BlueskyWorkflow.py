@@ -150,6 +150,13 @@ class BlueskyWorkflow(HardwareObject):
 
         self.redis_connection = redis.StrictRedis(self.redis_host, self.redis_port)
 
+        self.raster_workflow = RasterWorflow(
+            motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
+            sample_view=self.sample_view,
+            state=self._state, redis_connection=self.redis_connection,
+            REST=self.REST
+        )
+
     @property
     def state(self) -> State:
         """
@@ -404,12 +411,6 @@ class BlueskyWorkflow(HardwareObject):
             self.screen_and_collect_worklow(item)
 
         elif self.workflow_name == "Collect":
-            item = BPlan(
-                "scan_plan",
-                detector="dectris_detector",
-                detector_configuration={"frame_time": 8, "nimages": 2},
-                metadata={"username": "Jane Doe", "sample_id": "test"},
-            )
 
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
@@ -420,7 +421,6 @@ class BlueskyWorkflow(HardwareObject):
                 acquisition_type="default_ansto"
             ).as_dict()
             acquisition_parameters["wavelenght"] = self.beamline.energy.get_wavelength()
-
             acquisition_parameters["sample_id"] = "test"
 
             # Bluesky does not like empty strigs
@@ -428,14 +428,7 @@ class BlueskyWorkflow(HardwareObject):
                 acquisition_parameters["comments"] = None
 
             logging.getLogger("HWR").debug(f"ACQ params: {acquisition_parameters}")
-
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-
-            self.raster_workflow = RasterWorflow(
-                motor_x=self.motor_x, motor_z=self.motor_z,
-                sample_view=self.sample_view,
-                state=self._state, redis_connection=self.redis_connection,
-                REST=self.REST)
 
             updated_parameters = self.open_dialog(self.raster_workflow.dialog_box())
             self.raster_workflow.dialog_box_parameters = updated_parameters
@@ -447,24 +440,3 @@ class BlueskyWorkflow(HardwareObject):
                 f"Workflow {self.workflow_name} not supported"
             )
             self.state.value = "ON"
-
-    def screen_and_collect_worklow(self, item: BPlan) -> None:
-        """
-        Executes a screen and collect worflow by calling the bluesky queueserver
-
-        Parameters
-        ----------
-        item : Bplan
-            A Bplan object containing information about a bluesky plan
-
-        Returns
-        -------
-        None
-        """
-        self.state.value = "RUNNING"
-
-        # Run bluesky plan
-        asyncio.run(self.run_bluesky_plan(item))
-
-        self.state.value = "ON"
-        self.mxcubecore_workflow_aborted = False
