@@ -9,8 +9,34 @@ import logging
 
 
 class AbstractBlueskyWorflow(ABC):
+    """Abstract class to run Bluesky plans as part of
+    an mxcubecore workflow. Classes created using this asbtract class are meant
+    to be used by the BlueskyWorklow class.
+
+    Attributes
+    ----------
+    dialog_box_parameters : dict
+        A dictionary containing updated parameters that are passed onto a
+        bluesky plan
+    bluesky_plan_aborted : bool
+        True if a bluesky plan is aborted, False otherwise. False, by default.
+    mxcubecore_workflow_aborted : bool
+        True if a mxcubecore worfklow is aborted, False otherwise. False, by default.
+    """
+
     def __init__(self, motor_dict: dict[str, OphydEpicsMotor],
                  state, REST: str) -> None:
+        """
+        Parameters
+        ----------
+        motor_dict : dict[str, OphydEpicsMotor]
+            A dictionary containing OphydEpicsMotors
+        state : State
+            The state of the BlueskyWorkflow class. See the State class in
+            BlueskyWorflow for details
+        REST : str
+            The URL of the bluesky-queueserver-api
+        """
 
         super().__init__()
         self.motor_dict = motor_dict
@@ -54,7 +80,7 @@ class AbstractBlueskyWorflow(ABC):
 
     async def update_frontend_values(self, motor: OphydEpicsMotor) -> None:
         """
-        Update the motor values in the Web UI
+        Update the motor values in the Mxcube frontend
 
         Parameters
         ----------
@@ -75,7 +101,10 @@ class AbstractBlueskyWorflow(ABC):
         await asyncio.sleep(0.01)
 
     async def run_bluesky_plan(self, item: BPlan) -> None:
-        """Asynchronously run a bluesky plan
+        """
+        Asynchronously run a bluesky plan. The motor's positions
+        are updated in the Mxcube3 frontend while the bluesky
+        plan is executing.
 
         Parameters
         ----------

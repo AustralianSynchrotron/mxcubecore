@@ -12,6 +12,7 @@ from bluesky_queueserver_api import BPlan
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from .workflows.raster_workflow import RasterWorflow
+from .workflows.collect_workflow import Collect
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
 
@@ -155,6 +156,11 @@ class BlueskyWorkflow(HardwareObject):
             sample_view=self.sample_view,
             state=self._state, redis_connection=self.redis_connection,
             REST=self.REST
+        )
+
+        self.collect_workflow = Collect(
+            motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
+            state=self._state, REST=self.REST
         )
 
     @property
@@ -413,8 +419,10 @@ class BlueskyWorkflow(HardwareObject):
         elif self.workflow_name == "Collect":
 
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-
-            self.screen_and_collect_worklow(item)
+            updated_parameters = self.open_dialog(self.collect_workflow.dialog_box())
+            # TODO get sample id from Sample Changer
+            updated_parameters["sample_id"] = "test"
+            self.collect_workflow.run(metadata=updated_parameters)
 
         elif self.workflow_name == "Raster":
             acquisition_parameters = self.beamline.get_default_acquisition_parameters(
@@ -431,6 +439,10 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
             updated_parameters = self.open_dialog(self.raster_workflow.dialog_box())
+
+            # TODO: remove dialog_box_parameters from astract class,
+            # does not accomplish anything, instead append updated parameters
+            # to acquisition parameters
             self.raster_workflow.dialog_box_parameters = updated_parameters
 
             self.raster_workflow.run(metadata=acquisition_parameters)

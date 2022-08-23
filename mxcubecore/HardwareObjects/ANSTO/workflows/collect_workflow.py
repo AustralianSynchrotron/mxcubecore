@@ -1,20 +1,28 @@
 from .base_workflow import AbstractBlueskyWorflow
 import asyncio
 from bluesky_queueserver_api import BPlan
+from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 
 
-class ScreenAndCollect(AbstractBlueskyWorflow):
-    def __init__(self, state, REST: str) -> None:
-        super().__init__(state, REST)
-
-    def screen_and_collect_worklow(self, item: BPlan) -> None:
+class Collect(AbstractBlueskyWorflow):
+    def __init__(self, motor_dict: dict[str, OphydEpicsMotor],
+                 state, REST: str) -> None:
         """
-        Executes a screen and collect worflow by calling the bluesky queueserver
-
         Parameters
         ----------
-        item : Bplan
-            A Bplan object containing information about a bluesky plan
+        motor_dict : dict[str, OphydEpicsMotor]
+            A dictionary containing OphydEpicsMotors
+        state : State
+            The state of the BlueskyWorkflow class. See the State class in
+            BlueskyWorflow for details
+        REST : str
+            The URL of the bluesky-queueserver-api
+        """
+        super().__init__(motor_dict, state, REST)
+
+    def run(self, metadata: dict) -> None:
+        """
+        Executes a screen and collect worflow by calling the bluesky queueserver
 
         Returns
         -------
@@ -27,7 +35,7 @@ class ScreenAndCollect(AbstractBlueskyWorflow):
             "scan_plan",
             detector="dectris_detector",
             detector_configuration={"frame_time": 8, "nimages": 2},
-            metadata={"username": "Jane Doe", "sample_id": "test"},
+            metadata=metadata,
         )
         asyncio.run(self.run_bluesky_plan(item))
 

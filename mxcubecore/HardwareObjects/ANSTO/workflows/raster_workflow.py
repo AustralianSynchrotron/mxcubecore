@@ -22,6 +22,21 @@ class RasterWorflow(AbstractBlueskyWorflow):
             state, REST: str,
             redis_connection: redis.StrictRedis,
             sample_view: SampleView) -> None:
+        """
+        Parameters
+        ----------
+        motor_dict : dict[str, OphydEpicsMotor]
+            A dictionary containing OphydEpicsMotors
+        state : State
+            The state of the BlueskyWorkflow class. See the State class in
+            BlueskyWorflow for details
+        REST : str
+            The URL of the bluesky-queueserver-api
+        redis_connection : redis.StrictRedis
+            The redis connection
+        sample_view : SampleView
+            The SampleView hardware object
+        """
         super().__init__(motor_dict, state, REST)
 
         self.motor_dict = motor_dict
@@ -112,7 +127,8 @@ class RasterWorflow(AbstractBlueskyWorflow):
             # This step can be added as as part of the grid_scan plan, which will make
             # the execution of the raster worflow faster
             item = BPlan(
-                "mv", "motor_z", current_motor_z_value, "motor_x", current_motor_x_value
+                "mv", "mxcube_motor_z", current_motor_z_value, "mxcube_motor_x",
+                current_motor_x_value
             )
             asyncio.run(self.run_bluesky_plan(item))
 
