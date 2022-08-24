@@ -20,4 +20,4 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with MXCuBE. If not, see <https://www.gnu.org/licenses/>.
 
-See Sphinx [documentation](https://s3-api.asci.synchrotron.org.au/sphinx-docs/mx3/mx-schemas-library/main/index.html) for details.
+See Sphinx [documentation](https://s3-api.asci.synchrotron.org.au/sphinx-docs/mx3/mxcubecore/main/index.html) for details.
