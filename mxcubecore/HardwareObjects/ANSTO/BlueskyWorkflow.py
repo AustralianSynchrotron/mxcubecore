@@ -1,20 +1,19 @@
-import asyncio
 import logging
 import os
 import pprint
 import time
 
-from gevent.event import Event
 import redis
 from bluesky_queueserver_api import BPlan
-
+from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
-from .workflows.raster_workflow import RasterWorflow
-from .workflows.collect_workflow import Collect
-from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
+from mxcubecore.HardwareObjects.SampleView import SampleView
+
+from .workflows.collect_workflow import Collect
+from .workflows.raster_workflow import RasterWorflow
 
 
 class State(object):
@@ -154,13 +153,15 @@ class BlueskyWorkflow(HardwareObject):
         self.raster_workflow = RasterWorflow(
             motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
             sample_view=self.sample_view,
-            state=self._state, redis_connection=self.redis_connection,
-            REST=self.REST
+            state=self._state,
+            redis_connection=self.redis_connection,
+            REST=self.REST,
         )
 
         self.collect_workflow = Collect(
             motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
-            state=self._state, REST=self.REST
+            state=self._state,
+            REST=self.REST,
         )
 
     @property
@@ -331,7 +332,8 @@ class BlueskyWorkflow(HardwareObject):
 
         else:
             raise NotImplementedError(
-                "Only Raster workflows can be aborted at the moment")
+                "Only Raster workflows can be aborted at the moment"
+            )
 
     def start(self, list_arguments: list[str]) -> None:
         """
@@ -421,7 +423,7 @@ class BlueskyWorkflow(HardwareObject):
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             updated_parameters = self.open_dialog(self.collect_workflow.dialog_box())
             # TODO get sample id from Sample Changer
-            updated_parameters["sample_id"] = "test"
+            updated_parameters["sample_id"] = "my_sample"
             self.collect_workflow.run(metadata=updated_parameters)
 
         elif self.workflow_name == "Raster":
@@ -429,7 +431,9 @@ class BlueskyWorkflow(HardwareObject):
                 acquisition_type="default_ansto"
             ).as_dict()
             acquisition_parameters["wavelenght"] = self.beamline.energy.get_wavelength()
-            acquisition_parameters["sample_id"] = "test"
+
+            # TODO get sample id from Sample Changer
+            acquisition_parameters["sample_id"] = "my_sample"
 
             # Bluesky does not like empty strigs
             if not acquisition_parameters["comments"]:
@@ -440,11 +444,8 @@ class BlueskyWorkflow(HardwareObject):
 
             updated_parameters = self.open_dialog(self.raster_workflow.dialog_box())
 
-            # TODO: remove dialog_box_parameters from astract class,
-            # does not accomplish anything, instead append updated parameters
-            # to acquisition parameters
-            self.raster_workflow.dialog_box_parameters = updated_parameters
-
+            # TODO: add updated parameterse to the acquisition parameters once we
+            # add useful data in the dialog box
             self.raster_workflow.run(metadata=acquisition_parameters)
 
         else:

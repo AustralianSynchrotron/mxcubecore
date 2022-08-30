@@ -1,12 +1,16 @@
-from .base_workflow import AbstractBlueskyWorflow
 import asyncio
+
 from bluesky_queueserver_api import BPlan
+
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
+
+from .base_workflow import AbstractBlueskyWorflow
 
 
 class Collect(AbstractBlueskyWorflow):
-    def __init__(self, motor_dict: dict[str, OphydEpicsMotor],
-                 state, REST: str) -> None:
+    def __init__(
+        self, motor_dict: dict[str, OphydEpicsMotor], state, REST: str
+    ) -> None:
         """
         Parameters
         ----------

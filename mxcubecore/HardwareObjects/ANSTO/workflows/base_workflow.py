@@ -1,31 +1,31 @@
-from abc import ABC, abstractmethod
-from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 import asyncio
+import logging
+import time
+from abc import ABC, abstractmethod
+
+from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
 from bluesky_queueserver_api.http.aio import REManagerAPI
-from bluesky_queueserver_api import BPlan
-import time
-import logging
+
+from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 
 
 class AbstractBlueskyWorflow(ABC):
     """Abstract class to run Bluesky plans as part of
-    an mxcubecore workflow. Classes created using this asbtract class are meant
+    an mxcubecore workflow. Classes created using this abstract class are meant
     to be used by the BlueskyWorklow class.
 
     Attributes
     ----------
-    dialog_box_parameters : dict
-        A dictionary containing updated parameters that are passed onto a
-        bluesky plan
     bluesky_plan_aborted : bool
         True if a bluesky plan is aborted, False otherwise. False, by default.
     mxcubecore_workflow_aborted : bool
         True if a mxcubecore worfklow is aborted, False otherwise. False, by default.
     """
 
-    def __init__(self, motor_dict: dict[str, OphydEpicsMotor],
-                 state, REST: str) -> None:
+    def __init__(
+        self, motor_dict: dict[str, OphydEpicsMotor], state, REST: str
+    ) -> None:
         """
         Parameters
         ----------
@@ -43,7 +43,6 @@ class AbstractBlueskyWorflow(ABC):
         self._state = state
         self.REST = REST
 
-        self.dialog_box_parameters = None
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
 
@@ -52,7 +51,6 @@ class AbstractBlueskyWorflow(ABC):
         """
         Runs a bluesky plan
         """
-        pass
 
     @abstractmethod
     def dialog_box(self) -> dict:
@@ -95,8 +93,6 @@ class AbstractBlueskyWorflow(ABC):
 
         motor.update_state(motor.STATES.BUSY)
         current_value = motor.get_value()
-        logging.getLogger("HWR").debug(
-            f"updating {motor.name()} to {current_value}.. {motor}")
         motor.update_value(current_value)
         await asyncio.sleep(0.01)
 
@@ -215,34 +211,6 @@ class AbstractBlueskyWorflow(ABC):
         None
         """
         self._mxcubecore_workflow_aborted = value
-
-    @property
-    def dialog_box_parameters(self) -> dict:
-        """
-        Gets the dialog box parameters
-
-        Returns
-        -------
-        self._value : dict
-            The dialog box parameters
-        """
-        return self._dialog_box_parameters
-
-    @dialog_box_parameters.setter
-    def dialog_box_parameters(self, value: dict) -> None:
-        """
-        Sets the updated dialog box parameters
-
-        Parameters
-        ----------
-        value : dict
-            The updated dialog box parameters
-
-        Returns
-        -------
-        None
-        """
-        self._dialog_box_parameters = value
 
     @property
     def state(self):

@@ -1,27 +1,29 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import numpy.typing as npt
-import logging
-from bluesky_queueserver_api import BPlan
 import asyncio
+import logging
 import time
-import pickle
-# from mxcubecore.HardwareObjects.ANSTO.BlueskyWorkflow import State
+from typing import Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.typing as npt
 import redis
+from bluesky_queueserver_api import BPlan
+
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
+
 from .base_workflow import AbstractBlueskyWorflow
-import time
-import logging
-from bluesky_queueserver_api import BPlan
 
 
 class RasterWorflow(AbstractBlueskyWorflow):
     def __init__(
-            self, motor_dict: dict[str, OphydEpicsMotor],
-            state, REST: str,
-            redis_connection: redis.StrictRedis,
-            sample_view: SampleView) -> None:
+        self,
+        motor_dict: dict[str, OphydEpicsMotor],
+        state,
+        REST: str,
+        redis_connection: redis.StrictRedis,
+        sample_view: SampleView,
+    ) -> None:
         """
         Parameters
         ----------
@@ -61,10 +63,6 @@ class RasterWorflow(AbstractBlueskyWorflow):
         -------
         None
         """
-
-        # Open a workflow dialog box
-        # These values are not yet used in the workflow
-        logging.getLogger("HWR").debug(f"new parameters: {self.dialog_box_parameters}")
 
         self._state.value = "RUNNING"
 
@@ -127,36 +125,31 @@ class RasterWorflow(AbstractBlueskyWorflow):
             # This step can be added as as part of the grid_scan plan, which will make
             # the execution of the raster worflow faster
             item = BPlan(
-                "mv", "mxcube_motor_z", current_motor_z_value, "mxcube_motor_x",
-                current_motor_x_value
+                "mv",
+                "mxcube_motor_z",
+                current_motor_z_value,
+                "mxcube_motor_x",
+                current_motor_x_value,
             )
             asyncio.run(self.run_bluesky_plan(item))
 
             if not self.mxcubecore_workflow_aborted:
-                sequence_id = pickle.loads(
-                    self.redis_connection.get(
-                        f"sample_id_{metadata['sample_id']}_bluesky_doc:start"
-                    )
-                )["sequence_id"]
-
                 number_of_spots_list = []
-
+                count = 0
+                last_id = 0
+                grid_size = num_cols * num_rows
                 logging.getLogger("user_level_log").warning("Processing data...")
-                for i in range(1, num_rows * num_cols + 1):
-                    while True:
-                        time.sleep(0.01)
-                        try:
-                            number_of_spots = pickle.loads(
-                                self.redis_connection.get(
-                                    f"sequence_id_{sequence_id}"
-                                    f"_sequence_number_{i}_zmq_stream"
-                                    ":number_of_spots"
-                                )
-                            )["number_of_spots"]
-                            number_of_spots_list.append(number_of_spots)
-                        except TypeError:
-                            continue
-                        break
+                while count < grid_size:
+                    try:
+                        data, last_id = self.read_and_delete_message_from_redis_streams(
+                            topic=metadata["sample_id"], id=last_id
+                        )
+                        count += 1
+                        logging.getLogger("HWR").info(data)
+                        number_of_spots_list.append(int(data[b"number_of_spots"]))
+                    except IndexError:
+                        pass
+                    time.sleep(0.05)
 
                 logging.getLogger("user_level_log").warning("Data processing finished")
 
@@ -190,6 +183,38 @@ class RasterWorflow(AbstractBlueskyWorflow):
 
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
+
+    def read_and_delete_message_from_redis_streams(
+        self, topic: str, id: Union[bytes, int]
+    ) -> tuple[dict, bytes]:
+        """
+        Reads pickled messages from a redis stream
+
+        Parameters
+        ----------
+        topic : str
+            Name of the topic of the redis stream, aka, the sample_id
+        id : Union[bytes, int]
+            id of the topic in bytes or int format
+
+        Returns
+        -------
+        data, last_id : tuple[dict, bytes]
+            A tuple containing a dictionary and the last id.
+            The diction ary has the following keys:
+            b'type', b'number_of_spots', b'image_id', and b'sequence_id'
+        """
+        response = self.redis_connection.xread({topic: id}, count=1)
+
+        # Extract key and messages from the response
+        _, messages = response[0]
+
+        # Update last_id and store messages data
+        last_id, data = messages[0]
+
+        # Remove dataset from redis
+        self.redis_connection.xdel(topic, last_id)
+        return data, last_id
 
     def create_heatmap(
         self, num_cols: int, num_rows: int, number_of_spots_list: list[int]
