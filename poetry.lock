@@ -1161,7 +1161,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "pims"
-version = "0.6.0"
+version = "0.6.1"
 description = "Python Image Sequence"
 category = "main"
 optional = false
@@ -2031,7 +2031,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "7295bc2277a6648102cf0ddd204d7f4da2aafeaae112ffc88a3bae5f4aba6bd7"
+content-hash = "81982e96826fc719b399f9b2257ebd18df308da90405d933873421a8f3194969"
 
 [metadata.files]
 aioredis = [
