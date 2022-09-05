@@ -1161,7 +1161,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "pims"
-version = "0.6.1"
+version = "0.6.0"
 description = "Python Image Sequence"
 category = "main"
 optional = false
@@ -1589,18 +1589,20 @@ numpy = ">=1.17.3,<1.25.0"
 
 [[package]]
 name = "setuptools-scm"
-version = "6.3.2"
+version = "7.0.5"
 description = "the blessed package to manage your versions by scm tags"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 
 [package.dependencies]
 packaging = ">=20.0"
 tomli = ">=1.0.0"
+typing-extensions = "*"
 
 [package.extras]
-toml = ["setuptools (>=42)", "tomli (>=1.0.0)"]
+test = ["pytest (>=6.2)", "virtualenv (>20)"]
+toml = ["setuptools (>=42)"]
 
 [[package]]
 name = "six"
@@ -2031,7 +2033,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "81982e96826fc719b399f9b2257ebd18df308da90405d933873421a8f3194969"
+content-hash = "ddb288f55122fd5a59955bbcaa53e961a808f3a6b8acf2bffe504a55ca79030b"
 
 [metadata.files]
 aioredis = [
