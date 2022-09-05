@@ -16,6 +16,8 @@ from .base_workflow import AbstractBlueskyWorflow
 
 
 class RasterWorflow(AbstractBlueskyWorflow):
+    """Bluesky Raster Workflow"""
+
     def __init__(
         self,
         motor_dict: dict[str, OphydEpicsMotor],
@@ -54,8 +56,8 @@ class RasterWorflow(AbstractBlueskyWorflow):
         Sim-plon API is analysed and converted to a heatmap containing RGBA values.
         The heatmap is displayed in MXCuBE.
 
-        Parameteres
-        -----------
+        Parameters
+        ----------
         metadata : dict
             A metadata dictionary sent from mxcube to the bluesky queueserver
 

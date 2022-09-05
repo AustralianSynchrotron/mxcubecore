@@ -6,3 +6,4 @@ ANSTO
    :caption: Reference:
 
    hardware_objects/HardwareObjects
+   workflows/workflows
