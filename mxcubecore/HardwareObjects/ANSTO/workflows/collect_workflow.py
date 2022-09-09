@@ -35,13 +35,10 @@ class Collect(AbstractBlueskyWorflow):
         self.state.value = "RUNNING"
 
         # Run bluesky plan
-        # TODO: Currently we can only process the minimalInsulinMX1 master file
-        # that containes 30 frames, therefore we set "nimages": 30.
-        # We should update this once we can process any masterfile
         item = BPlan(
             "scan_plan",
             detector="dectris_detector",
-            detector_configuration={"frame_time": 8, "nimages": 30},
+            detector_configuration={"frame_time": 8},
             metadata=metadata,
         )
         asyncio.run(self.run_bluesky_plan(item))
