@@ -48,7 +48,7 @@ python-versions = "*"
 
 [[package]]
 name = "as-acquisition-library"
-version = "0.4.0"
+version = "0.4.1"
 description = "Library for common devices, plans, and tools for beamline control and acquisition."
 category = "main"
 optional = false
@@ -57,7 +57,7 @@ python-versions = ">=3.9,<4.0"
 [package.dependencies]
 as-redis-signal = ">=1.0.0,<2.0.0"
 bluesky = ">=1.8.2,<2.0.0"
-ophyd = ">=1.6.3,<2.0.0"
+ophyd = ">=1.6.1,<2.0.0"
 pyepics = ">=3.5.1,<4.0.0"
 
 [package.source]
@@ -984,14 +984,14 @@ numpy = ">=1.9.0"
 
 [[package]]
 name = "mx3-beamline-library"
-version = "0.1.7"
+version = "0.1.8"
 description = "Ophyd devices and bluesky plans."
 category = "main"
 optional = false
 python-versions = ">=3.9,<4.0"
 
 [package.dependencies]
-as-acquisition-library = "0.4.0"
+as-acquisition-library = "0.4.1"
 as-redis-signal = {git = "https://bitbucket.synchrotron.org.au/scm/ec/as-redis-signal.git", rev = "main"}
 bluesky = "1.8.3"
 ophyd = "1.6.4"
@@ -2033,7 +2033,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "801bbe52927d5cb3d3f3b887786308bfa21885dd1c6b0fae3494a31b02c0a4cb"
+content-hash = "96b1b0af8d322a6eba43cddfc5cdec00abb1039a1756cb5a400f9548b35ad157"
 
 [metadata.files]
 aioredis = []
@@ -2041,8 +2041,8 @@ alabaster = []
 anyio = []
 appdirs = []
 as-acquisition-library = [
-    {file = "as-acquisition-library-0.4.0.tar.gz", hash = "sha256:ee81f174aaa6ef4dab835ad0f544ad38723a8223ccc39727ea346b1ce03d6f85"},
-    {file = "as_acquisition_library-0.4.0-py3-none-any.whl", hash = "sha256:2e683d55a85b36b27cae8a1dfb91efd3b23d8a0d5193f84c7f32282920f806b6"},
+    {file = "as-acquisition-library-0.4.1.tar.gz", hash = "sha256:97f3d6e79a713697cd84515996b11eb2411f70a6e412cf906445d3e3aa2843b6"},
+    {file = "as_acquisition_library-0.4.1-py3-none-any.whl", hash = "sha256:5645fc709097d22581e92c7db1e33b85d9c0591398d3d8e8fc7c1e58fd0ff6aa"},
 ]
 as-redis-signal = []
 asciitree = []
@@ -2113,8 +2113,8 @@ mongoquery = []
 msgpack = []
 msgpack-numpy = []
 mx3-beamline-library = [
-    {file = "mx3-beamline-library-0.1.7.tar.gz", hash = "sha256:4eeaaaf111e67808a3726dd174e650ed83e3cebf4d2cbb855f8b610e9ec03a9a"},
-    {file = "mx3_beamline_library-0.1.7-py3-none-any.whl", hash = "sha256:300d50d4dda972c0050a76590518dd78badd3db64dbad988c506d4f3b2ded679"},
+    {file = "mx3-beamline-library-0.1.8.tar.gz", hash = "sha256:1d5d049c71886e0839c1196ab048d5636d4aa2ba573827110f2b4b2ff5195b62"},
+    {file = "mx3_beamline_library-0.1.8-py3-none-any.whl", hash = "sha256:429687b17435bcd877a62b92067a58ae16a6635ac2e8ccc1e636b31e62c1aed6"},
 ]
 mypy-extensions = []
 networkx = []
