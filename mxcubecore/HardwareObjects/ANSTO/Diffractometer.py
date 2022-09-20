@@ -62,13 +62,13 @@ class Diffractometer(GenericDiffractometer):
 
         self.cancel_centring_methods = {}
         self.current_motor_positions = {
-            "phiy": 41.0,
+            "phiy": 0,
             "sampx": 0.0,
             "sampy": -1.0,
-            "zoom": 8.53,
-            "focus": 42,
-            "phiz": 2,
-            "phi": 311.1,
+            "zoom": 1,
+            "focus": 0,
+            "phiz": 0,
+            "phi": 0,
             "kappa": 11,
             "kappa_phi": 22.0,
         }

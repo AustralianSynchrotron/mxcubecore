@@ -1,8 +1,8 @@
 <device class="ANSTO.OphydEpicsMotor">
   <exporter_address>10.244.101.10</exporter_address>
   <username>PhiY</username>
-  <motor_name>m2</motor_name>
-  <device_name>mxcube_sim_PVs</device_name>
+  <motor_name>y</motor_name>
+  <device_name>testrig</device_name>
   <GUIstep>0.1</GUIstep>
   <unit>1e-1</unit>
 </device>
