@@ -40,17 +40,24 @@ class Diffractometer(GenericDiffractometer):
         """
 
         GenericDiffractometer.init(self)
-        # Bzoom: 1.86 um/pixel (or 0.00186 mm/pixel) at minimum zoom
-        self.x_calib = 0.00186
-        self.y_calib = 0.00186
         self.last_centred_position = [318, 238]
 
-        self.pixels_per_mm_x = 1.0 / self.x_calib
-        self.pixels_per_mm_y = 1.0 / self.y_calib
         if "zoom" not in self.motor_hwobj_dict.keys():
             self.motor_hwobj_dict["zoom"] = self.get_object_by_role("zoom")
         if "focus" not in self.motor_hwobj_dict.keys():
             self.motor_hwobj_dict["focus"] = self.get_object_by_role("focus")
+
+        self.x_calib = ast.literal_eval(
+            self.motor_hwobj_dict["zoom"].mm_per_pixel_x).get(
+            "0"
+        )
+        self.y_calib = ast.literal_eval(
+            self.motor_hwobj_dict["zoom"].mm_per_pixel_y).get(
+            "0"
+        )
+        self.pixels_per_mm_x = 1.0 / self.x_calib
+        self.pixels_per_mm_y = 1.0 / self.y_calib
+
         calibration_x = self.zoom.get_property("mm_per_pixel_x")
         calibration_y = self.zoom.get_property("mm_per_pixel_y")
         self.zoom_calibration_x = ast.literal_eval(calibration_x)
