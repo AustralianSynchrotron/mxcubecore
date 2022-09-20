@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 from abc import ABC, abstractmethod
+from os import environ
 
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
@@ -21,6 +22,8 @@ class AbstractBlueskyWorflow(ABC):
         True if a bluesky plan is aborted, False otherwise. False, by default.
     mxcubecore_workflow_aborted : bool
         True if a mxcubecore worfklow is aborted, False otherwise. False, by default.
+    authorization_key : str
+        Authorization key used to access the bluesky-queueserver-api
     """
 
     def __init__(
@@ -45,6 +48,7 @@ class AbstractBlueskyWorflow(ABC):
 
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
+        self.authorization_key = environ.get("AUTHORIZATION_KEY", "666")
 
     @abstractmethod
     def run(self) -> None:
@@ -112,6 +116,7 @@ class AbstractBlueskyWorflow(ABC):
         None
         """
         self.RM = REManagerAPI(http_server_uri=self.REST)
+        self.RM.set_authorization_key(api_key=self.authorization_key)
 
         await self.RM.item_add(item)
 

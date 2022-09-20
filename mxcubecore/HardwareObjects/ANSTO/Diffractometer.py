@@ -48,13 +48,11 @@ class Diffractometer(GenericDiffractometer):
             self.motor_hwobj_dict["focus"] = self.get_object_by_role("focus")
 
         self.x_calib = ast.literal_eval(
-            self.motor_hwobj_dict["zoom"].mm_per_pixel_x).get(
-            "0"
-        )
+            self.motor_hwobj_dict["zoom"].mm_per_pixel_x
+        ).get("0")
         self.y_calib = ast.literal_eval(
-            self.motor_hwobj_dict["zoom"].mm_per_pixel_y).get(
-            "0"
-        )
+            self.motor_hwobj_dict["zoom"].mm_per_pixel_y
+        ).get("0")
         self.pixels_per_mm_x = 1.0 / self.x_calib
         self.pixels_per_mm_y = 1.0 / self.y_calib
 
