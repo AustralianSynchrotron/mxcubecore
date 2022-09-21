@@ -52,18 +52,20 @@ version = "0.4.1"
 description = "Library for common devices, plans, and tools for beamline control and acquisition."
 category = "main"
 optional = false
-python-versions = ">=3.9,<4.0"
+python-versions = "^3.9"
+develop = false
 
 [package.dependencies]
-as-redis-signal = ">=1.0.0,<2.0.0"
-bluesky = ">=1.8.2,<2.0.0"
-ophyd = ">=1.6.1,<2.0.0"
-pyepics = ">=3.5.1,<4.0.0"
+as-redis-signal = "^1.0.0"
+bluesky = "^1.8.2"
+ophyd = "^1.6.1"
+pyepics = "^3.5.1"
 
 [package.source]
-type = "legacy"
-url = "https://pypi.asci.synchrotron.org.au/asci/dev/+simple"
-reference = "asci-dev"
+type = "git"
+url = "https://bitbucket.synchrotron.org.au/scm/ec/as-acquisition-library.git"
+reference = "main"
+resolved_reference = "94412cbd448fc0d2bc9c538795d66e5249afde6d"
 
 [[package]]
 name = "as-redis-signal"
@@ -984,14 +986,14 @@ numpy = ">=1.9.0"
 
 [[package]]
 name = "mx3-beamline-library"
-version = "0.1.10"
+version = "0.1.11"
 description = "Ophyd devices and bluesky plans."
 category = "main"
 optional = false
 python-versions = ">=3.9,<4.0"
 
 [package.dependencies]
-as-acquisition-library = "0.4.1"
+as-acquisition-library = {git = "https://bitbucket.synchrotron.org.au/scm/ec/as-acquisition-library.git", rev = "main"}
 as-redis-signal = {git = "https://bitbucket.synchrotron.org.au/scm/ec/as-redis-signal.git", rev = "main"}
 bluesky = "1.10.0"
 ophyd = "1.7.0"
@@ -2034,17 +2036,14 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "7611158671eeb8c25ec97eb6f95e0aeaf6f4af18dc86abf5b8c2a17f7ff1b994"
+content-hash = "293ae2a970824da5eba06a68d66113bf156eb4028717baec78ec3dc60a0b8fb1"
 
 [metadata.files]
 aioredis = []
 alabaster = []
 anyio = []
 appdirs = []
-as-acquisition-library = [
-    {file = "as-acquisition-library-0.4.1.tar.gz", hash = "sha256:97f3d6e79a713697cd84515996b11eb2411f70a6e412cf906445d3e3aa2843b6"},
-    {file = "as_acquisition_library-0.4.1-py3-none-any.whl", hash = "sha256:5645fc709097d22581e92c7db1e33b85d9c0591398d3d8e8fc7c1e58fd0ff6aa"},
-]
+as-acquisition-library = []
 as-redis-signal = []
 asciitree = []
 astroid = []
@@ -2114,8 +2113,8 @@ mongoquery = []
 msgpack = []
 msgpack-numpy = []
 mx3-beamline-library = [
-    {file = "mx3-beamline-library-0.1.10.tar.gz", hash = "sha256:f67418d6083039d313470695ac4fdf7fe70ac35faf43dccc9b0457940f20ae58"},
-    {file = "mx3_beamline_library-0.1.10-py3-none-any.whl", hash = "sha256:a11bb47a9d1263414282f552a6c2323ae41ab805fbd84b76106539ad2b536833"},
+    {file = "mx3-beamline-library-0.1.11.tar.gz", hash = "sha256:d76adc2645908a4a7e157efe91836a92f3c2ca0bed73df19f740bd34086e028e"},
+    {file = "mx3_beamline_library-0.1.11-py3-none-any.whl", hash = "sha256:876518f0c06638d79d193f2ef3bb7b9833492e661b579368d9475ce4441e096f"},
 ]
 mypy-extensions = []
 networkx = []
