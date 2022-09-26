@@ -46,7 +46,7 @@ scipy = "1.8.0"
 click = "8.0.1"
 bluesky-queueserver-api = "0.0.8"
 zarr = "2.10.3"
-mx3-beamline-library = "0.1.11"
+mx3-beamline-library = "0.1.12"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "2.17.0"
