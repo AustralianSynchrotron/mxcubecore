@@ -104,11 +104,11 @@ class RasterWorflow(AbstractBlueskyWorflow):
             item = BPlan(
                 "grid_scan",
                 ["dectris_detector"],
-                "mxcube_motor_z",
+                "motor_z",
                 initial_motor_z_grid_value,
                 final_motor_z_grid_value,
                 num_rows,
-                "mxcube_motor_x",
+                "motor_x",
                 initial_motor_x_grid_value,
                 final_motor_x_grid_value,
                 num_cols,
@@ -128,9 +128,9 @@ class RasterWorflow(AbstractBlueskyWorflow):
             # the execution of the raster worflow faster
             item = BPlan(
                 "mv",
-                "mxcube_motor_z",
+                "motor_z",
                 current_motor_z_value,
-                "mxcube_motor_x",
+                "motor_x",
                 current_motor_x_value,
             )
             asyncio.run(self.run_bluesky_plan(item))

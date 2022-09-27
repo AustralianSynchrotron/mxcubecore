@@ -48,7 +48,9 @@ class AbstractBlueskyWorflow(ABC):
 
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
-        self.authorization_key = environ.get("AUTHORIZATION_KEY", "666")
+        self.authorization_key = environ.get(
+            "QSERVER_HTTP_SERVER_SINGLE_USER_API_KEY", "666"
+        )
 
     @abstractmethod
     def run(self) -> None:

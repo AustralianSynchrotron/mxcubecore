@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mxcubecore"
-version = "0.2.13"
+version = "0.2.14"
 description = "Core libraries for the MXCuBE application"
 authors = ["The MXCuBE developers <mxcube@mxcube.org>"]
 maintainers = ["ANSTO, Clayton Synchrotron"]
@@ -46,7 +46,7 @@ scipy = "1.8.0"
 click = "8.0.1"
 bluesky-queueserver-api = "0.0.8"
 zarr = "2.10.3"
-mx3-beamline-library = "0.1.12"
+mx3-beamline-library = "0.1.13"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "2.17.0"
