@@ -5,24 +5,25 @@ from bluesky_queueserver_api import BPlan
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 
 from .base_workflow import AbstractBlueskyWorflow
+from bluesky_queueserver_api.http.aio import REManagerAPI
 
 
 class Collect(AbstractBlueskyWorflow):
     def __init__(
-        self, motor_dict: dict[str, OphydEpicsMotor], state, REST: str
+        self, motor_dict: dict[str, OphydEpicsMotor], state
     ) -> None:
         """
         Parameters
         ----------
+        run_engine : REManagerAPI
+            The bluesky run engine. We assume that the run engine has been opened
         motor_dict : dict[str, OphydEpicsMotor]
             A dictionary containing OphydEpicsMotors
         state : State
             The state of the BlueskyWorkflow class. See the State class in
             BlueskyWorflow for details
-        REST : str
-            The URL of the bluesky-queueserver-api
         """
-        super().__init__(motor_dict, state, REST)
+        super().__init__(motor_dict, state)
 
     def run(self, metadata: dict) -> None:
         """

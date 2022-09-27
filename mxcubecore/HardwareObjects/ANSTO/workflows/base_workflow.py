@@ -22,32 +22,37 @@ class AbstractBlueskyWorflow(ABC):
         True if a bluesky plan is aborted, False otherwise. False, by default.
     mxcubecore_workflow_aborted : bool
         True if a mxcubecore worfklow is aborted, False otherwise. False, by default.
+    REST : str
+        URL address of the mx-bluesky-queueserver api set via an ENV variable
     authorization_key : str
-        Authorization key used to access the bluesky-queueserver-api
+        Authorization key used to access the bluesky-queueserver-api set via an ENV
+        variable
     """
 
     def __init__(
-        self, motor_dict: dict[str, OphydEpicsMotor], state, REST: str
-    ) -> None:
+            self, motor_dict: dict[str, OphydEpicsMotor],
+            state) -> None:
         """
         Parameters
         ----------
+        run_engine : REManagerAPI
+            The bluesky run engine. We assume that the run engine has been opened
         motor_dict : dict[str, OphydEpicsMotor]
             A dictionary containing OphydEpicsMotors
         state : State
             The state of the BlueskyWorkflow class. See the State class in
             BlueskyWorflow for details
-        REST : str
-            The URL of the bluesky-queueserver-api
         """
 
         super().__init__()
         self.motor_dict = motor_dict
         self._state = state
-        self.REST = REST
 
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
+        self.REST = environ.get(
+            "BLUESKY_QUEUESERVER_API", "http://bluesky-queueserver-rest:8080"
+        )
         self.authorization_key = environ.get(
             "QSERVER_HTTP_SERVER_SINGLE_USER_API_KEY", "666"
         )
@@ -122,8 +127,9 @@ class AbstractBlueskyWorflow(ABC):
 
         await self.RM.item_add(item)
 
-        await self.RM.environment_open()
-        await self.RM.wait_for_idle()
+        # NOTE: We do not open the run engine here anymore here because we open it
+        # when the BlueskyWorkflow HO is initialized. This makes the
+        # execution of a bluesky plan faster
 
         await self.RM.queue_start()
 
@@ -163,9 +169,6 @@ class AbstractBlueskyWorflow(ABC):
             for motor in self.motor_dict.values():
                 motor.update_state(motor.STATES.READY)
 
-        await self.RM.wait_for_idle()
-
-        await self.RM.environment_close()
         await self.RM.wait_for_idle()
 
     @property

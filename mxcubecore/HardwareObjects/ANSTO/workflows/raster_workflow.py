@@ -13,6 +13,7 @@ from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
 
 from .base_workflow import AbstractBlueskyWorflow
+from bluesky_queueserver_api.http.aio import REManagerAPI
 
 
 class RasterWorflow(AbstractBlueskyWorflow):
@@ -22,7 +23,6 @@ class RasterWorflow(AbstractBlueskyWorflow):
         self,
         motor_dict: dict[str, OphydEpicsMotor],
         state,
-        REST: str,
         redis_connection: redis.StrictRedis,
         sample_view: SampleView,
     ) -> None:
@@ -34,20 +34,16 @@ class RasterWorflow(AbstractBlueskyWorflow):
         state : State
             The state of the BlueskyWorkflow class. See the State class in
             BlueskyWorflow for details
-        REST : str
-            The URL of the bluesky-queueserver-api
         redis_connection : redis.StrictRedis
             The redis connection
         sample_view : SampleView
             The SampleView hardware object
         """
-        super().__init__(motor_dict, state, REST)
-
+        super().__init__(motor_dict, state)
         self.motor_dict = motor_dict
         self.sample_view = sample_view
         self._state = state
         self.redis_connection = redis_connection
-        self.REST = REST
 
     def run(self, metadata: dict) -> None:
         """
@@ -116,6 +112,7 @@ class RasterWorflow(AbstractBlueskyWorflow):
             )
 
             # Run bluesky plan
+            logging.getLogger("HWR").info(f"item {item}")
             asyncio.run(self.run_bluesky_plan(item))
 
             logging.getLogger("HWR").info(f"grid id: {sid}")

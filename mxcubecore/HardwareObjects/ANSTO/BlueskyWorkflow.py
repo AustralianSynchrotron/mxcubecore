@@ -5,6 +5,10 @@ import time
 
 import redis
 from bluesky_queueserver_api import BPlan
+from bluesky_queueserver_api.http.aio import REManagerAPI
+from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
+import asyncio
+
 from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
@@ -92,6 +96,8 @@ class BlueskyWorkflow(HardwareObject):
         True if a bluesky plan has been aborted, False otherwise
     mxcubecore_workflow_aborted : bool
         True if a mxcubecore workflow has been aborted, False otherwise
+    authorization_key : str
+        The mx-bluesky-queueserver-api authorization key
     """
 
     def __init__(self, name: str) -> None:
@@ -117,6 +123,9 @@ class BlueskyWorkflow(HardwareObject):
         self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "redis")
         self.bluesky_plan_aborted = False
         self.mxcubecore_workflow_aborted = False
+        self.authorization_key = os.environ.get(
+            "QSERVER_HTTP_SERVER_SINGLE_USER_API_KEY", "666"
+        )
 
     def _init(self) -> None:
         """
@@ -150,19 +159,42 @@ class BlueskyWorkflow(HardwareObject):
 
         self.redis_connection = redis.StrictRedis(self.redis_host, self.redis_port)
 
+        run_engine = asyncio.run(self.open_bluesky_run_engine())
         self.raster_workflow = RasterWorflow(
             motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
             sample_view=self.sample_view,
             state=self._state,
             redis_connection=self.redis_connection,
-            REST=self.REST,
         )
 
         self.collect_workflow = Collect(
             motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
             state=self._state,
-            REST=self.REST,
         )
+
+    async def open_bluesky_run_engine(self) -> REManagerAPI:
+        """
+        Opens the bluesky run engine and sets the authorization key
+
+        Returns
+        -------
+        REManagerAPI
+            The bluesky Run Engine
+        """
+        run_engine = None
+        try:
+            run_engine = REManagerAPI(http_server_uri=self.REST)
+            run_engine.set_authorization_key(api_key=self.authorization_key)
+        except RequestError:
+            logging.getLogger("HWR").info("mx-bluesky-queueserver-api not available")
+
+        try:
+            await run_engine.environment_open()
+            await run_engine.wait_for_idle()
+            logging.getLogger("HWR").info("Run engine opened successfully")
+        except (RequestFailedError, RequestError):
+            logging.getLogger("HWR").info("Run engine is already open")
+        return run_engine
 
     @property
     def state(self) -> State:
@@ -384,6 +416,9 @@ class BlueskyWorkflow(HardwareObject):
         if self.workflow_name is not None:
             self.state.value = "RUNNING"
             time0 = time.time()
+            logging.getLogger("HWR").info(
+                f"Starting bluesky workflow"
+            )
             self.start_bluesky_workflow()
             time1 = time.time()
             logging.getLogger("HWR").info(
