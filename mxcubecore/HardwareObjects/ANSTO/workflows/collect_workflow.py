@@ -5,13 +5,10 @@ from bluesky_queueserver_api import BPlan
 from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 
 from .base_workflow import AbstractBlueskyWorflow
-from bluesky_queueserver_api.http.aio import REManagerAPI
 
 
 class Collect(AbstractBlueskyWorflow):
-    def __init__(
-        self, motor_dict: dict[str, OphydEpicsMotor], state
-    ) -> None:
+    def __init__(self, motor_dict: dict[str, OphydEpicsMotor], state) -> None:
         """
         Parameters
         ----------
@@ -22,6 +19,10 @@ class Collect(AbstractBlueskyWorflow):
         state : State
             The state of the BlueskyWorkflow class. See the State class in
             BlueskyWorflow for details
+
+        Returns
+        -------
+        None
         """
         super().__init__(motor_dict, state)
 

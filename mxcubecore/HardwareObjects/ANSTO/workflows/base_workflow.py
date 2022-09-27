@@ -29,19 +29,19 @@ class AbstractBlueskyWorflow(ABC):
         variable
     """
 
-    def __init__(
-            self, motor_dict: dict[str, OphydEpicsMotor],
-            state) -> None:
+    def __init__(self, motor_dict: dict[str, OphydEpicsMotor], state) -> None:
         """
         Parameters
         ----------
-        run_engine : REManagerAPI
-            The bluesky run engine. We assume that the run engine has been opened
         motor_dict : dict[str, OphydEpicsMotor]
             A dictionary containing OphydEpicsMotors
         state : State
             The state of the BlueskyWorkflow class. See the State class in
             BlueskyWorflow for details
+
+        Returns
+        -------
+        None
         """
 
         super().__init__()

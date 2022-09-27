@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import pprint
@@ -5,10 +6,8 @@ import time
 
 import redis
 from bluesky_queueserver_api import BPlan
-from bluesky_queueserver_api.http.aio import REManagerAPI
 from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
-import asyncio
-
+from bluesky_queueserver_api.http.aio import REManagerAPI
 from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
@@ -159,7 +158,7 @@ class BlueskyWorkflow(HardwareObject):
 
         self.redis_connection = redis.StrictRedis(self.redis_host, self.redis_port)
 
-        run_engine = asyncio.run(self.open_bluesky_run_engine())
+        asyncio.run(self.open_bluesky_run_engine())
         self.raster_workflow = RasterWorflow(
             motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
             sample_view=self.sample_view,
@@ -416,9 +415,7 @@ class BlueskyWorkflow(HardwareObject):
         if self.workflow_name is not None:
             self.state.value = "RUNNING"
             time0 = time.time()
-            logging.getLogger("HWR").info(
-                f"Starting bluesky workflow"
-            )
+            logging.getLogger("HWR").info("Starting bluesky workflow")
             self.start_bluesky_workflow()
             time1 = time.time()
             logging.getLogger("HWR").info(

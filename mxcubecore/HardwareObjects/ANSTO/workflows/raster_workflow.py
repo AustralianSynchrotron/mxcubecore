@@ -13,7 +13,6 @@ from mxcubecore.HardwareObjects.ANSTO.OphydEpicsMotor import OphydEpicsMotor
 from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
 
 from .base_workflow import AbstractBlueskyWorflow
-from bluesky_queueserver_api.http.aio import REManagerAPI
 
 
 class RasterWorflow(AbstractBlueskyWorflow):
@@ -38,6 +37,10 @@ class RasterWorflow(AbstractBlueskyWorflow):
             The redis connection
         sample_view : SampleView
             The SampleView hardware object
+
+        Returns
+        -------
+        None
         """
         super().__init__(motor_dict, state)
         self.motor_dict = motor_dict
