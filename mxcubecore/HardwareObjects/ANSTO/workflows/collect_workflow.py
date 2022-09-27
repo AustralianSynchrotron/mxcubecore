@@ -12,8 +12,6 @@ class Collect(AbstractBlueskyWorflow):
         """
         Parameters
         ----------
-        run_engine : REManagerAPI
-            The bluesky run engine. We assume that the run engine has been opened
         motor_dict : dict[str, OphydEpicsMotor]
             A dictionary containing OphydEpicsMotors
         state : State
