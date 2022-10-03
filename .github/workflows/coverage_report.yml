@@ -25,6 +25,24 @@ jobs:
 
     - name: Pytest coverage comment
       id: coverage-comment
-      uses: coroo/pytest-coverage-commentator@v1.0.2
+      uses: MishaKav/pytest-coverage-comment@v1.1.35
       with:
-        pytest-coverage: pytest-coverage.txt
+        pytest-coverage-path: ./pytest-coverage.txt
+        junitxml-path: ./pytest.xml
+        pytest-xml-coverage-path: ./coverage.xml
+
+    - name: Check the output coverage
+      run: |
+        echo "Coverage Percantage - ${{ steps.coverageComment.outputs.coverage }}"
+        echo "Coverage Color - ${{ steps.coverageComment.outputs.color }}"
+        echo "Coverage Html - ${{ steps.coverageComment.outputs.coverageHtml }}"
+        echo "Summary Report - ${{ steps.coverageComment.outputs.summaryReport }}"
+
+        echo "Coverage Warnings - ${{ steps.coverageComment.outputs.warnings }}"
+
+        echo "Coverage Errors - ${{ steps.coverageComment.outputs.errors }}"
+        echo "Coverage Failures - ${{ steps.coverageComment.outputs.failures }}"
+        echo "Coverage Skipped - ${{ steps.coverageComment.outputs.skipped }}"
+        echo "Coverage Tests - ${{ steps.coverageComment.outputs.tests }}"
+        echo "Coverage Time - ${{ steps.coverageComment.outputs.time }}"
+        echo "Not Success Test Info - ${{ steps.coverageComment.outputs.notSuccessTestInfo }}"
