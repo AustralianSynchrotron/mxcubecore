@@ -22,7 +22,7 @@ jobs:
     - name: Run and write pytest
       run: |
         set -o pipefail
-        poetry run pytest --cov=src/name --cov-report term-missing | tee pytest-coverage.txt
+        poetry run pytest --cov=mxcubecore --cov-report term-missing | tee pytest-coverage.txt
 
     - name: Pytest coverage comment
       id: coverage-comment
