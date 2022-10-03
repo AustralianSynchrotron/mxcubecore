@@ -22,13 +22,14 @@ jobs:
     - name: Run and write pytest
       run: |
         set -o pipefail
-        poetry run pytest --cov=mxcubecore --cov-report term-missing | tee pytest-coverage.txt
+        poetry run pytest --cov=mxcubecore --junitxml=pytest.xml --cov-report=term-missing:skip-covered | tee pytest-coverage.txt
 
     - name: Pytest coverage comment
       id: coverage-comment
       uses: MishaKav/pytest-coverage-comment@v1.1.35
       with:
         pytest-coverage-path: ./pytest-coverage.txt
+        junitxml-path: ./pytest.xml
 
     - name: Check the output coverage
       if: ${{ github.event_name == 'push' }}
