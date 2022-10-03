@@ -34,12 +34,8 @@ jobs:
     - name: Check the output coverage
       run: |
         echo "Coverage Percantage - ${{ steps.coverage-comment.outputs.coverage }}"
-        echo "Coverage Color - ${{ steps.coverage-comment.outputs.color }}"
-        echo "Coverage Html - ${{ steps.coverage-comment.outputs.coverageHtml }}"
         echo "Summary Report - ${{ steps.coverage-comment.outputs.summaryReport }}"
-
         echo "Coverage Warnings - ${{ steps.coverage-comment.outputs.warnings }}"
-
         echo "Coverage Errors - ${{ steps.coverage-comment.outputs.errors }}"
         echo "Coverage Failures - ${{ steps.coverage-comment.outputs.failures }}"
         echo "Coverage Skipped - ${{ steps.coverage-comment.outputs.skipped }}"
