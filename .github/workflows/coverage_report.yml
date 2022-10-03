@@ -1,19 +1,37 @@
-name: Update Coverage on Readme
+name: Test Coverage
 on:
   push:
 jobs:
-  update-coverage-on-readme:
+  pytest-coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        with:
-          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
-          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+    - uses: actions/checkout@v3
 
-      - name: Pytest coverage report
-        if: ${{ github.ref == 'refs/heads/main' }}
-        id: coverageComment
-        uses: MishaKav/pytest-coverage-comment@main
-        with:
-          hide-comment: true
-          pytest-coverage-path: ./data/pytest-coverage_4.txt
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.10
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry config virtualenvs.create false
+        poetry install
+
+    - name: Run and write pytest
+      run: |
+        set -o pipefail
+        poetry run pytest --cov=src/name --cov-report term-missing | tee pytest-coverage.txt
+
+    - name: Pytest coverage comment
+      id: coverage-comment
+      uses: MishaKav/pytest-coverage-comment@v1.1.35
+      with:
+        pytest-coverage-path: ./pytest-coverage.txt
+
+    - name: Check the output coverage
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        echo "Coverage Report - ${{ steps.coverage-comment.outputs.coverage }}"
+        echo "Coverage Color - ${{ steps.coverage-comment.outputs.color }}"
