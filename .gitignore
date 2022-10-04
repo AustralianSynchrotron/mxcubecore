@@ -5,6 +5,5 @@
 *swo
 .coverage
 
-poetry.lock
 .venv/
 .vscode/
