@@ -128,7 +128,7 @@ def load_from_yaml(configuration_file, role, _container=None, _table=None):
             if _container:
                 msg0 = "Error importing class"
                 class_name = class_import
-                print (
+                print(
                     "Encountered Exception (continuing):\n%s" % traceback.format_exc()
                 )
             else:
@@ -142,7 +142,7 @@ def load_from_yaml(configuration_file, role, _container=None, _table=None):
         except Exception:
             if _container:
                 msg0 = "Error instantiating %s" % cls.__name__
-                print (
+                print(
                     "Encountered Exception (continuing):\n%s" % traceback.format_exc()
                 )
             else:

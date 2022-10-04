@@ -7,8 +7,8 @@
     <channel type="tine" name="intensRange" tinename="/P13/BCUIntensity/Device0">CurrentRange.set</channel-->
 
     <channel type="tine" name="chanPitchScanStatus" tinename="/P13/p13mono.cdi/PitchScanStat" attach="datachange">PitchScanStat</channel>
- 
-    <!-- 
+
+    <!--
     <channel type="tine" name="chanQBPMAr" tinename="/P13/p13mono.cdi/QBPMAr">RECV</channel>
     <channel type="tine" name="chanPitchPositionAr" tinename="/P13/p13mono.cdi/VPitchAr">RECV</channel>
     <channel type="tine" name="chanEncAr" tinename="/P13/p13mono.cdi/EncAr">RECV</channel>

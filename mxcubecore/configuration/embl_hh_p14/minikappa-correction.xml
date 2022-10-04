@@ -1,6 +1,6 @@
 <device class="MiniKappaCorrection">
    <kappa>
-      <!-- ORIGINAL MD3 Minikappa direction>direction>[0.287606,0.287606,-0.913545]</direction --> 
+      <!-- ORIGINAL MD3 Minikappa direction>direction>[0.287606,0.287606,-0.913545]</direction -->
       <!-- ORIGINAL MD3 Minikappa  position>[-0.083453947345,-0.15278782895,-0.22471079235]</position-->
       <direction>[0.0,-0.40673767,-0.913545]</direction>
       <!--position>[-0.131891604025, -0.73538824445, 0.08983292865]</position-->

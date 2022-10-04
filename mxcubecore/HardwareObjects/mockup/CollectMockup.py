@@ -144,7 +144,7 @@ class CollectMockup(AbstractCollect):
         """
         Descript. :
         """
-        AbstractCollect.stop_collect(self) 
+        AbstractCollect.stop_collect(self)
         self.aborted_by_user = True
 
     @task
@@ -219,4 +219,4 @@ class CollectMockup(AbstractCollect):
         HWR.beamline.detector.distance.set_value(detector_distance)
 
     def get_undulators_gaps(self):
-        return {"u29" : 10}
+        return {"u29": 10}

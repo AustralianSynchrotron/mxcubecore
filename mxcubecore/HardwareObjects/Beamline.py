@@ -102,10 +102,10 @@ class Beamline(ConfiguredObject):
 
         # bool By default run processing of (certain?)data collections?
         self.run_offline_processing = False
-        
+
         # bool By default run online processing (characterization/mesh?)
         self.run_online_processing = False
-        
+
         self.offline_processing_methods = []
 
         self.online_processing_methods = []

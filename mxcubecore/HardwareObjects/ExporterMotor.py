@@ -45,7 +45,7 @@ class ExporterMotor(AbstractMotor):
 
     def __init__(self, name):
         AbstractMotor.__init__(self, name)
-        #self.username = None
+        # self.username = None
         self._motor_pos_suffix = None
         self._motor_state_suffix = None
         self._exporter = None
@@ -248,4 +248,3 @@ class ExporterMotor(AbstractMotor):
             (float): the maximim speed [unit/s].
         """
         return self._exporter.execute("getMotorMaxSpeed", (self.actuator_name,))
-

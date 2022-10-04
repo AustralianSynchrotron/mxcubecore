@@ -16,7 +16,7 @@
           <motor>
  	    <motorName>In</motorName>
             <motorsGroup>slitsMotors</motorsGroup>
-            <reference>1230240</reference>	          
+            <reference>1230240</reference>
 	  </motor>
        </motors>
     </gapH>

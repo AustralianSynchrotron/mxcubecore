@@ -24,7 +24,7 @@ Pull requests (PR's) are used to submitt new code to the repository, it helps de
   ```bash
   git remote add upstream https://github.com/mxcube/HardwareRepository.git
   ```
-  
+
 A branching model based on the popular [gitlfow model](https://nvie.com/posts/a-successful-git-branching-model/) is used inorder to be able to provide versioned releases and at the same time continue seperate development. The stable releases are kept on the [**master**](https://github.com/mxcube/mxcubecore/tree/master) branch and the development takes place on [**develop**](https://github.com/mxcube/mxcubecore/tree/develop).
 
 This means that all pull requests should be made against the [**develop**](https://github.com/mxcube/mxcubecore/tree/develop) branch. The work on the **develop** branch is performed by simply creating a branch for the work to be done and then making a PR according to the description below.
@@ -35,7 +35,7 @@ This means that all pull requests should be made against the [**develop**](https
   git checkout develop
   git rebase upstream/develop
   ```
- 
+
 * If you already are working on the **develop** branch and tracking the official repository, simply:
   ```bash
   git pull --rebase develop
@@ -48,14 +48,14 @@ We **recommend to always rebase your local changes instead of merging them**, gi
 
 #### Preparing a new commit
 * First, make sure that you are working with the latest changes from develop
-```bash 
+```bash
 git checkout develop`
 git pull --rebase develop
 ```
 * Create a new branch, its recommended to use a meaningfull name. for instance [initials]-[fix/feature]-[some name] i.e mo-feature-gizmo1
  `git checkout -b mo-feature-gizmo1`
 * If the pull request is associated with an issue then reference the issue in the name. For example:
-  `git checkout -b issue_100` 
+  `git checkout -b issue_100`
 * Edit necessary files, delete existing or add a new file.
 * Add files to the staging area:
    `git add ChangedFile1 ChangedFile2`
@@ -82,14 +82,14 @@ git pull --rebase develop
 * The changes made in the PR are assumed to be tested by the author
 * All the assigned reviewers of a PR have to review the PR before it can be merged.
 * A PR that has no reviewer assigned can be reviewed by anyone.
-* The author of the PR is free to merge the PR once its been reviewed and all pending comments/discussions are solved 
+* The author of the PR is free to merge the PR once its been reviewed and all pending comments/discussions are solved
 
-### Versioning 
+### Versioning
 Versioning is partly automated by GitHub actions and the software called [bump2version](https://github.com/c4urself/bump2version) and based on the gitflow braching model:
 
 - Each new feature is implemented in a `feature branch`, branching from the `develop branch`.
 
-- The merge of a `feature branch` is made via PR to the `develop branch`. The author of 
+- The merge of a `feature branch` is made via PR to the `develop branch`. The author of
   the PR must solve any conflicts with the latest development version before the merge.
 
 - When decided, a release branch is created from the development branch and becomes
@@ -97,8 +97,8 @@ Versioning is partly automated by GitHub actions and the software called [bump2v
 
 - Once the code can be released, the release branch is merged to the `master branch` and
   also to the `develop branch`.
-  
-- If a bug is found in a released version, a `hotfix branch` is created with the 
+
+- If a bug is found in a released version, a `hotfix branch` is created with the
   necessary changes and applied to the `main branch` and the corresponding commits are
   also cherry-picked to the development branch.
 

@@ -103,12 +103,12 @@ class TestAbstractActuatorBase(TestHardwareObjectBase.TestHardwareObjectBase):
     def test_limits_type(self, test_object):
         """Test the limits"""
         limits = test_object.get_limits()
-        assert isinstance(limits, tuple), (
-            f"AbstractActuator limits must be a tuple, are {limits}"
-        )
-        assert len(limits) == 2, (
-            f"AbstractActuator limits must be length 2, are {limits}"
-        )
+        assert isinstance(
+            limits, tuple
+        ), f"AbstractActuator limits must be a tuple, are {limits}"
+        assert (
+            len(limits) == 2
+        ), f"AbstractActuator limits must be length 2, are {limits}"
 
     def test_limits_setting(self, test_object):
         """Test update_limits and (if not read_oinly) set_limits"""

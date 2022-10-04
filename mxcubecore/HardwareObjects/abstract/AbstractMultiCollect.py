@@ -1,5 +1,6 @@
 import os
 import sys
+
 # import types
 import logging
 import time
@@ -11,6 +12,7 @@ import gevent
 from mxcubecore.TaskUtils import task, cleanup, error_cleanup
 
 from mxcubecore import HardwareRepository as HWR
+
 # NBNB nicoproc is not found
 from mxcubecore.utils import nicoproc
 
@@ -237,7 +239,6 @@ class AbstractMultiCollect(object):
     @task
     def take_crystal_snapshots(self, number_of_snapshots):
         HWR.beamline.diffractometer.take_snapshots(number_of_snapshots, wait=True)
-
 
     def get_sample_info_from_parameters(self, parameters):
         """Returns sample_id, sample_location and sample_code from data collection parameters"""
@@ -720,7 +721,7 @@ class AbstractMultiCollect(object):
         # self.set_detector_mode(data_collect_parameters["detector_mode"])
 
         with cleanup(self.data_collection_cleanup):
-            #if not self.safety_shutter_opened():
+            # if not self.safety_shutter_opened():
             self.open_safety_shutter()
 
             flux_threshold = self.get_property("flux_threshold", 0)
@@ -733,8 +734,13 @@ class AbstractMultiCollect(object):
                 HWR.beamline.flux.wait_for_beam()
 
             # Wait for cryo
-            while check_cryo and HWR.beamline.diffractometer.cryostream.get_value() > cryo_threshold:
-                logging.getLogger("user_level_log").info("Cryo temperature too high ...")
+            while (
+                check_cryo
+                and HWR.beamline.diffractometer.cryostream.get_value() > cryo_threshold
+            ):
+                logging.getLogger("user_level_log").info(
+                    "Cryo temperature too high ..."
+                )
                 gevent.sleep(0.5)
 
             logging.getLogger("user_level_log").info("Preparing intensity monitors")

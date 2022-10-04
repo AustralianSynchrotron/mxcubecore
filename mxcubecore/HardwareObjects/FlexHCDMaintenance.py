@@ -5,7 +5,6 @@ from mxcubecore.BaseHardwareObjects import Equipment
 import ast
 
 
-
 TOOL_FLANGE, TOOL_UNIPUCK, TOOL_SPINE, TOOL_PLATE, TOOL_LASER, TOOL_DOUBLE_GRIPPER = (
     0,
     1,
@@ -117,7 +116,7 @@ class FlexHCDMaintenance(Equipment):
             "reset_sample_number": True,
             "change_gripper": True,
             "abort": True,
-            "trash": True
+            "trash": True,
         }
 
         message = ""
@@ -145,7 +144,9 @@ class FlexHCDMaintenance(Equipment):
             ],
         ]
 
-        exclude_command_list = ast.literal_eval(self.get_property("exclude_commands", "[]"))
+        exclude_command_list = ast.literal_eval(
+            self.get_property("exclude_commands", "[]")
+        )
         new_command_list = []
 
         for command in cmd_list[0][1]:

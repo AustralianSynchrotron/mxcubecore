@@ -37,8 +37,8 @@ class DetectorMockup(AbstractDetector):
         self.distance_motor_hwobj = self.get_object_by_role("detector_distance")
 
         """Get approx detector centre (default to Pilatus values)"""
-        xval = self.get_property('width', 2463)/2. + 0.4
-        yval = self.get_property('height', 2527)/2. + 0.4
+        xval = self.get_property("width", 2463) / 2.0 + 0.4
+        yval = self.get_property("height", 2527) / 2.0 + 0.4
         self._beam_centre = (xval, yval)
 
     def has_shutterless(self):
@@ -46,7 +46,7 @@ class DetectorMockup(AbstractDetector):
         return True
 
     def get_beam_position(self, distance=None, wavelength=None):
-        return  self._beam_centre
+        return self._beam_centre
 
     def _set_beam_centre(self, beam_centre):
         # Needed for GPhL collection emulation

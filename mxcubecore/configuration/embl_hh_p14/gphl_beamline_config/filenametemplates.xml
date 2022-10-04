@@ -381,6 +381,6 @@ Element names are tied to the beamline or workflow and cannot be modified
         <mapsTo>Beamline</mapsTo>
 
     </c:filenamePatternMapping>
-    
+
 
 </xml-fragment>

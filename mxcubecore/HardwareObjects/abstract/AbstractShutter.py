@@ -54,7 +54,7 @@ class AbstractShutter(AbstractNState):
     @property
     def is_open(self):
         return self.get_value() == self.VALUES.OPEN
- 
+
     def open(self):
         self.set_value(self.VALUES.OPEN)
 

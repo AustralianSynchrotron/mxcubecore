@@ -1,18 +1,18 @@
 #! /usr/bin/env python
 # encoding: utf-8
-# 
+#
 # This file is part of MXCuBE.
-# 
+#
 # MXCuBE is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # MXCuBE is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Lesser General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU Lesser General Public License
 # along with MXCuBE.  If not, see <https://www.gnu.org/licenses/>.
 """
@@ -33,8 +33,7 @@ from mxcubecore.HardwareObjects import queue_model_objects
 
 
 class AbstractXrayCentring(HardwareObjectYaml):
-    """Xray Centring Hardware Object. Set to Yaml configuration.
-    """
+    """Xray Centring Hardware Object. Set to Yaml configuration."""
 
     def __init__(self, name):
         super(AbstractXrayCentring, self).__init__(name)
@@ -56,7 +55,6 @@ class AbstractXrayCentring(HardwareObjectYaml):
 
     def shutdown(self):
         """Shut down Xray centring. Triggered on program quit."""
-        pass
 
     def pre_execute(self, queue_entry):
         """
@@ -82,8 +80,6 @@ class AbstractXrayCentring(HardwareObjectYaml):
         """Contains the actual X-ray centring code
         taking parameters from the data model as needed"""
 
-        pass
-
     def post_execute(self):
         """
         The workflow has finished, sets the state to 'READY'
@@ -96,4 +92,3 @@ class AbstractXrayCentring(HardwareObjectYaml):
     def _add_to_queue(self, parent_model_obj, child_model_obj):
         """Used to add entries to queue while centring process is running (if needed)"""
         HWR.beamline.queue_model.add_child(parent_model_obj, child_model_obj)
-

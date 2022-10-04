@@ -1152,8 +1152,7 @@ class GenericDiffractometer(HardwareObject):
         return copy.deepcopy(self.centring_status)
 
     def get_centred_point_from_coord(self, x, y, return_by_names=None):
-        """
-        """
+        """ """
         raise NotImplementedError
 
     def get_point_between_two_points(

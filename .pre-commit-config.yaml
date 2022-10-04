@@ -2,7 +2,7 @@ default_language_version:
   python: python3.9
 repos:
   - repo: https://github.com/myint/autoflake
-    rev: v1.4
+    rev: v1.6.1
     hooks:
       - id: autoflake
         name: Autoflake - Full repo
@@ -23,14 +23,14 @@ repos:
           - --remove-duplicate-keys
           - --remove-unused-variables
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 22.8.0
     hooks:
     - id: black
       name: Black - Full repo
       language_version: python3.9
       exclude: (deprecated/|mxcubecore/HardwareObjects/(ALBA|ASLS|DESY|EMBL|ESRF|Gphl|LNLS|MAXIV|SOLEIL))
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.3.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -56,17 +56,9 @@ repos:
         files: mxcubecore/HardwareObjects/ANSTO
         exclude: /__init__\.py$
   - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 5.0.4
     hooks:
     - id: flake8
       name: Flake8 - ANSTO
-      additional_dependencies: ["flake8-bugbear==20.1.4"]
+      additional_dependencies: ["flake8-bugbear==22.9.23"]
       files: mxcubecore/HardwareObjects/ANSTO
-  - repo: local
-    hooks:
-      - id: pytest-check
-        name: pytest-check
-        entry: pytest
-        language: system
-        pass_filenames: false
-        always_run: true

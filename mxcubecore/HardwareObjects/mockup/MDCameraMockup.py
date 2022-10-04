@@ -2,7 +2,6 @@
 """
 from mxcubecore import BaseHardwareObjects
 import logging
-import os
 import time
 from PIL import Image
 import numpy as np

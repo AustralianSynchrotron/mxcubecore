@@ -484,7 +484,9 @@ class HardwareObjectMixin(CommandContainer):
             try:
                 _attr = getattr(self, attr_name)
             except AttributeError:
-                logging.getLogger("HWR").error(f"{attr_name} configured as exported for {self.name} but not implemented")
+                logging.getLogger("HWR").error(
+                    f"{attr_name} configured as exported for {self.name} but not implemented"
+                )
                 continue
 
             for _n, _t in typing.get_type_hints(_attr).items():
@@ -495,12 +497,14 @@ class HardwareObjectMixin(CommandContainer):
 
             _models[attr_name] = (
                 pydantic.create_model(attr_name, **fdict),
-                pydantic.Field(alias=attr_name)
+                pydantic.Field(alias=attr_name),
             )
 
             self._pydantic_models[attr_name] = _models[attr_name][0]
             self._exported_attributes[attr_name]["signature"] = self._exports[attr_name]
-            self._exported_attributes[attr_name]["schema"] = self._pydantic_models[attr_name].schema_json()
+            self._exported_attributes[attr_name]["schema"] = self._pydantic_models[
+                attr_name
+            ].schema_json()
 
         model = pydantic.create_model(self.__class__.__name__, **_models)
         self._pydantic_models["all"] = model
@@ -510,7 +514,9 @@ class HardwareObjectMixin(CommandContainer):
             cmd = getattr(self, cmd_name)
             cmd(**args)
         else:
-            self.log.info(f"Command {cmd} not exported, check type hints and configuration file")
+            self.log.info(
+                f"Command {cmd} not exported, check type hints and configuration file"
+            )
 
     @property
     def pydantic_model(self):
@@ -843,6 +849,7 @@ class HardwareObjectYaml(ConfiguredObject, HardwareObjectMixin):
     def __init__(self, name):
         ConfiguredObject.__init__(self, name)
         HardwareObjectMixin.__init__(self)
+
 
 class Procedure(HardwareObject):
     def __init__(self, name):

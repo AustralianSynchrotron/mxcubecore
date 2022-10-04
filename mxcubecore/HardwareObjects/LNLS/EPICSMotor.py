@@ -49,7 +49,7 @@ class EPICSMotor(EPICSActuator, AbstractMotor):
         self.get_velocity()
         self.__watch_task = gevent.spawn(self._watch)
         self.update_state(self.STATES.READY)
-    
+
     def _watch(self):
         """ Watch motor current value and update it on the UI."""
         while True:
@@ -96,7 +96,7 @@ class EPICSMotor(EPICSActuator, AbstractMotor):
     def set_velocity(self, value):
         """Override AbstractMotor method."""
         self.__velocity = self.set_channel_value(self.MOTOR_VELO, value)
-    
+
     def done_movement(self):
         """ Return whether motor finished movement or not."""
         dmov = self.get_channel_value(self.MOTOR_DMOV)

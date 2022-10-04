@@ -36,7 +36,7 @@ class ID29XRFSpectrum(XRFSpectrum):
             ctime = float(ctime)
         except (TypeError, ValueError):
             ctime = self.default_integration_time
-    
+
         self.mca_hwobj.set_roi(2, 15, channel=1)
         self.mca_hwobj.set_presets(erange=1, ctime=ctime, fname=str(fname))
         self.ctrl_hwobj.mca.set_roi(2, 15, channel=1)

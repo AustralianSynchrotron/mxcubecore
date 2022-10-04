@@ -652,9 +652,7 @@ class MiniDiff(Equipment):
                     "MiniDiff: problem aborting the centring method"
                 )
 
-            logging.getLogger("HWR").exception(
-                "MiniDiff: Centring canceled"
-            )
+            logging.getLogger("HWR").exception("MiniDiff: Centring canceled")
 
             try:
                 fun = self.cancel_centring_methods[self.currentCentringMethod]

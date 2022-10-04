@@ -14,5 +14,3 @@
 
 build/
 mxcubecore.egg-info/
-
-.drone.docker.yaml

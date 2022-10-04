@@ -234,8 +234,10 @@ class TineChannel(ChannelObject):
         #   print '>>>>>>>>>>>>>>>>>>', self.attributeName, value, self.value, self.oldvalue
 
         if value is None:
-           logging.getLogger("HWR").warning('Update with value None on: %s %s'%(self.tineName,self.attributeName))
-           value = self.get_value()
+            logging.getLogger("HWR").warning(
+                "Update with value None on: %s %s" % (self.tineName, self.attributeName)
+            )
+            value = self.get_value()
         self.value = value
 
         if value != self.oldvalue:

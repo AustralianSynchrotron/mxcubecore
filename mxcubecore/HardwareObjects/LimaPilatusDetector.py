@@ -163,7 +163,7 @@ class LimaPilatusDetector(AbstractDetector):
     ):
         if mesh:
             trigger_mode = "EXTERNAL_GATE"
-        #elif osc_range < 1e-4:
+        # elif osc_range < 1e-4:
         #    trigger_mode = "INTERNAL_TRIGGER"
         else:
             trigger_mode = "EXTERNAL_TRIGGER"

@@ -591,12 +591,13 @@ class XrayCentring2QueueEntry(BaseQueueEntry):
     def pre_execute(self):
         """Pre-execute. Set to new motor position, if any"""
         BaseQueueEntry.pre_execute(self)
-        logging.getLogger("user_level_log").info( "Starting Xray centring, please wait.")
+        logging.getLogger("user_level_log").info("Starting Xray centring, please wait.")
 
         data_model = self.get_data_model()
 
         motor_positions = dict(
-            item for item in data_model.get_motor_positions().items()
+            item
+            for item in data_model.get_motor_positions().items()
             if item[1] is not None
         )
         pos_dict = {}

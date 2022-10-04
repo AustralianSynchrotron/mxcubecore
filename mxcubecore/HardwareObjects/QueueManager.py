@@ -415,13 +415,14 @@ class QueueManager(HardwareObject, QueueEntryContainer):
         :rtype: NoneType
         """
         if not self._running:
-            raise RuntimeError("Queue has to be running to execute an entry with execute_entry")
+            raise RuntimeError(
+                "Queue has to be running to execute an entry with execute_entry"
+            )
 
         if use_async:
             gevent.spawn(self.__execute_entry, entry)
         else:
             self.__execute_entry(entry)
-
 
     def clear(self):
         """

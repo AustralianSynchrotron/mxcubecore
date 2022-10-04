@@ -54,7 +54,6 @@ class SampleView(AbstractSampleView):
         for motor_name, motor_ho in self._diffractometer.get_motors().items():
             motor_ho.connect("stateChanged", self._update_shape_positions)
 
-
     def _update_shape_positions(self, *args, **kwargs):
         shapes_updated = False
 
@@ -365,7 +364,6 @@ class SampleView(AbstractSampleView):
             cpos (CenteredPosition): CenteredPosition of shape
         """
         # Signature incompatible with AbstractSampleView
-        pass
 
 
 class Shape(object):

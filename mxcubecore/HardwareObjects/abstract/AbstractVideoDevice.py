@@ -218,7 +218,7 @@ class AbstractVideoDevice(Device):
     def get_jpg_image(self):
         """
         Reads`raw_data` image `[1D numpy array of np.uint16]` from `self.get_image()`
-        and converts it to .jpg image. 
+        and converts it to .jpg image.
         For now this function allows to deal with prosilica or any RGB encoded video data
 
         Returns
