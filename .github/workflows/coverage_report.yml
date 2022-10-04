@@ -40,4 +40,3 @@ jobs:
         echo "Coverage Skipped - ${{ steps.coverage-comment.outputs.skipped }}"
         echo "Coverage Tests - ${{ steps.coverage-comment.outputs.tests }}"
         echo "Coverage Time - ${{ steps.coverage-comment.outputs.time }}"
-        echo "Not Success Test Info - ${{ steps.coverage-comment.outputs.notSuccessTestInfo }}"
