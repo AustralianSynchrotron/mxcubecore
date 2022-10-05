@@ -37,7 +37,7 @@ jobs:
 
     - name: Check the output coverage
       run: |
-        echo "Coverage Percantage - ${{ steps.coverage-comment.outputs.coverage }}"
+        echo "Coverage Percentage - ${{ steps.coverage-comment.outputs.coverage }}"
         echo "Coverage Warnings - ${{ steps.coverage-comment.outputs.warnings }}"
         echo "Coverage Errors - ${{ steps.coverage-comment.outputs.errors }}"
         echo "Coverage Failures - ${{ steps.coverage-comment.outputs.failures }}"
