@@ -139,13 +139,11 @@ class AbstractXRFSpectrum(object):
         """
         Descript. :
         """
-        pass
 
     def cancel_spectrum(self, *args):
         """
         Descript. :
         """
-        pass
 
     def spectrum_command_ready(self):
         """

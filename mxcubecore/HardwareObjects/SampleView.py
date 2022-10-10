@@ -54,7 +54,6 @@ class SampleView(AbstractSampleView):
         for motor_name, motor_ho in self._diffractometer.get_motors().items():
             motor_ho.connect("stateChanged", self._update_shape_positions)
 
-
     def _update_shape_positions(self, *args, **kwargs):
         shapes_updated = False
 
@@ -81,34 +80,30 @@ class SampleView(AbstractSampleView):
         """
         Starts centring procedure
         """
-        pass
 
     def cancel_centring(self):
         """
         Cancels current centring procedure
         """
-        pass
 
     def start_auto_centring(self):
         """
         Start automatic centring procedure
         """
-        pass
 
     def set_ui_snapshot_cb(self, fun):
         self._ui_snapshot_cb = fun
 
     def get_snapshot(self, overlay=True, bw=False, return_as_array=False):
-        """ Get snappshot(s)
+        """Get snappshot(s)
         Args:
             overlay(bool): Display shapes and other items on the snapshot
             bw(bool): return grayscale image
             return_as_array(bool): return as np array
         """
-        pass
 
     def save_snapshot(self, path, overlay=True, bw=False):
-        """ Save a snapshot to file.
+        """Save a snapshot to file.
         Args:
             path (str): The filename.
             overlay(bool): Display shapes and other items on the snapshot
@@ -351,7 +346,6 @@ class SampleView(AbstractSampleView):
             msg = "Cant set result for %s, no shape with id %s" % (sid, sid)
             raise AttributeError(msg)
 
-
     def get_grid_data(self, key):
         result = {}
         shape = self.get_shape(key)
@@ -370,7 +364,6 @@ class SampleView(AbstractSampleView):
             cpos (CenteredPosition): CenteredPosition of shape
         """
         # Signature incompatible with AbstractSampleView
-        pass
 
 
 class Shape(object):

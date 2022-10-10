@@ -127,6 +127,7 @@ How to implement derived SC Classes
 import abc
 import logging
 import time
+
 # import types
 import gevent
 
@@ -497,8 +498,8 @@ class SampleChanger(Container, Equipment):
 
     def get_sample_properties(self):
         """
-            Returns:
-                (tuple): With sample properties defined in Sample
+        Returns:
+            (tuple): With sample properties defined in Sample
         """
         return ()
 
@@ -817,7 +818,6 @@ class SampleChanger(Container, Equipment):
 
         if previous_loaded != self.get_loaded_sample():
             self._trigger_loaded_sample_changed_event(sample)
-
 
     def _set_selected_sample(self, sample):
         cur = self.get_selected_sample()

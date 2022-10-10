@@ -1,0 +1,7 @@
+<device class="ANSTO.Energy">
+  <username>energy</username>
+  <energy_name>energy</energy_name>
+  <default_value>-1</default_value>
+  <object href="/detector" role="detector"></object>
+  <pv_prefix>MXCUBE:ENERGY</pv_prefix>
+</device>

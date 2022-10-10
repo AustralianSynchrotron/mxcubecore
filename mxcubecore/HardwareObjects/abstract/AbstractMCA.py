@@ -20,7 +20,6 @@ class AbstractMCA(object):
         Returns:
             list. Raw data.
         """
-        pass
 
     @task
     def read_roi_data(self):
@@ -29,7 +28,6 @@ class AbstractMCA(object):
         Returns:
             list. Raw data for the predefined ROI channels.
         """
-        pass
 
     @abc.abstractmethod
     @task
@@ -44,7 +42,6 @@ class AbstractMCA(object):
         Returns:
             numpy.array. x - channels or energy (if calib=True), y - data.
         """
-        pass
 
     @task
     def set_calibration(self, fname=None, calib_cf=[0, 1, 0]):
@@ -60,7 +57,6 @@ class AbstractMCA(object):
         Raises:
             IOError, ValueError
         """
-        pass
 
     @abc.abstractmethod
     @task
@@ -70,7 +66,6 @@ class AbstractMCA(object):
         Returns:
             list. Calibration factors.
         """
-        pass
 
     @task
     def set_roi(self, emin, emax, **kwargs):
@@ -91,7 +86,6 @@ class AbstractMCA(object):
         Raises:
             KeyError
         """
-        pass
 
     @abc.abstractmethod
     @task
@@ -104,19 +98,17 @@ class AbstractMCA(object):
         Returns:
             dict. ROI dictionary.
         """
-        pass
 
     @task
     def clear_roi(self, **kwargs):
         """Clear ROI settings
 
-         Keyword Args:
-            channel (int): optional output connector channel number (1-8)
+        Keyword Args:
+           channel (int): optional output connector channel number (1-8)
 
-         Returns:
-            None
+        Returns:
+           None
         """
-        pass
 
     @task
     def get_times(self):
@@ -129,7 +121,6 @@ class AbstractMCA(object):
         Raises:
             RuntimeError
         """
-        pass
 
     @task
     def get_presets(self, **kwargs):
@@ -147,7 +138,6 @@ class AbstractMCA(object):
         Raises:
             RuntimeError
         """
-        pass
 
     @task
     def set_presets(self, **kwargs):
@@ -161,7 +151,6 @@ class AbstractMCA(object):
         Returns:
            None
         """
-        pass
 
     @abc.abstractmethod
     @task
@@ -174,15 +163,12 @@ class AbstractMCA(object):
         Returns:
             None
         """
-        pass
 
     @abc.abstractmethod
     @task
     def stop_acq(self):
         """Stop the running acquisition"""
-        pass
 
     @task
     def clear_spectrum(self):
         """Clear the acquired spectrum"""
-        pass

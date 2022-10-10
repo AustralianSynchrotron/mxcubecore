@@ -39,7 +39,7 @@ from mxcubecore.BaseHardwareObjects import HardwareObject
 
 @unique
 class BeamShape(Enum):
-    """ Beam shape definitions """
+    """Beam shape definitions"""
 
     UNKNOWN = "unknown"
     RECTANGULAR = "rectangular"
@@ -47,7 +47,7 @@ class BeamShape(Enum):
 
 
 class AbstractBeam(HardwareObject):
-    """ AbstractBeam class """
+    """AbstractBeam class"""
 
     __metaclass__ = abc.ABCMeta
 
@@ -61,7 +61,7 @@ class AbstractBeam(HardwareObject):
         self._beam_size_dict = {
             "aperture": [sys.float_info.max, sys.float_info.max],
             "slits": [sys.float_info.max, sys.float_info.max],
-            "definer": [sys.float_info.max, sys.float_info.max]
+            "definer": [sys.float_info.max, sys.float_info.max],
         }
         self._beam_width = None
         self._beam_height = None
@@ -189,10 +189,12 @@ class AbstractBeam(HardwareObject):
         """
 
         size_x = min(
-            self._beam_size_dict["aperture"][0], self._beam_size_dict["slits"][0],
+            self._beam_size_dict["aperture"][0],
+            self._beam_size_dict["slits"][0],
         )
         size_y = min(
-            self._beam_size_dict["aperture"][1], self._beam_size_dict["slits"][1],
+            self._beam_size_dict["aperture"][1],
+            self._beam_size_dict["slits"][1],
         )
 
         self._beam_width = size_x

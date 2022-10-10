@@ -64,10 +64,10 @@ gonio_centring_axis_dirs= -1.0,  0.0,  0.0,
 ! Actual limits on centring axes
 gonio_centring_axis_limits= -116.998, 10.5, -2.396, 2.4, -2.3988, 2.4
 ! At omega=0: sampx parallel to beam, sampy perpendicular.
-! phiy antiparallel to omega 
+! phiy antiparallel to omega
 gonio_centring_axis_names= 'phiy', 'sampy', 'sampx'
 
-!? FIXME! Sort out ID30B beamstop on the fly (or delete it?) 
+!? FIXME! Sort out ID30B beamstop on the fly (or delete it?)
 ! Need beamstop for I04 for now, to get a realistic beamstop shadow
 ! on simulated images. It is not needed for stratcal because I04 has
 ! no collisions and the shadow will not have any effect on the statistics
@@ -989,4 +989,3 @@ TRIANGLES=     1,   2,   3,
  SEG_X_AXIS= 1.0000000 0.0000000 0.0000000
  SEG_Y_AXIS= 0.0000000 1.0000000 0.0000000
 /
-

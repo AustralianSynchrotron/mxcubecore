@@ -233,9 +233,9 @@ class TaskGroupQueueEntry(BaseQueueEntry):
                 sample,
                 cpos if cpos != empty_cpos else None,
             )
-            #HWR.beamline.collect.prepare_interleave(
+            # HWR.beamline.collect.prepare_interleave(
             #    interleave_item["data_model"], param_list
-            #)
+            # )
 
         self.interleave_sw_list = queue_model_objects.create_interleave_sw(
             self.interleave_items, ref_num_images, interleave_num_images
@@ -591,12 +591,13 @@ class XrayCentring2QueueEntry(BaseQueueEntry):
     def pre_execute(self):
         """Pre-execute. Set to new motor position, if any"""
         BaseQueueEntry.pre_execute(self)
-        logging.getLogger("user_level_log").info( "Starting Xray centring, please wait.")
+        logging.getLogger("user_level_log").info("Starting Xray centring, please wait.")
 
         data_model = self.get_data_model()
 
         motor_positions = dict(
-            item for item in data_model.get_motor_positions().items()
+            item
+            for item in data_model.get_motor_positions().items()
             if item[1] is not None
         )
         pos_dict = {}
@@ -1561,7 +1562,7 @@ class GenericWorkflowQueueEntry(BaseQueueEntry):
             self.workflow_running = False
         else:
             self.workflow_running = True
-            while self.workflow_running:
+            while workflow_hwobj.state.value == "RUNNING":
                 time.sleep(1)
 
     def workflow_state_handler(self, state):
@@ -1690,8 +1691,7 @@ class XrayCenteringQueueEntry(BaseQueueEntry):
 
 
 class AdvancedConnectorQueueEntry(BaseQueueEntry):
-    """Controls different steps
-    """
+    """Controls different steps"""
 
     def __init__(self, view=None, data_model=None, view_set_queue_entry=True):
 

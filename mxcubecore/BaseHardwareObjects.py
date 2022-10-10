@@ -51,8 +51,7 @@ class HardwareObjectState(enum.Enum):
 
 
 class DefaultSpecificState(enum.Enum):
-    """Placeholder enumeration for HardwareObject-specific states
-    """
+    """Placeholder enumeration for HardwareObject-specific states"""
 
     UNKNOWN = "UNKNOWN"
 
@@ -77,11 +76,9 @@ class ConfiguredObject(object):
 
     def _init(self):
         """Object initialisation - executed *before* loading contents"""
-        pass
 
     def init(self):
         """Object initialisation - executed *after* loading contents"""
-        pass
 
     def replace_object(self, role, new_object):
         """Replace already defined Object with a new one - for runtime use
@@ -166,7 +163,6 @@ class PropertySet(dict):
 
 
 class HardwareObjectNode(object):
-    
     def __init__(self, node_name):
         """Constructor"""
         self.__dict__["_property_set"] = PropertySet()
@@ -408,7 +404,7 @@ class HardwareObjectNode(object):
 
 
 class HardwareObjectMixin(CommandContainer):
-    """ Functionality for either xml- or yaml-configured HardwareObjects
+    """Functionality for either xml- or yaml-configured HardwareObjects
 
     Signals emited:
 
@@ -465,7 +461,7 @@ class HardwareObjectMixin(CommandContainer):
         self.update_state(self.STATES.UNKNOWN)
 
     def init(self):
-        """"'public' post-initialization method. Override as needed
+        """ "'public' post-initialization method. Override as needed
 
         For ConfiguredObjects called after loading contained objects"""
         self._exports = dict.fromkeys(self._exports_config_list, {})
@@ -488,7 +484,9 @@ class HardwareObjectMixin(CommandContainer):
             try:
                 _attr = getattr(self, attr_name)
             except AttributeError:
-                logging.getLogger("HWR").error(f"{attr_name} configured as exported for {self.name} but not implemented")
+                logging.getLogger("HWR").error(
+                    f"{attr_name} configured as exported for {self.name} but not implemented"
+                )
                 continue
 
             for _n, _t in typing.get_type_hints(_attr).items():
@@ -499,12 +497,14 @@ class HardwareObjectMixin(CommandContainer):
 
             _models[attr_name] = (
                 pydantic.create_model(attr_name, **fdict),
-                pydantic.Field(alias=attr_name)
+                pydantic.Field(alias=attr_name),
             )
 
             self._pydantic_models[attr_name] = _models[attr_name][0]
             self._exported_attributes[attr_name]["signature"] = self._exports[attr_name]
-            self._exported_attributes[attr_name]["schema"] = self._pydantic_models[attr_name].schema_json()
+            self._exported_attributes[attr_name]["schema"] = self._pydantic_models[
+                attr_name
+            ].schema_json()
 
         model = pydantic.create_model(self.__class__.__name__, **_models)
         self._pydantic_models["all"] = model
@@ -514,7 +514,9 @@ class HardwareObjectMixin(CommandContainer):
             cmd = getattr(self, cmd_name)
             cmd(**args)
         else:
-            self.log.info(f"Command {cmd} not exported, check type hints and configuration file")
+            self.log.info(
+                f"Command {cmd} not exported, check type hints and configuration file"
+            )
 
     @property
     def pydantic_model(self):
@@ -553,7 +555,7 @@ class HardwareObjectMixin(CommandContainer):
         self.abort()
 
     def get_state(self):
-        """ Getter for state attribute
+        """Getter for state attribute
 
         Implementations must query the hardware directly, to ensure current results
 
@@ -563,7 +565,7 @@ class HardwareObjectMixin(CommandContainer):
         return self._state
 
     def get_specific_state(self):
-        """ Getter for specific_state attribute. Override if needed.
+        """Getter for specific_state attribute. Override if needed.
 
         Returns:
             HardwareObjectSpecificState or None
@@ -655,7 +657,6 @@ class HardwareObjectMixin(CommandContainer):
         The easiest solution is to call force_emit_signals method directly
         after the initialization of the beamline object
         """
-        pass
 
     # Moved from HardwareObjectNode
     def clear_gevent(self):
@@ -953,8 +954,6 @@ class DeviceContainerNode(HardwareObjectNode, DeviceContainer):
     it is only used once,
     in HardwareObjectFileParser.HardwareObjectHandler.startElement
     And that use looks like it could be replaced by something else"""
-
-    pass
 
 
 class Equipment(HardwareObject, DeviceContainer):

@@ -34,8 +34,8 @@ from gevent.event import AsyncResult
 
 class PhaseEnum(str, enum.Enum):
     centring = "Centring"
-    data_collection = 'DataCollection'
-    beam_location = 'BeamLocation'
+    data_collection = "DataCollection"
+    beam_location = "BeamLocation"
     transfer = "Transfer"
     unknown = "Unknown"
 
@@ -75,7 +75,7 @@ class DiffractometerMockup(GenericDiffractometer):
 
         self.cancel_centring_methods = {}
         self.current_motor_positions = {
-            "phiy": 1.0,
+            "phiy": 40.354,
             "sampx": 0.0,
             "sampy": -1.0,
             "zoom": 8.53,
@@ -350,8 +350,8 @@ class DiffractometerMockup(GenericDiffractometer):
             "endTime": curr_time,
         }
         motors = self.get_positions()
-        #motors["beam_x"] = 0.1
-        #motors["beam_y"] = 0.1
+        # motors["beam_x"] = 0.1
+        # motors["beam_y"] = 0.1
         self.last_centred_position[0] = coord_x
         self.last_centred_position[1] = coord_y
         self.centring_status["motors"] = motors
@@ -407,9 +407,11 @@ class DiffractometerMockup(GenericDiffractometer):
 
     def status(self) -> str:
         return "READY"
-    
-    def my_fancy_function(self, speed: float, num_images:int, exp_time:float, phase:PhaseEnum) -> bool:
+
+    def my_fancy_function(
+        self, speed: float, num_images: int, exp_time: float, phase: PhaseEnum
+    ) -> bool:
         return True
-    
+
     def my_other_funny_function(self) -> None:
         pass

@@ -7,3 +7,10 @@
 
 .venv/
 .vscode/
+
+
+# OS
+.DS_Store
+
+build/
+mxcubecore.egg-info/

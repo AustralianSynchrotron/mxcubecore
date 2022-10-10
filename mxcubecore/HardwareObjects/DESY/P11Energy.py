@@ -1,5 +1,5 @@
 # encoding: utf-8
-# 
+#
 #  Project: MXCuBE
 #  https://github.com/mxcube.
 #
@@ -27,7 +27,7 @@ log= logging.getLogger("HWR")
 
 
 class P11Energy(AbstractEnergy):
-    
+
     _default_energy = 12.0
 
 
@@ -53,7 +53,7 @@ class P11Energy(AbstractEnergy):
 
         if limits is None:
             log.error("P11Transmission - Cannot read LIMITS from configuration xml file.  Check values")
-            return 
+            return
         else:
             self.set_limits(limits)
 

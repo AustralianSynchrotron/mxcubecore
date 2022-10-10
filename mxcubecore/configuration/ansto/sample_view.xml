@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<object class="SampleView">
+  <object hwrid="./diffractometer_config/camera" role="camera"/>
+  <object hwrid="./diffractometer_config/motor_x" role="focus"/>
+  <object hwrid="./diffractometer_config/zoom" role="zoom"/>
+  <object hwrid="./diffractometer_config/frontlight" role="frontlight"/>
+  <object hwrid="./diffractometer_config/backlight" role="backlight"/>
+  <object hwrid="./diffractometer" role="diffractometer"/>
+
+  <!--- Autmoatically hide grid when 5 deg from defined angle -->
+  <hide_grid_threshold>5</hide_grid_threshold>
+</object>

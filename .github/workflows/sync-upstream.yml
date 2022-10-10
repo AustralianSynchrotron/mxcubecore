@@ -1,0 +1,13 @@
+on:
+  schedule:
+    - cron: '30 8 1 * *'
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tgymnich/fork-sync@v1.6.3
+        with:
+          base: develop
+          head: develop
+          merge_method: merge
+          pr_message: Syncing upstream develop branch with ANSTO fork.

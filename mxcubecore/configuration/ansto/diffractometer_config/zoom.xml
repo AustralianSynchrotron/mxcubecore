@@ -1,0 +1,11 @@
+<device class="ANSTO.Zoom">
+  <exporter_address>10.244.101.10</exporter_address>
+  <username>zoom</username>
+  <motor_name>m5</motor_name>
+  <device_name>mxcube_sim_PVs</device_name>
+  <values>{"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8}</values>
+  <!-- There is not a zoom motor in the testrig, so mm_per_pixel_x/y are constant -->
+  <!-- The following values work assuming that motor_y = 40.3  -->
+  <mm_per_pixel_x>{"0": 0.0034144782, "1": 0.0034144782, "2": 0.0034144782, "3": 0.0034144782, "4": 0.0034144782, "5": 0.0034144782, "6": 0.0034144782, "7": 0.0034144782, "8": 0.0034144782}</mm_per_pixel_x>
+  <mm_per_pixel_y>{"0": 0.0034144782, "1": 0.0034144782, "2": 0.0034144782, "3": 0.0034144782, "4": 0.0034144782, "5": 0.0034144782, "6": 0.0034144782, "7": 0.0034144782, "8": 0.0034144782}</mm_per_pixel_y>
+</device>

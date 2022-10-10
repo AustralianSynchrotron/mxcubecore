@@ -1,17 +1,15 @@
 [tool.poetry]
 name = "mxcubecore"
-version = "1.0.0"
+version = "1.0.0.1"
 license = "LGPL-3.0-or-later"
 description = "Core libraries for the MXCuBE application"
 authors = ["The MXCuBE collaboration <mxcube@esrf.fr>"]
 maintainers = [
-    "Marcus Oscarsson <mxcube@esrf.fr>",
-    "Rasmus H. Fogh <rhfogh@globalphasing.com>",
-    "Antonia Beteva <beteva@esrf.fr>",
+    "ANSTO, Australian Synchrotron <as-scientific-computing@ansto.gov.au>",
 ]
 readme = "README.md"
-homepage = "http://github.com/mxcube/mxcubecore"
-repository = "http://github.com/mxcube/mxcubecore"
+homepage = "https://github.com/AustralianSynchrotron/mxcubecore"
+repository = "https://github.com/AustralianSynchrotron/mxcubecore"
 documentation = ""
 keywords = ["mxcube", "mxcube3", "mxcubecore"]
 classifiers = [
@@ -23,8 +21,28 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
+[[tool.poetry.source]]
+name = "cachedpypi"
+url = "https://pypi.asci.synchrotron.org.au/root/pypi/+simple"
+secondary = true
+
+[[tool.poetry.source]]
+name = "asci-dev"
+url = "https://pypi.asci.synchrotron.org.au/asci/dev/+simple"
+secondary = true
+
+[[tool.poetry.source]]
+name = "asci-prod"
+url = "https://pypi.asci.synchrotron.org.au/asci/prod/+simple"
+secondary = true
+
+[[tool.poetry.source]]
+name = "mx3dev"
+url = "https://pypi.asci.synchrotron.org.au/mx3/dev/+simple"
+secondary = true
+
 [tool.poetry.dependencies]
-python = ">=3.7,<3.11"
+python = ">=3.9,<3.11"
 gevent = "21.12.0"
 greenlet = "1.1.3"
 jsonpickle = "2.2.0"
@@ -34,10 +52,11 @@ matplotlib = [ { version = "3.5.3", python = "3.7" }, { version = "3.6.0", pytho
 numpy = [ { version = "1.21.6", python = "3.7" }, { version = "1.23.3", python = ">=3.8" } ]
 Pillow = "9.2.0"
 pydantic = "1.10.2"
-PyDispatcher = "2.0.6"
+pyDispatcher = "2.0.6"
+pyepics = "3.5.1"
+suds-py3 = "1.4.5.0"
 "ruamel.yaml" = "0.17.21"
 scipy = [ { version = "1.7.3", python = "3.7" }, { version = "1.9.1", python = ">=3.8" } ]
-suds-py3 = "1.4.5.0"
 psutil = "5.9.2"
 gipc = "1.4.0"
 importlib_metadata = { version = ">=4.12.0", python = "3.7" }
@@ -45,17 +64,28 @@ py4j = { version = "0.10.9.7", optional = true }
 f90nml = { version = "1.4.3", optional = true }
 PyTango = { version = "9.3.5", optional = true }
 lucid3 = { git = "https://github.com/mxcube/lucid3.git", branch = "master", optional = true }
+PIMS = "0.6.0"
+click = "8.0.1"
+bluesky-queueserver-api = "0.0.8"
+zarr = "2.10.3"
+mx3-beamline-library = { version = "0.1.13", optional = true }
 
 [tool.poetry.dev-dependencies]
 pylint = [ { version = "==2.13.9", python = "<=3.7.1" }, { version = "2.15.3", python = ">=3.8" } ]
 pre-commit = "2.20.0"
 pytest = "7.1.3"
 pytest-cov = "4.0.0"
+pytest-html = "3.1.1"
+black = "22.8.0"
+Sphinx = "4.5.0"
+sphinx-rtd-theme = "1.0.0"
+alabaster = "0.7.12"
 
 [tool.poetry.extras]
 gphl = ["py4j", "f90nml"]
 tango = ["PyTango"]
 lucid3 = ["lucid3"]
+ansto-mx3 = ["mx3-beamline-library"]
 
 [tool.black]
 line-length = 88
@@ -75,5 +105,5 @@ exclude = '''
 '''
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "setuptools>=45", "setuptools_scm[toml]>=6.2"]
+requires = ["poetry-core>=1.2.0", "setuptools>=65.4.1", "setuptools_scm[toml]>=7.0.5"]
 build-backend = "poetry.core.masonry.api"

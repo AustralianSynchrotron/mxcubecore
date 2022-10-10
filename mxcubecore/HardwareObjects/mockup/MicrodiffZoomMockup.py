@@ -76,7 +76,7 @@ class MicrodiffZoomMockup(AbstractNState):
         return self._nominal_value
 
     def _initialise_values(self):
-        """Initialise the ValueEnum """
+        """Initialise the ValueEnum"""
         low, high = self.get_limits()
 
         values = {"LEVEL%s" % str(v): v for v in range(low, high + 1)}

@@ -37,6 +37,7 @@ from mxcubecore.Command.exporter.ExporterStates import ExporterStates
 __copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
 
+
 class ExporterNStateMockup(AbstractNState):
     """Microdiff with Exporter implementation of AbstartNState"""
 
@@ -46,7 +47,7 @@ class ExporterNStateMockup(AbstractNState):
         AbstractNState.__init__(self, name)
         # self._mock_value = "OUT"
         # self._mock_state= "READY"
-        
+
     def init(self):
         """Initialise the device"""
         AbstractNState.init(self)
@@ -96,7 +97,6 @@ class ExporterNStateMockup(AbstractNState):
 
     def abort(self):
         """Stop the action."""
-        pass
 
     def _set_value(self, value):
         """Set device to value
@@ -121,5 +121,5 @@ class ExporterNStateMockup(AbstractNState):
         Returns:
             (Enum): Enum member, corresponding to the value or UNKNOWN.
         """
-        #_val = self._mock_value
+        # _val = self._mock_value
         return self.value_to_enum(self._nominal_value)

@@ -1,5 +1,5 @@
 # encoding: utf-8
-# 
+#
 #  Project: MXCuBE
 #  https://github.com/mxcube.
 #
@@ -98,7 +98,7 @@ class P11DetectorDistance(AbstractMotor):
             _state = state
 
         _state = str(_state)
-        
+
         if self.interlock_set is None:
             self.update_interlock_state()
 
@@ -112,7 +112,7 @@ class P11DetectorDistance(AbstractMotor):
                 state = self.STATES.BUSY
             else:
                 state = self.STATES.FAULT
-        
+
         self.update_state(state)
         return state
 
@@ -135,10 +135,10 @@ class P11DetectorDistance(AbstractMotor):
         """
         ##if self.chan_state is not None:
             #self.update_state(self.STATES.BUSY)
-            
+
         self.chan_position.setValue(value)
 
-    def get_limits(self):  
+    def get_limits(self):
         min_value = self.chan_min_value.getValue()
         max_value = self.chan_max_value.getValue()
         return [min_value, max_value]
@@ -164,7 +164,7 @@ class P11DetectorDistance(AbstractMotor):
             state = self.chan_interlock_state.getValue()
         self.interlock_set = state
         self.log.debug("P11 DetectorDistance / INTERLOCK is %s" % (self.interlock_set and "SET" or "NOT SET") )
-  
+
     def interlock_state_changed(self, state=None):
-        self.update_interlock_state(state)   
-        self._set_state() 
+        self.update_interlock_state(state)
+        self._set_state()

@@ -203,8 +203,7 @@ class BaseQueueEntry(QueueEntryContainer):
         self.type_str = ""
 
     def is_failed(self):
-        """Returns True if failed
-        """
+        """Returns True if failed"""
         return self.status == QUEUE_ENTRY_STATUS.FAILED
 
     def enqueue(self, queue_entry):

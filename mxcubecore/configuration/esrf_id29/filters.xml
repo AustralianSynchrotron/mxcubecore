@@ -1,15 +1,15 @@
 <equipment class = "Filters">
   <username>OH Filters</username>
-  <axis> 
+  <axis>
      <device hwrid="/filters/mbv2"/>
   </axis>
   <axis>
      <device hwrid="/filters/mbv"/>
   </axis>
-  <axis> 
+  <axis>
      <device hwrid="/filters/din"/>
   </axis>
-  <axis> 
+  <axis>
      <device hwrid="/filters/mbv1"/>
   </axis>
   <axis>

@@ -1,5 +1,5 @@
 # encoding: utf-8
-# 
+#
 #  Project: MXCuBE
 #  https://github.com/mxcube.
 #
@@ -91,13 +91,13 @@ class P11Zoom(AbstractNState):
         value = self.get_value()
 
         for zoom in self.VALUES:
-            _dist = abs(value - zoom.value) 
+            _dist = abs(value - zoom.value)
             if dist is None or _dist < dist:
-                dist = _dist 
+                dist = _dist
                 self.closest_zoom = zoom
 
         if self.closest_zoom is not None:
             self.emit("predefinedPositionChanged", (self.closest_zoom, value))
         else:
             self.emit("predefinedPositionChanged", (None, None))
-          
+

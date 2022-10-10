@@ -80,7 +80,7 @@ class StandardClient:
     def __init__(self, server_ip, server_port, protocol, timeout, retries):
         self.server_ip = server_ip
         self.server_port = server_port
-        self.timeout = timeout
+        self.timeout = 10
         self.default_timeout = timeout
         self.retries = retries
         self.protocol = protocol

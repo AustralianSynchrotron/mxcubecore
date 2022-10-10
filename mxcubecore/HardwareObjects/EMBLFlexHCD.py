@@ -352,7 +352,7 @@ class EMBLFlexHCD(SampleChanger):
 
         return res
 
-    def _hw_get_mounted_sample(self):        
+    def _hw_get_mounted_sample(self):
         loaded_sample = tuple(
             self._execute_cmd_exporter("getMountedSamplePosition", attribute=True)
         )

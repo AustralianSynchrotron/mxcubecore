@@ -4,8 +4,8 @@
   <motors>
     <slit1>
       <device hwrid="/exp/s1v" role="s1v"/>
-      <device hwrid="/exp/t1v" role="t1v"/>  
-      <device hwrid="/exp/s1h" role="s1h"/>  
+      <device hwrid="/exp/t1v" role="t1v"/>
+      <device hwrid="/exp/s1h" role="s1h"/>
       <device hwrid="/exp/t1h" role="t1h"/>
       <realmots>t1v t1h</realmots>
     </slit1>

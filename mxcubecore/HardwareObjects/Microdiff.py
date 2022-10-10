@@ -211,7 +211,7 @@ class Microdiff(MiniDiff.MiniDiff):
 
     def _update_value(self, value=None):
         if value is None:
-            value =  self.get_current_phase()
+            value = self.get_current_phase()
         self.emit("valueChanged", (value))
 
     def getMotorToExporterNames(self):
@@ -257,7 +257,9 @@ class Microdiff(MiniDiff.MiniDiff):
         # None means infinite timeout
         # <=0 means default timeout
         if timeout is not None and timeout <= 0:
-            logging.getLogger("HWR").warning("DEBUG: Strange timeout value passed %s" % str(timeout))
+            logging.getLogger("HWR").warning(
+                "DEBUG: Strange timeout value passed %s" % str(timeout)
+            )
             timeout = 30
         with gevent.Timeout(
             timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
@@ -608,7 +610,7 @@ class Microdiff(MiniDiff.MiniDiff):
         self.current_centring_procedure.link(self.manualCentringDone)
 
     def interrupt_and_accept_centring(self):
-        """ Used when plate. Kills the current 1 click centring infinite loop
+        """Used when plate. Kills the current 1 click centring infinite loop
         and accepts fake centring - only save the motor positions
         """
         self.current_centring_procedure.kill()
@@ -633,6 +635,7 @@ class Microdiff(MiniDiff.MiniDiff):
             self.beam_position_horizontal.get_value(),
             self.beam_position_vertical.get_value(),
         )
+
 
 def to_float(d):
     for k, v in d.items():

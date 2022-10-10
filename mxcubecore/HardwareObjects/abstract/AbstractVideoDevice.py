@@ -218,7 +218,7 @@ class AbstractVideoDevice(Device):
     def get_jpg_image(self):
         """
         Reads`raw_data` image `[1D numpy array of np.uint16]` from `self.get_image()`
-        and converts it to .jpg image. 
+        and converts it to .jpg image.
         For now this function allows to deal with prosilica or any RGB encoded video data
 
         Returns
@@ -331,7 +331,7 @@ class AbstractVideoDevice(Device):
 
     def change_owner(self):
         """LIMA specific, because it has to be root at startup
-           move this to Qt4_LimaVideo
+        move this to Qt4_LimaVideo
         """
         if os.getuid() == 0:
             try:
@@ -379,7 +379,6 @@ class AbstractVideoDevice(Device):
         """
         Descript. :
         """
-        pass
 
     def set_cam_encoding(self, cam_encoding):
         if cam_encoding == "yuv422p":
@@ -406,9 +405,8 @@ class AbstractVideoDevice(Device):
 
     @abc.abstractmethod
     def get_image(self):
-        """ The implementing class should return here the latest_image in
+        """The implementing class should return here the latest_image in
         raw_format, followed by the width and height of the image"""
-        pass
 
     @abc.abstractmethod
     def get_gain(self):

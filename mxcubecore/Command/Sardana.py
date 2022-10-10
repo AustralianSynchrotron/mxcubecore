@@ -22,6 +22,7 @@ from __future__ import absolute_import
 
 import logging
 import os
+
 # import time
 # import types
 from mxcubecore.dispatcher import saferef
@@ -34,7 +35,7 @@ try:
 except ImportError:
     import queue
 
-gevent_version = list(map(int, gevent.__version__.split('.')))
+gevent_version = list(map(int, gevent.__version__.split(".")))
 
 
 from mxcubecore.CommandContainer import (

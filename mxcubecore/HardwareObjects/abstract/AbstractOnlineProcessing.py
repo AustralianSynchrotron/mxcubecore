@@ -284,9 +284,7 @@ class AbstractOnlineProcessing(HardwareObject):
         #    )
 
         try:
-            gevent.spawn(
-                self.save_snapshot_task, self.params_dict["snapshot_path"]
-            )
+            gevent.spawn(self.save_snapshot_task, self.params_dict["snapshot_path"])
         except Exception:
             logging.getLogger("GUI").exception(
                 "Online processing: Could not save snapshot: %s"
@@ -481,8 +479,7 @@ class AbstractOnlineProcessing(HardwareObject):
                 self.workflow_info = None
 
             HWR.beamline.collect.update_lims_with_workflow(
-                workflow_id,
-                self.params_dict["snapshot_path"]
+                workflow_id, self.params_dict["snapshot_path"]
             )
 
             HWR.beamline.lims.store_workflow_step(self.params_dict)
@@ -582,7 +579,7 @@ class AbstractOnlineProcessing(HardwareObject):
                 fancybox=True,
                 numpoints=1,
                 borderaxespad=0.0,
-                #bbox_to_anchor=(0.5, -0.13),
+                # bbox_to_anchor=(0.5, -0.13),
                 ncol=3,
                 fontsize=8,
             )
@@ -613,9 +610,7 @@ class AbstractOnlineProcessing(HardwareObject):
             ay1.set_yticklabels(new_labels)
             ay1.set_ylabel("Number of spots")
 
-            ax[1].plot(
-                self.results_raw["is"], ',', label="Intensity", c="g"
-            )
+            ax[1].plot(self.results_raw["is"], ",", label="Intensity", c="g")
             ax[1].set_ylabel("Intensity")
 
             for ax_plot in ax:
@@ -682,16 +677,11 @@ class AbstractOnlineProcessing(HardwareObject):
         except Exception as ex:
             log.exception(
                 "Online processing: Could not save results html %s: %s"
-                % (self.params_dict["html_file_path"],
-                str(ex)
-                ) 
-                  
+                % (self.params_dict["html_file_path"], str(ex))
             )
             log.exception(
                 "Online processing: Could not save json results in %s : %s"
-                % (self.params_dict["json_file_path"],
-                   str(ex)
-                )
+                % (self.params_dict["json_file_path"], str(ex))
             )
 
         # ---------------------------------------------------------------------
@@ -737,8 +727,8 @@ class AbstractOnlineProcessing(HardwareObject):
 
     def align_processing_results(self, start_index, end_index):
         """Realigns all results. Each results (one dimensional numpy array)
-           is converted to 2d numpy array according to diffractometer geometry.
-           Function also extracts 10 (if they exist) best positions
+        is converted to 2d numpy array according to diffractometer geometry.
+        Function also extracts 10 (if they exist) best positions
         """
         # Each result array is realigned
 

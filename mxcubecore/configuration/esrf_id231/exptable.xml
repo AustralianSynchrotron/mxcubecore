@@ -4,17 +4,17 @@
   <real>
       <device hwrid="/eh1/tz1"/>
       <device hwrid="/eh1/tz2"/>
-      <device hwrid="/eh1/tz3"/>  
-      <device hwrid="/eh1/ttf"/>  
-      <device hwrid="/eh1/ttb"/>  
+      <device hwrid="/eh1/tz3"/>
+      <device hwrid="/eh1/ttf"/>
+      <device hwrid="/eh1/ttb"/>
   </real>
   <pseudo>
       <device hwrid="/eh1/thgt" role="height"/>
-      <device hwrid="/eh1/txtilt" role="roll"/>  
-      <device hwrid="/eh1/tytilt" role="ytilt"/>  
-      <device hwrid="/eh1/ttr" role="translation"/>  
-      <device hwrid="/eh1/tztilt"/>  
-      <device hwrid="/eh1/tftilt"/>  
+      <device hwrid="/eh1/txtilt" role="roll"/>
+      <device hwrid="/eh1/tytilt" role="ytilt"/>
+      <device hwrid="/eh1/ttr" role="translation"/>
+      <device hwrid="/eh1/tztilt"/>
+      <device hwrid="/eh1/tftilt"/>
   </pseudo>
   </motors>
   <procedures>

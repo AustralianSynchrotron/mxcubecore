@@ -1,0 +1,487 @@
+import asyncio
+import logging
+import os
+import pprint
+import time
+
+import redis
+from bluesky_queueserver_api import BPlan
+from bluesky_queueserver_api.comm_base import RequestError, RequestFailedError
+from bluesky_queueserver_api.http.aio import REManagerAPI
+from gevent.event import Event
+
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
+from mxcubecore.HardwareObjects.SampleView import SampleView
+
+from .workflows.collect_workflow import Collect
+from .workflows.raster_workflow import RasterWorflow
+
+
+class State(object):
+    """
+    Class used to mimic the PyTango state object referenced in the
+    GenericWorkflowQueueEntry class located in the queue_entry.py file.
+
+    Attributes
+    ----------
+    _value : str
+        State of the hardware object, e.g. ON, RUNNING or OPEN
+    parent : HardwareObject
+        Parent class, e.g. BlueskyWorkflow
+    """
+
+    def __init__(self, parent: HardwareObject) -> None:
+        """
+        Parameters
+        ----------
+        parent : HardwareObject
+            Parent class, e.g. BlueskyWorkflow
+
+        Returns
+        -------
+        None
+        """
+        self._value = "ON"
+        self._parent = parent
+
+    @property
+    def value(self) -> str:
+        """
+        Gets the state of the hardware object.
+
+        Returns
+        -------
+        self._value: str
+            The state of the HO
+        """
+        return self._value
+
+    @value.setter
+    def value(self, value: str) -> None:
+        """
+        Sets the state of the hardware object. Three states are accepted:
+        ON, RUNNING and OPEN
+
+        Returns
+        -------
+        None
+        """
+        self._value = value
+        self._parent.state_changed(value)
+
+
+class BlueskyWorkflow(HardwareObject):
+    """
+    This hardware object executes a bluesky plan using
+    the bluesky queueserver
+
+    Attributes
+    ----------
+    _state : State
+        State of a Hardware Object
+    command_failed : bool
+        The command_failed state
+    REST : str
+        URL address of the bluesky REST server
+    workflow_name : str
+        Name of the workflow, e.g. Screen
+    redis_port : int
+        Redis port
+    redis_host : str
+        Redis host
+    bluesky_plan_aborted : bool
+        True if a bluesky plan has been aborted, False otherwise
+    mxcubecore_workflow_aborted : bool
+        True if a mxcubecore workflow has been aborted, False otherwise
+    authorization_key : str
+        The mx-bluesky-queueserver-api authorization key
+    """
+
+    def __init__(self, name: str) -> None:
+        """
+        Parameters
+        ----------
+        name: str
+            Name of the Hardware object, e.g. '/edna_params'
+
+        Returns
+        -------
+        None
+        """
+        HardwareObject.__init__(self, name)
+        self._state = State(self)
+        self.command_failed = False
+        self.gevent_event = None
+        self.REST = os.environ.get(
+            "BLUESKY_QUEUESERVER_API", "http://bluesky-queueserver-rest:8080"
+        )
+        self.workflow_name = None
+        self.redis_port = int(os.environ.get("DATA_PROCESSING_REDIS_PORT", "6379"))
+        self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "redis")
+        self.bluesky_plan_aborted = False
+        self.mxcubecore_workflow_aborted = False
+        self.authorization_key = os.environ.get(
+            "QSERVER_HTTP_SERVER_SINGLE_USER_API_KEY", "666"
+        )
+
+    def _init(self) -> None:
+        """
+        Object initialisation - executed *before* loading contents
+
+        Returns
+        -------
+        None
+        """
+
+    def init(self) -> None:
+        """
+        Object initialisation - executed *after* loading contents
+
+        Returns
+        -------
+        None
+        """
+        self.gevent_event = Event()
+        self._state.value = "ON"
+        self.count = 0
+
+        hwr = HWR.get_hardware_repository()
+        _diffractometer: Diffractometer = hwr.get_hardware_object("/diffractometer")
+        self.motor_x = _diffractometer.alignment_x
+        self.motor_z = _diffractometer.alignment_z
+
+        self.sample_view: SampleView = hwr.get_hardware_object("/sample_view")
+
+        self.beamline = HWR.beamline
+
+        self.redis_connection = redis.StrictRedis(self.redis_host, self.redis_port)
+
+        asyncio.run(self.open_bluesky_run_engine())
+        self.raster_workflow = RasterWorflow(
+            motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
+            sample_view=self.sample_view,
+            state=self._state,
+            redis_connection=self.redis_connection,
+        )
+
+        self.collect_workflow = Collect(
+            motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
+            state=self._state,
+        )
+
+    async def open_bluesky_run_engine(self) -> REManagerAPI:
+        """
+        Opens the bluesky run engine and sets the authorization key
+
+        Returns
+        -------
+        REManagerAPI
+            The bluesky Run Engine
+        """
+        run_engine = None
+        try:
+            run_engine = REManagerAPI(http_server_uri=self.REST)
+            run_engine.set_authorization_key(api_key=self.authorization_key)
+        except RequestError:
+            logging.getLogger("HWR").info("mx-bluesky-queueserver-api not available")
+
+        try:
+            await run_engine.environment_open()
+            await run_engine.wait_for_idle()
+            logging.getLogger("HWR").info("Run engine opened successfully")
+        except (RequestFailedError, RequestError):
+            logging.getLogger("HWR").info("Run engine is already open")
+        return run_engine
+
+    @property
+    def state(self) -> State:
+        """
+        Gets the state of the workflow
+
+        Returns
+        -------
+        _state : State
+            The state of the workflow
+        """
+        return self._state
+
+    @state.setter
+    def state(self, new_state: State) -> None:
+        """
+        Sets the state of the workflow
+
+        Parameters
+        ----------
+        new_state : State
+            The state of the workflow
+
+        Returns
+        -------
+        None
+        """
+        self._state = new_state
+
+    def command_failure(self) -> bool:
+        """
+        Returns the state of self.command_failed
+
+        Returns
+        -------
+        command_failed : bool
+            The command_failed state
+        """
+
+        return self.command_failed
+
+    def set_command_failed(self, *args) -> None:
+        """
+        Sets command_failed to True
+
+        Returns
+        -------
+        None
+        """
+
+        logging.getLogger("HWR").error("Workflow '%s' Tango command failed!" % args[1])
+        self.command_failed = True
+
+    def state_changed(self, new_value: str) -> None:
+        """
+        Emits a stateChanged message
+
+        Parameters
+        ----------
+        new_value : str
+            A new_value to emit
+
+        Returns
+        -------
+        None
+        """
+        new_value = str(new_value)
+        logging.getLogger("HWR").debug(f"{self.name()}: state changed to {new_value}")
+        self.emit("stateChanged", (new_value,))
+
+    def open_dialog(self, dict_dialog: dict) -> dict:
+        """Opens a dialog in the mxcube3 front end.
+
+        A dict_dialog example is defined in the workflow_dialog
+        method.
+
+        Parameters
+        ----------
+        dict_dialog : dict
+            A dictionary following the JSON schems
+
+        Returns
+        -------
+        dict
+            An updated dictionaty containing parameters passed by the user from
+            the mxcube3 frontend
+        """
+        if not self.gevent_event.is_set():
+            self.gevent_event.set()
+        self.emit("parametersNeeded", (dict_dialog,))
+        self.params_dict = dict_dialog
+
+        self._state.value = "OPEN"
+        self.gevent_event.clear()
+        logging.getLogger("HWR").debug(f"Opening {self._state.value}")
+        while not self.gevent_event.is_set():
+            self.gevent_event.wait()
+            time.sleep(0.1)
+
+        self._state.value = "ON"
+        return self.params_dict
+
+    def workflow_end(self) -> None:
+        """
+        The workflow has finished, sets the state to 'ON'
+
+        Returns
+        -------
+        None
+        """
+        # If necessary unblock dialog
+        if not self.gevent_event.is_set():
+            self.gevent_event.set()
+        self.state.value = "ON"
+
+    def get_values_map(self):
+        # TODO: this method is currently not used by start_bluesky_workflow
+
+        return self.params_dict
+
+    def set_values_map(self, params):
+        # TODO: this method is currently not used by start_bluesky_workflow
+        self.params_dict = params
+        self.gevent_event.set()
+
+    def get_available_workflows(self) -> list[dict]:
+        """
+        Gets the available workflows specified in the edna_params.xml file
+
+        Returns
+        -------
+        workflow_list : str
+            A list containing all available workflows
+        """
+        workflow_list = list()
+        no_wf = len(self["workflow"])
+        for wf_i in range(no_wf):
+            wf = self["workflow"][wf_i]
+            dict_workflow = dict()
+            dict_workflow["name"] = str(wf.title)
+            dict_workflow["path"] = str(wf.path)
+            try:
+                req = [r.strip() for r in wf.get_property("requires").split(",")]
+                dict_workflow["requires"] = req
+            except (AttributeError, TypeError):
+                dict_workflow["requires"] = []
+            dict_workflow["doc"] = ""
+            workflow_list.append(dict_workflow)
+        return workflow_list
+
+    def abort(self) -> None:
+        """
+        Aborts a bluesky plan
+
+        Returns
+        -------
+        None
+        """
+        logging.getLogger("HWR").info("Aborting current workflow")
+        # If necessary unblock dialog
+        if not self.gevent_event.is_set():
+            self.gevent_event.set()
+
+        if self.workflow_name == "Raster":
+            self.raster_workflow.bluesky_plan_aborted = True
+            self.raster_workflow.mxcubecore_workflow_aborted = True
+
+        else:
+            raise NotImplementedError(
+                "Only Raster workflows can be aborted at the moment"
+            )
+
+    def start(self, list_arguments: list[str]) -> None:
+        """
+        Starts a workflow in mxcube
+
+        Parameters
+        ----------
+        list_arguments: list
+            A list of arguments containing information about the current
+            mounted sample. It includes the model path, the workflow name,
+            id of the sample, sample prefix,
+            run number, collection software, sample_node_id, sample_lims_id,
+            beamline, shape and directory.
+
+        Returns
+        -------
+        None
+        """
+        self.list_arguments = list_arguments
+
+        if not self.gevent_event.is_set():
+            self.gevent_event.set()
+        self.state.value = "ON"
+
+        self.dict_parameters = {}
+        index = 0
+        if len(list_arguments) == 0:
+            self.error_stream("ERROR! No input arguments!")
+            return
+        elif len(list_arguments) % 2 != 0:
+            self.error_stream("ERROR! Odd number of input arguments!")
+            return
+        while index < len(list_arguments):
+            self.dict_parameters[list_arguments[index]] = list_arguments[index + 1]
+            index += 2
+        logging.info("Input arguments:")
+        logging.info(pprint.pformat(self.dict_parameters))
+
+        if "modelpath" in self.dict_parameters:
+            modelpath = self.dict_parameters["modelpath"]
+            if "." in modelpath:
+                modelpath = modelpath.split(".")[0]
+            self.workflow_name = os.path.basename(modelpath)
+        else:
+            self.error_stream("ERROR! No modelpath in input arguments!")
+            return
+
+        if self.workflow_name is not None:
+            self.state.value = "RUNNING"
+            time0 = time.time()
+            logging.getLogger("HWR").info("Starting bluesky workflow")
+            self.start_bluesky_workflow()
+            time1 = time.time()
+            logging.getLogger("HWR").info(
+                f"Time to execute workflow (s): {time1 - time0}"
+            )
+
+    def start_bluesky_workflow(self) -> None:
+        """
+        Executes a bluesky plan using the bluesky queueserver
+
+        Returns
+        -------
+        None
+        """
+        # NOTE: we are not using self.dict_parameters because
+        # we do not need it (see the original implementation
+        # of the BES workflow for more details)
+        # self.list_arguments[3].split("RAW_DATA/")[1]
+
+        if self.workflow_name == "Screen":
+            # Run bluesky screening plan, we set the frame_time to 4 s
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+
+            item = BPlan(
+                "scan_plan",
+                detector="dectris_detector",
+                detector_configuration={"frame_time": 4, "nimages": 2},
+                metadata={"username": "Jane Doe", "sample_id": "test"},
+            )
+
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+
+            self.screen_and_collect_worklow(item)
+
+        elif self.workflow_name == "Collect":
+
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            updated_parameters = self.open_dialog(self.collect_workflow.dialog_box())
+            # TODO get sample id from Sample Changer
+            updated_parameters["sample_id"] = "my_sample"
+            self.collect_workflow.run(metadata=updated_parameters)
+
+        elif self.workflow_name == "Raster":
+            acquisition_parameters = self.beamline.get_default_acquisition_parameters(
+                acquisition_type="default_ansto"
+            ).as_dict()
+            acquisition_parameters["wavelenght"] = self.beamline.energy.get_wavelength()
+
+            # TODO get sample id from Sample Changer
+            acquisition_parameters["sample_id"] = "my_sample"
+
+            # Bluesky does not like empty strigs
+            if not acquisition_parameters["comments"]:
+                acquisition_parameters["comments"] = None
+
+            logging.getLogger("HWR").debug(f"ACQ params: {acquisition_parameters}")
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+
+            updated_parameters = self.open_dialog(self.raster_workflow.dialog_box())
+
+            # TODO: add updated parameterse to the acquisition parameters once we
+            # add useful data in the dialog box
+            self.raster_workflow.run(metadata=acquisition_parameters)
+
+        else:
+            logging.getLogger("HWR").error(
+                f"Workflow {self.workflow_name} not supported"
+            )
+            self.state.value = "ON"

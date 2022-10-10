@@ -31,11 +31,9 @@ __version__ = "2.3."
 __category__ = "General"
 
 
-
 class AbstractFlux(AbstractActuator):
 
     read_only = True
-
 
     def __init__(self, name):
         AbstractActuator.__init__(self, name)
@@ -98,7 +96,7 @@ class AbstractFlux(AbstractActuator):
         result = None
         if flux and all(beam_size):
             result = flux / (beam_size[0] * beam_size[1])
-            if transmission  is not None:
+            if transmission is not None:
                 result = result * transmission / HWR.beamline.transmission.get_value()
         #
         return result
