@@ -34,3 +34,4 @@ if not hasattr(robustapply, "_robust_apply"):
         robustapply.robustApply = __my_robust_apply
     del louie
     del __my_robust_apply
+
