@@ -173,7 +173,6 @@ class HardwareObjectNode(object):
         self.__name = node_name
         self.__references = []
         self._xml_path = None
-        self._global_role = None
 
     @staticmethod
     def set_user_file_directory(user_file_directory):
@@ -195,19 +194,6 @@ class HardwareObjectNode(object):
         Args :
           path (str): String representing the path of the Hardware Object in its file"""
         self._path = path
-
-    def set_global_role(self, role):
-        """
-        Set the "global role" of the HardwareObject
-
-        Args:
-          role (str): Role
-        """
-        self._global_role = role
-
-    @property
-    def global_role(self):
-        return self._global_role
 
     def get_xml_path(self):
         return self._xml_path
@@ -796,60 +782,6 @@ class HardwareObject(HardwareObjectNode, HardwareObjectMixin):
         self.__pydantic_models = {}
         self._exported_attributes = {}
         self._exports_config_list = []
-
-    def init(self):
-        self._exports_config_list.extend(
-            ast.literal_eval(self.get_property("exports", "[]").strip())
-        )
-
-        self.__exports = dict.fromkeys(self._exports_config_list, {})
-
-        if self.__exports:
-            self._get_type_annotations()
-
-    def _get_type_annotations(self):
-        _models = {}
-
-        for attr_name, _ in self.__exports.items():
-            self._exported_attributes[attr_name] = {}
-            self.__exports[attr_name] = []
-            self.__pydantic_models[attr_name] = {}
-            fdict = {}
-
-            for _n, _t in typing.get_type_hints(getattr(self, attr_name)).items():
-                # Skipp return typehint
-                if _n != "return":
-                    self.__exports[attr_name].append(_n)
-                    fdict[_n] = (_t, pydantic.Field(alias=_n))
-
-            _models[attr_name] = (
-                pydantic.create_model(attr_name, **fdict),
-                pydantic.Field(alias=attr_name),
-            )
-
-            self.__pydantic_models[attr_name] = _models[attr_name][0]
-            self._exported_attributes[attr_name]["signature"] = self.__exports[
-                attr_name
-            ]
-            self._exported_attributes[attr_name]["schema"] = self.__pydantic_models[
-                attr_name
-            ].schema_json()
-
-        model = pydantic.create_model(self.__class__.__name__, **_models)
-        self.__pydantic_models["all"] = model
-
-    def execute_exported_command(self, cmd_name, args):
-        if cmd_name in self.__exports.keys():
-            cmd = getattr(self, cmd_name)
-            cmd(**args)
-        else:
-            self.log.info(
-                f"Command {cmd} not exported, check type hints and configuration file"
-            )
-
-    @property
-    def pydantic_model(self):
-        return self.__pydantic_models
 
     @property
     def exported_attributes(self):
