@@ -45,7 +45,7 @@ _objects:
 
   - diffractometer: minidiff.xml
   - lims: lims.xml
-  - sample_view: sample_view.xml
+  - sample_view: udiff_camera.xml
   - queue_manager: queue.xml
   - queue_model: queue_model.xml
 
