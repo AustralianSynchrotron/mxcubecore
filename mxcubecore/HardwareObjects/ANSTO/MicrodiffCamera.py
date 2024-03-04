@@ -104,6 +104,15 @@ class MicrodiffCamera(HardwareObject):
         self.height = self.read_height()
         self.array_size = self.read_array_size()
 
+    def get_available_stream_sizes(self):
+        try:
+            w, h = self.get_width(), self.get_height()
+            video_sizes = [(w, h), (int(w / 2), int(h / 2)), (int(w / 4), int(h / 4))]
+        except (ValueError, AttributeError):
+            video_sizes = []
+
+        return video_sizes
+
     def poll(self) -> None:
         """Poll/Acquisition of the camera images.
 
