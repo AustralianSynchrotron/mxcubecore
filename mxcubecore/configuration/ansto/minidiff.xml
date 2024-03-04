@@ -1,16 +1,16 @@
 <?xml version="1.0"?>
 <object class="DiffractometerMockup">
   <username>diffractometer</username>
-  <object role="focus" hwrid="./udiff_phix"></object>
+  <object role="focus" hwrid="./md3/motor_x"></object>
   <object role="zoom" hwrid="./udiff_zoom"></object>
-  <object role="phi" hwrid="./udiff_omega"></object>
-  <object role="phix" hwrid="./udiff_phix"></object>
-  <object role="phiy" hwrid="./udiff_phiy"></object>
-  <object role="phiz" hwrid="./udiff_phiz"></object>
-  <object role="sampx" hwrid="./udiff_sampx"></object>
-  <object role="sampy" hwrid="./udiff_sampy"></object>
-  <object role="kappa" hwrid="./udiff_kappa"></object>
-  <object role="kappa_phi" hwrid="./udiff_kappaphi"></object>
+  <object role="phi" hwrid="./md3/omega"></object>
+  <object role="phix" hwrid="./md3/motor_x"></object>
+  <object role="phiy" hwrid="./md3/motor_y"></object>
+  <object role="phiz" hwrid="./md3/motor_z"></object>
+  <object role="sampx" hwrid="./md3/sample_x"></object>
+  <object role="sampy" hwrid="./md3/sample_y"></object>
+  <object role="kappa" hwrid="./md3/kappa"></object>
+  <object role="kappa_phi" hwrid="./md3/kappa_phi"></object>
   <object role="beam" hwrid="./beam"></object>
 
   <object role="backlight" href="./udiff_backlight"/>

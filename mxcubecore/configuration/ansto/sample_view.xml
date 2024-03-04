@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <object class="SampleView">
   <object hwrid="./udiff_camera" role="camera"/>
+  <object hwrid="./md3/motor_x" role="focus"/>
 
   <hide_grid_threshold>5</hide_grid_threshold>
 </object>

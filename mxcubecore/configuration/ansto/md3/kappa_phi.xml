@@ -1,0 +1,5 @@
+<device class="MotorMockup">
+    <username>Kappa Phi</username>
+    <actuator_name>Phi</actuator_name>
+    <tolerance>1e-2</tolerance>
+</device>
