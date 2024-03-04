@@ -13,8 +13,8 @@ server:
     - "ws://localhost:8000"
 
 mxcube:
-  USE_EXTERNAL_STREAMER: True
-  VIDEO_FORMAT: MPEG1
+  USE_EXTERNAL_STREAMER: False
+  VIDEO_FORMAT: REDIS
   VIDEO_STREAM_URL: "ws://localhost:8000/ws"
 
   # At which port to stream from
