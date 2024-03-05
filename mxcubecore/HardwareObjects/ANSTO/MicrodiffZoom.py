@@ -1,9 +1,6 @@
 from enum import Enum
 from .ExporterNState import ExporterNState
 
-__copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
-__license__ = "LGPLv3+"
-
 
 class MicrodiffZoom(ExporterNState):
     """MicrodiffZoom class"""
@@ -17,7 +14,8 @@ class MicrodiffZoom(ExporterNState):
         if _len > 0:
             # we can only assume that the values are consecutive integers
             # so the limits correspond to the keys.
-            self.set_limits((1, _len))
+            limits = (0, _len - 1)
+            self.set_limits(limits)
         else:
             # no values in the config file, initialise from the hardware.
             self.set_limits(self._get_range())
