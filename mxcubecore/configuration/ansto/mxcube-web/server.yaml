@@ -14,11 +14,7 @@ server:
 
 mxcube:
   USE_EXTERNAL_STREAMER: False
-  VIDEO_FORMAT: REDIS
-  VIDEO_STREAM_URL: "ws://localhost:8000/ws"
-
-  # At which port to stream from
-  VIDEO_STREAM_PORT: 8000
+  VIDEO_FORMAT: MJPEG
   # Mode, SSX-CHIP, SSX-INJECTOR, OSC
   mode: OSC
 
