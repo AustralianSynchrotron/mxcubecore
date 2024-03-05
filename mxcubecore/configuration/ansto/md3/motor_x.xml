@@ -1,6 +1,5 @@
 <object class="ANSTO.ExporterMotor">
   <username>PhiX</username>
-  <exporter_address>10.244.101.30:9001</exporter_address>
   <actuator_name>AlignmentX</actuator_name>
   <GUIstep>0.1</GUIstep>
   <unit>1e-3</unit>
