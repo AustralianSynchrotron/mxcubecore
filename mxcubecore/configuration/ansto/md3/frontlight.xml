@@ -1,7 +1,6 @@
 <device class="ANSTO.MicrodiffLight">
-  <username>Back light</username>
-  <actuator_name>BackLight</actuator_name>
+  <username>Front light</username>
+  <actuator_name>FrontLight</actuator_name>
   <limits>0, 2</limits>
   <position_suffix>Factor</position_suffix>
 </device>
-
