@@ -2,7 +2,7 @@
 <object class="DiffractometerMockup">
   <username>diffractometer</username>
   <object role="focus" hwrid="./md3/motor_x"></object>
-  <object role="zoom" hwrid="./udiff_zoom"></object>
+  <object role="zoom" hwrid="./md3/zoom"></object>
   <object role="phi" hwrid="./md3/omega"></object>
   <object role="phix" hwrid="./md3/motor_x"></object>
   <object role="phiy" hwrid="./md3/motor_y"></object>

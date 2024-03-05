@@ -2,6 +2,7 @@
 <object class="SampleView">
   <object hwrid="./udiff_camera" role="camera"/>
   <object hwrid="./md3/motor_x" role="focus"/>
+  <object hwrid="./md3/zoom" role="zoom"/>
 
   <hide_grid_threshold>5</hide_grid_threshold>
 </object>
