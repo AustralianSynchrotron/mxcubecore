@@ -1,9 +1,10 @@
 """
 This class is effectively the same as
+
 from mxcubecore.HardwareObjects.ExporterNState import ExporterNState
+
 with the difference that we read the exporter address
 from and ENV variable, instead of the xml config file
-
 """
 
 from enum import Enum

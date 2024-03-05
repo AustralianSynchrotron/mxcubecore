@@ -14,9 +14,9 @@
   <object role="beam" hwrid="./beam"></object>
 
   <object role="backlight" href="./udiff_backlight"/>
-  <object role="backlightswitch" href="./udiff_backlightswitch"/>
+  <object role="backlightswitch" href="./md3/backlight_switch"/>
   <object role="frontlight" href="./udiff_frontlight"/>
-  <object role="frontlightswitch" href="./udiff_frontlightswitch"/>
+  <object role="frontlightswitch" href="./md3/frontlight_switch"/>
 
   <object role="beamstop_distance" hwrid="./beamstop_alignment_x"></object>
 

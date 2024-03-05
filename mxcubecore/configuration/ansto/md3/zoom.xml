@@ -2,6 +2,6 @@
   <username>zoom</username>
   <value_channel_name>CoaxialCameraZoomValue</value_channel_name>
   <state_channel_name>ZoomState</state_channel_name>
-  <!-- if levels do not corresponf to values -->
+  <!-- if levels do not correspond to values -->
   <values>{"LEVEL1": 1, "LEVEL2": 2, "LEVEL3": 3, "LEVEL4": 4, "LEVEL5": 5, "LEVEL6": 6, "LEVEL7": 7}</values>
 </object>
