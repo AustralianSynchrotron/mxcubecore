@@ -24,6 +24,8 @@
   <object role="aperture" href="/aperture"/>
   <object role="capillary" href="/capillary"/>
 
+  <object role="camera" hwrid="./md3/camera"></object>
+
   <zoomcentre>{"x":340,"y":250}</zoomcentre>
   <omega_reference>{"motor_name": "phiz", "position":-0.2224, "camera_axis":"x"}</omega_reference>
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <object class="SampleView">
-  <object hwrid="./udiff_camera" role="camera"/>
+  <object hwrid="./md3/camera" role="camera"/>
   <object hwrid="./md3/motor_x" role="focus"/>
   <object hwrid="./md3/zoom" role="zoom"/>
 
