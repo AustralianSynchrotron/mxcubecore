@@ -1,0 +1,7 @@
+<device class="ANSTO.MicrodiffLight">
+  <username>Back light</username>
+  <actuator_name>BackLight</actuator_name>
+  <limits>0, 36</limits>
+  <position_suffix>Level</position_suffix>
+</device>
+
