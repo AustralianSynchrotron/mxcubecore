@@ -1,30 +1,11 @@
-#
-#  Project: MXCuBE
-#  https://github.com/mxcube
-#
-#  This file is part of MXCuBE software.
-#
-#  MXCuBE is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Lesser General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  MXCuBE is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Lesser General Public License for more details.
-#
-#   You should have received a copy of the GNU Lesser General Public License
-#  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
-
 import time
 import logging
 import random
 import warnings
 from typing import Tuple
 
-from pydantic import ValidationError
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from .prefect_flows.prefect_client import MX3PrefectClient
 
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
@@ -38,6 +19,10 @@ import numpy as np
 import numpy.typing as npt
 import ast
 import gevent
+import asyncio
+from os import getenv
+from distutils.util import strtobool
+
 
 EXPORTER_TO_HWOBJ_STATE = {
     "Fault": HardwareObjectState.FAULT,
@@ -47,7 +32,12 @@ EXPORTER_TO_HWOBJ_STATE = {
     "Unknown": HardwareObjectState.BUSY,
     "Offline": HardwareObjectState.OFF,
 }
-from os import getenv
+USE_TOP_CAMERA = strtobool(getenv("USE_TOP_CAMERA", "true"))
+CALIBRATED_ALIGNMENT_Z = float(getenv("CALIBRATED_ALIGNMENT_Z", "0.487"))
+SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME = getenv(
+    "SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME", "mxcube-sample-centering/plans"
+)
+
 
 class Diffractometer(GenericDiffractometer):
     """
@@ -192,6 +182,53 @@ class Diffractometer(GenericDiffractometer):
         Descript. :
         """
         return self.grid_direction
+    
+    def start_automatic_centring(
+        self, sample_info=None, loop_only: bool = False, wait_result: bool = True
+    ) -> None:
+        """
+        Calls the optical_and_xray_centering object to run its
+        corresponding bluesky plan. For details on how the optical and
+        x-ray centering works, refer to to the OpticalAndXRayCentering class
+        defined on the mx3-beamline library
+
+        Parameters
+        ----------
+        sample_info : optional
+            Sample information, by default None
+        loop_only : bool, optional
+            Loop only, by default False
+        wait_result : bool, optional
+            Wait result, by default None
+
+        Returns
+        -------
+        None
+        """
+        self.emit_progress_message("Automatic centring...")
+        logging.getLogger("HWR").debug("Starting auto loop centring...")
+
+        # NOTE:  self.beam.get_beam_size() returns the size of the beam in mm,
+        # so we convert the units to micrometers
+        # beam_size_micrometers = tuple([b * 1000 for b in self.beam.get_beam_size()])
+        sample_centering = MX3PrefectClient(
+            name=SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
+            parameters={
+                "sample_id": "test",
+                "beam_position": [self.beam_position[0], self.beam_position[1]],
+                "use_top_camera": USE_TOP_CAMERA,
+                "calibrated_alignment_z": CALIBRATED_ALIGNMENT_Z,
+            },
+        )
+        # NOTE: using asyncio.run() does not seem to work consistently
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(sample_centering.trigger_flow(wait=True))
+        logging.getLogger("HWR").debug("Optical centering finished")
+
+        self.emit_centring_successful()
+        self.emit_progress_message("Centring successful")
+        self.current_centring_method = None
 
     def manual_centring(self) -> dict:
         """
