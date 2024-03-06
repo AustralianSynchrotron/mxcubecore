@@ -24,19 +24,30 @@ import warnings
 from typing import Tuple
 
 from pydantic import ValidationError
+from mxcubecore.BaseHardwareObjects import HardwareObjectState
 
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
     PhaseEnum,
 )
 
-from mxcubecore import HardwareObjects, HardwareRepository as HWR
+from mxcubecore import HardwareRepository as HWR
 from gevent.event import AsyncResult
 from scipy import optimize
 import numpy as np
 import numpy.typing as npt
 import ast
-from .MicrodiffZoom import MicrodiffZoom
+import gevent
+
+EXPORTER_TO_HWOBJ_STATE = {
+    "Fault": HardwareObjectState.FAULT,
+    "Ready": HardwareObjectState.READY,
+    "Moving": HardwareObjectState.BUSY,
+    "Busy": HardwareObjectState.BUSY,
+    "Unknown": HardwareObjectState.BUSY,
+    "Offline": HardwareObjectState.OFF,
+}
+from os import getenv
 
 class Diffractometer(GenericDiffractometer):
     """
@@ -45,6 +56,7 @@ class Diffractometer(GenericDiffractometer):
 
     def __init__(self, *args) -> None:
         GenericDiffractometer.__init__(self, *args)
+        self.exporter_addr = getenv("EXPORTER_ADDRESS", "12.345.678.10:1234")
 
     def init(self):
         """
@@ -105,6 +117,63 @@ class Diffractometer(GenericDiffractometer):
             self.motor_hwobj_dict["sampy"], "valueChanged", self.sampy_motor_moved
         )
 
+        self.movePhase = self.add_command(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "move_to_phase",
+            },
+            "startSetPhase",
+        )
+
+        self.hwstate_attr = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "hwstate",
+            },
+            "HardwareState",
+        )
+
+        self.swstate_attr = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "swstate",
+            },
+            "State",
+        )
+        self.readPhase = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "read_phase",
+            },
+            "CurrentPhase",
+        )
+        self.state = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "state",
+            },
+            "State",
+        )
+        self.readPhase.connect_signal("update", self._update_phase_value)
+        self.state.connect_signal("update", self._update_state)
+
+    def _update_phase_value(self, value=None):
+        if value is None:
+            value = self.get_current_phase()
+        self.emit("phaseChanged", (value))
+
+    def _update_state(self, value):
+        self.update_state(
+            EXPORTER_TO_HWOBJ_STATE.get(value, HardwareObjectState.UNKNOWN)
+        )
+
+    def get_current_phase(self):
+        return self.readPhase.get_value()
 
     def execute_server_task(self, method, timeout=30, *args):
         return
@@ -475,9 +544,56 @@ class Diffractometer(GenericDiffractometer):
     def move_omega_relative(self, relative_angle):
         self.motor_hwobj_dict["phi"].set_value_relative(relative_angle, 5)
 
-    def set_phase(self, phase, timeout=None):
+    def set_phase(self, phase: str, wait: bool = True, timeout: float = None) -> None:
+        """
+        Sets diffractometer to selected phase.
+        By default available phase is Centring, BeamLocation,
+        DataCollection, Transfer
+
+        phase : str
+            Diffractometer phase
+        wait : bool, optional
+            Wait until diffractometer is ready, by default True
+        timeout : float, optional
+            timeout in sec, by default none
+
+        Returns
+        -------
+        None
+        """
+        logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
+        self.movePhase(phase)
+        if wait:
+            if timeout is None:
+                timeout = 40
+            self._wait_ready(timeout)
         self.emit("minidiffPhaseChanged", (self.current_phase,))
+
+    def _wait_ready(self, timeout: float = None) -> None:
+        """
+        Waits until the MD3 is ready
+
+        Parameters
+        ----------
+        timeout : float, optional
+            None means infinite timeout, <=0 means default timeout (30s)
+
+        Returns
+        -------
+        None
+        """
+
+        if timeout is not None and timeout <= 0:
+            logging.getLogger("HWR").warning(
+                "DEBUG: Strange timeout value passed %s" % str(timeout)
+            )
+            timeout = 30
+        with gevent.Timeout(
+            timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
+        ):
+            while not self._ready():
+                time.sleep(0.5)
 
     def get_point_from_line(self, point_one, point_two, index, images_num):
         return point_one.as_dict()
