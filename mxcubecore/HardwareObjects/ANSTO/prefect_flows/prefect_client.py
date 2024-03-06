@@ -71,7 +71,6 @@ class MX3PrefectClient:
                 await self.wait()
         except Exception as e:
             logging.getLogger("HWR").info(f"Flow execution failed {e}")
-            
 
     async def wait(self) -> None:
         """

@@ -2,6 +2,7 @@ from .ExporterMotor import ExporterMotor
 import logging
 import math
 
+
 class MicrodiffLight(ExporterMotor):
     def __init__(self, name):
         ExporterMotor.__init__(self, name)
@@ -41,7 +42,7 @@ class MicrodiffLight(ExporterMotor):
             value (float): target value
         """
         self.update_state(self.STATES.BUSY)
-        self.motor_position_chan.set_value(round(value,1))
+        self.motor_position_chan.set_value(round(value, 1))
         self.update_state(self.STATES.READY)
 
     def get_value(self) -> float:
@@ -61,4 +62,4 @@ class MicrodiffLight(ExporterMotor):
             _v = self._nominal_value
 
         self._nominal_value = _v
-        return  self._nominal_value
+        return self._nominal_value

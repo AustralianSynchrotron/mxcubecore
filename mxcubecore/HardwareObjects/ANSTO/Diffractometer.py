@@ -182,7 +182,7 @@ class Diffractometer(GenericDiffractometer):
         Descript. :
         """
         return self.grid_direction
-    
+
     def start_automatic_centring(
         self, sample_info=None, loop_only: bool = False, wait_result: bool = True
     ) -> None:
@@ -338,7 +338,6 @@ class Diffractometer(GenericDiffractometer):
         except Exception as e:
             logging.getLogger("HWR").debug("[Zoom] Error on calibration: " + str(e))
         return (self.pixels_per_mm_x, self.pixels_per_mm_y)
-
 
     def automatic_centring(self):
         """Automatic centring procedure"""

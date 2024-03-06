@@ -57,7 +57,6 @@ class ExporterMotor(AbstractMotor):
         self._exporter_address = getenv("EXPORTER_ADDRESS", "12.345.678.91:1234")
         _host, _port = self._exporter_address.split(":")
         self._exporter = Exporter(_host, int(_port))
-        
 
         self.motor_position_chan = self.add_channel(
             {
