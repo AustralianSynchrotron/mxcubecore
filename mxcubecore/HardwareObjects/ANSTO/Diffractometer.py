@@ -162,6 +162,71 @@ class Diffractometer(GenericDiffractometer):
             EXPORTER_TO_HWOBJ_STATE.get(value, HardwareObjectState.UNKNOWN)
         )
 
+    def calculate_move_to_beam_pos(self, x: float, y: float) -> dict:
+        """
+        Calculate motor positions to put sample on the beam.
+        This method is called by the "Go to Beam" button in the Web UI.
+
+        Parameters
+        ----------
+        x : float
+            Position of pixel_x
+        y : float
+            position of pixel_y
+
+        Returns
+        -------
+        centred_pos_dir: dict
+            centred position of motor_x and motor_z
+        """
+        self.get_zoom_calibration()
+
+        # Update beam position
+        (
+            self.beam_position[0],
+            self.beam_position[1],
+        ) = HWR.beamline.beam.get_beam_position_on_screen()
+
+        # Get clicked position of mouse pointer
+        self.last_centred_position[0] = x
+        self.last_centred_position[1] = y
+
+        # Get current value of involved motors
+        sample_x = self.motor_hwobj_dict["sampx"].get_value()
+        sample_y = self.motor_hwobj_dict["sampy"].get_value()
+        alignment_y = self.motor_hwobj_dict["phiy"].get_value()
+        omega = self.motor_hwobj_dict["phi"].get_value()
+
+        # mm to move sample_x
+        move_sample_x = (
+            np.sin(np.radians(omega))
+            * (x - self.beam_position[0])
+            / self.pixels_per_mm_x
+        )
+        # Move absolute
+        move_sample_x += sample_x
+
+        # mm to move sample_y
+        move_sample_y = (
+            np.cos(np.radians(omega))
+            * (x - self.beam_position[0])
+            / self.pixels_per_mm_x
+        )
+        # Move absolute
+        move_sample_y += sample_y
+
+        # mm to move alignment y
+        move_alignment_y = (y - self.beam_position[1]) / self.pixels_per_mm_y
+        # Move absolute
+        move_alignment_y += alignment_y
+
+        centred_pos_dir = {
+            "sampx": move_sample_x,
+            "sampy": move_sample_y,
+            "phiy": move_alignment_y,
+        }
+        return centred_pos_dir
+
     def get_current_phase(self):
         return self.readPhase.get_value()
 
@@ -498,18 +563,28 @@ class Diffractometer(GenericDiffractometer):
         """
         return
 
-    def move_to_beam(self, x, y, omega=None):
+    def move_to_beam(self, x: float, y: float, omega: float = None) -> dict:
         """
-        Descript. : function to create a centring point based on all motors
-                    positions.
+        Method to create a centring point based on all motors positions.
+
+        Parameters
+        ----------
+        x : float
+            Position of pixel_x
+        y : float
+            position of pixel_y
+        omega : float, optional
+            Position of omega (currently not used)
+
+        Returns
+        -------
+        centred_pos_dir: dict
+            Centred position
         """
 
-        print(
-            (
-                "moving to beam position: %d %d"
-                % (self.beam_position[0], self.beam_position[1])
-            )
-        )
+        centred_pos_dir = self.calculate_move_to_beam_pos(x, y)
+        self.move_to_motors_positions(centred_pos_dir, wait=True)
+        return centred_pos_dir
 
     def move_to_coord(self, x, y, omega=None):
         """
