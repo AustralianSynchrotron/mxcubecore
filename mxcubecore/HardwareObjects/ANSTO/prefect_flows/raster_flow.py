@@ -15,8 +15,8 @@ from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
 
-GRID_SCAN_PREFECT_DEPLOYMENT_NAME = environ.get(
-    "GRID_SCAN_PREFECT_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
+GRID_SCAN_DEPLOYMENT_NAME = environ.get(
+    "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
 )
 
 
@@ -66,7 +66,7 @@ class RasterFlow(AbstractPrefectWorkflow):
         height = round(grid.height)
 
         parameters = {
-            "sample_id": "",
+            "sample_id": "test1",
             "grid_scan_id": sid,
             "grid_top_left_coordinate": screen_coordinate,
             "grid_height": height,
@@ -76,17 +76,18 @@ class RasterFlow(AbstractPrefectWorkflow):
             "number_of_rows": num_rows,
             "exposure_time": 1,
             "omega_range": 0,
-            "hardware_trigger": True,
+            "hardware_trigger": False,
             "detector_distance": -0.298,
             "photon_energy": 12700,
         }
 
-        for key, val in dialog_box_parameters.items():
-            parameters.update({key: val})
+        # FIXME!! the dialog box is not used!!
+        # for key, val in dialog_box_parameters.items():
+        #     parameters.update({key: val})
 
         logging.getLogger("HWR").info(f"Parameters sent to prefect flow: {parameters}")
         grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_PREFECT_DEPLOYMENT_NAME, parameters=parameters
+            name=GRID_SCAN_DEPLOYMENT_NAME, parameters=parameters
         )
 
         try:
@@ -161,7 +162,7 @@ class RasterFlow(AbstractPrefectWorkflow):
                         ]
 
                 heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": heatmap}
-                self.sample_view.set_grid_data(sid, heat_and_crystal_map)
+                self.sample_view.set_grid_data(sid, heat_and_crystal_map, data_file_path="this_is_not_used")
 
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
