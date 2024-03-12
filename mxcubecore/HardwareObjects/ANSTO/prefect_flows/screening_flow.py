@@ -4,9 +4,10 @@ from os import environ
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
+from .schemas.loop_data_collection import ScreeningParams
 
-SCAN_PREFECT_DEPLOYMENT_ID = environ.get(
-    "SCAN_PREFECT_DEPLOYMENT_ID", "mxcube-scan/plans"
+SCREENING_DEPLOYMENT_NAME = environ.get(
+    "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
 )
 
 
@@ -24,24 +25,22 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         None
         """
         parameters = {
-            "sample_id": "sample",
-            "scan_range": 10,
-            "exposure_time": 1,
-            "hardware_trigger": True,
-            "number_of_frames": 100,
-            "number_of_passes": 1,
-            "run_data_processing_pipeline": True,
-            "detector_distance": -0.298,
-            "photon_energy": 12700,
-        }
+            "sample_id": "test2", 
+            "crystal_id": 0, 
+            "data_collection_id": 0, 
+            "screening_params": ScreeningParams().dict(),
+            "run_data_processing_pipeline": False,
+            "hardware_trigger": False,
+            }
 
-        for key, val in dialog_box_parameters.items():
-            parameters.update({key: val})
+        # FIXME!!!
+        # for key, val in dialog_box_parameters.items():
+        #     parameters.update({key: val})
 
         logging.getLogger("HWR").debug(f"parameters sent to flow {parameters}")
 
         screening_flow = MX3PrefectClient(
-            name=SCAN_PREFECT_DEPLOYMENT_ID, parameters=parameters
+            name=SCREENING_DEPLOYMENT_NAME, parameters=parameters
         )
 
         try:

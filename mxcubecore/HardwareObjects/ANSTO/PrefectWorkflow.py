@@ -393,10 +393,11 @@ class PrefectWorkflow(HardwareObject):
         if self.workflow_name == "Screen":
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.screening_flow = ScreeningFlow(state=self._state)
-            dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
-            logging.getLogger("HWR").info(
-                f"Dialog box parameters: {dialog_box_parameters}"
-            )
+            # dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
+            # logging.getLogger("HWR").info(
+            #     f"Dialog box parameters: {dialog_box_parameters}"
+            # )
+            dialog_box_parameters = {}
 
             self.screening_flow.run(dialog_box_parameters=dialog_box_parameters)
 
