@@ -105,7 +105,7 @@ class PrefectWorkflow(HardwareObject):
         self.gevent_event = None
         self.workflow_name = None
         self.redis_port = int(os.environ.get("DATA_PROCESSING_REDIS_PORT", "6379"))
-        self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "redis")
+        self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "mx_redis")
         self.mxcubecore_workflow_aborted = False
 
     def _init(self) -> None:
@@ -212,7 +212,7 @@ class PrefectWorkflow(HardwareObject):
         None
         """
         new_value = str(new_value)
-        logging.getLogger("HWR").debug(f"{self.name()}: state changed to {new_value}")
+        logging.getLogger("HWR").info(f"{self.name()}: state changed to {new_value}")
         self.emit("stateChanged", (new_value,))
 
     def open_dialog(self, dict_dialog: dict) -> dict:
@@ -375,6 +375,7 @@ class PrefectWorkflow(HardwareObject):
             logging.getLogger("HWR").info(
                 f"Time to execute workflow (s): {time1 - time0}"
             )
+        self.state.value = "ON"
 
     def start_prefect_workflow(self) -> None:
         """
@@ -427,7 +428,9 @@ class PrefectWorkflow(HardwareObject):
                 state=self._state,
                 redis_connection=self.redis_connection,
             )
-            dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
+            # FIXME !!
+            # dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
+            dialog_box_parameters = {}
             logging.getLogger("HWR").info(
                 f"Dialog box parameters: {dialog_box_parameters}"
             )
