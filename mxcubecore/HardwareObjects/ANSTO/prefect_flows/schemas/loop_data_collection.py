@@ -1,5 +1,14 @@
 from pydantic import Field, BaseModel
-from typing import Union
+from typing import Union, Optional
+
+class ScreeningDialogBox(BaseModel):
+    exposure_time: float
+    omega_range: float
+    number_of_frames: int
+    detector_distance: float
+    photon_energy: float 
+    hardware_trigger: bool = True
+    sample_id: Optional[str] = None
 
 class ScreeningParams(BaseModel):
     """Parameters for collecting screening data"""

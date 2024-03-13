@@ -4,7 +4,7 @@ from os import environ
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
-from .schemas.loop_data_collection import ScreeningParams
+from .schemas.loop_data_collection import ScreeningParams, ScreeningDialogBox
 
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
@@ -24,23 +24,36 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         -------
         None
         """
-        parameters = {
-            "sample_id": "test2", 
+        # This is the payload we get from the UI"
+        dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
+
+
+        screening_params = ScreeningParams(
+            start_omega=0, # TODO, get actual current start_omega
+            omega_range=dialog_box_model.omega_range,
+            exposure_time=dialog_box_model.exposure_time,
+            number_of_passes=1,
+            count_time=None,
+            number_of_frames=dialog_box_model.number_of_frames,
+            detector_distance=dialog_box_model.detector_distance,
+            photon_energy=dialog_box_model.photon_energy,
+            beam_size=(80,80) # TODO: get beam size
+            )
+
+        prefect_parameters = {
+            "sample_id": dialog_box_model.sample_id, 
             "crystal_id": 0, 
             "data_collection_id": 0, 
-            "screening_params": ScreeningParams().dict(),
+            "screening_params": screening_params.dict(),
             "run_data_processing_pipeline": False,
-            "hardware_trigger": False,
+            "hardware_trigger": dialog_box_model.hardware_trigger,
             }
+        
 
-        # FIXME!!!
-        # for key, val in dialog_box_parameters.items():
-        #     parameters.update({key: val})
-
-        logging.getLogger("HWR").debug(f"parameters sent to flow {parameters}")
+        logging.getLogger("HWR").debug(f"parameters sent to prefect flow {prefect_parameters}")
 
         screening_flow = MX3PrefectClient(
-            name=SCREENING_DEPLOYMENT_NAME, parameters=parameters
+            name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
         try:
@@ -72,8 +85,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "default": 1,
                     "widget": "textarea",
                 },
-                "scan_range": {
-                    "title": "scan range",
+                "omega_range": {
+                    "title": "omega range",
                     "type": "number",
                     "minimum": 0,
                     "exclusiveMaximum": 361,
