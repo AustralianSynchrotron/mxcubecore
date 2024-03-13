@@ -14,6 +14,7 @@ from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
+from .schemas.grid_scan import GridScanDialogBox, GridScanParams
 
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
@@ -65,29 +66,28 @@ class RasterFlow(AbstractPrefectWorkflow):
         width = round(grid.width)
         height = round(grid.height)
 
-        parameters = {
-            "sample_id": "test1",
-            "grid_scan_id": sid,
-            "grid_top_left_coordinate": screen_coordinate,
-            "grid_height": height,
-            "grid_width": width,
-            "beam_position": beam_position,
-            "number_of_columns": num_cols,
-            "number_of_rows": num_rows,
-            "exposure_time": 1,
-            "omega_range": 0,
-            "hardware_trigger": False,
-            "detector_distance": -0.298,
-            "photon_energy": 12700,
-        }
+        dialog_box_model = GridScanDialogBox.parse_obj(dialog_box_parameters)
 
-        # FIXME!! the dialog box is not used!!
-        # for key, val in dialog_box_parameters.items():
-        #     parameters.update({key: val})
+        prefect_parameters = GridScanParams(
+            sample_id= dialog_box_model.sample_id,
+            grid_scan_id= 0, # FIXME change this
+            grid_top_left_coordinate=screen_coordinate,
+            grid_height= height,
+            grid_width= width,
+            beam_position= beam_position,
+            number_of_columns= num_cols,
+            number_of_rows= num_rows,
+            exposure_time= dialog_box_model.exposure_time,
+            omega_range= dialog_box_model.omega_range,
+            hardware_trigger= dialog_box_model.hardware_trigger,
+            detector_distance= dialog_box_model.detector_distance,
+            photon_energy=dialog_box_model.photon_energy,
+        )
 
-        logging.getLogger("HWR").info(f"Parameters sent to prefect flow: {parameters}")
+
+        logging.getLogger("HWR").info(f"Parameters sent to prefect flow: {prefect_parameters}")
         grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_DEPLOYMENT_NAME, parameters=parameters
+            name=GRID_SCAN_DEPLOYMENT_NAME, parameters=prefect_parameters.dict()
         )
 
         try:
@@ -119,7 +119,7 @@ class RasterFlow(AbstractPrefectWorkflow):
                 number_of_spots_array = np.zeros((num_rows, num_cols))
                 for _ in range(grid_size):
                     data, last_id = self.read_message_from_redis_streams(
-                        topic=f"number_of_spots_{sid}:{parameters['sample_id']}",
+                        topic=f"number_of_spots_{prefect_parameters.grid_scan_id}:{prefect_parameters.sample_id}",
                         id=last_id,
                     )
                     number_of_spots = int(data[b"number_of_spots"])

@@ -427,9 +427,7 @@ class PrefectWorkflow(HardwareObject):
                 state=self._state,
                 redis_connection=self.redis_connection,
             )
-            # FIXME !!
-            # dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
-            dialog_box_parameters = {}
+            dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
             logging.getLogger("HWR").info(
                 f"Dialog box parameters: {dialog_box_parameters}"
             )
