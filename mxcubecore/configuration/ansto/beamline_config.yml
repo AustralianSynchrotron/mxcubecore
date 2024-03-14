@@ -51,7 +51,7 @@ _objects:
 
   # Procedures:
   - beamline_actions: beamline_actions.xml
-  - workflow: ednaparams.xml
+  - workflow: prefect_flows.xml
   - collect: mxcollect.xml
   - xrf_spectrum: xrf.xml
   - energy_scan: energyscan.xml
