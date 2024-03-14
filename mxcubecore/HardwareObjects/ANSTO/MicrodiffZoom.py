@@ -1,4 +1,5 @@
 from enum import Enum
+
 from .ExporterNState import ExporterNState
 
 
@@ -21,7 +22,7 @@ class MicrodiffZoom(ExporterNState):
             self.set_limits(self._get_range())
             self._initialise_values()
 
-    def set_limits(self, limits: tuple[int, int]=(None, None)) -> None:
+    def set_limits(self, limits: tuple[int, int] = (None, None)) -> None:
         """
         Set the low and high limits.
 
@@ -49,7 +50,7 @@ class MicrodiffZoom(ExporterNState):
         # value passed by underlying event data.
         super().update_value()
 
-    def update_limits(self, limits: tuple[int, int]=None) -> None:
+    def update_limits(self, limits: tuple[int, int] = None) -> None:
         """
         Check if the limits have changed. Emits signal limitsChanged
 

@@ -1,20 +1,21 @@
 from enum import Enum
-from gevent import Timeout, sleep
-from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
-from mxcubecore.Command.Exporter import Exporter
-from mxcubecore.Command.exporter.ExporterStates import ExporterStates
 from os import getenv
 
+from gevent import Timeout, sleep
+
+from mxcubecore.Command.Exporter import Exporter
+from mxcubecore.Command.exporter.ExporterStates import ExporterStates
+from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
 
 class ExporterNState(AbstractNState):
     """
-    Microdiff with Exporter implementation of AbstractNState. This class 
+    Microdiff with Exporter implementation of AbstractNState. This class
     is effectively the same as:
 
     from mxcubecore.HardwareObjects.ExporterNState import ExporterNState
 
-    with the difference that we read the exporter address from and ENV variable, 
+    with the difference that we read the exporter address from and ENV variable,
     instead of the xml config file.
     """
 

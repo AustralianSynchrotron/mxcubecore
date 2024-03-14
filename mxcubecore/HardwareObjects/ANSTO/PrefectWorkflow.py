@@ -12,8 +12,8 @@ from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
 from mxcubecore.HardwareObjects.SampleView import SampleView
 
 from .prefect_flows.grid_scan_flow import GridScanFlow
-from .prefect_flows.screening_flow import ScreeningFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
+from .prefect_flows.screening_flow import ScreeningFlow
 
 
 class State(object):

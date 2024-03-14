@@ -27,7 +27,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         # This is the payload we get from the UI"
         dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
 
-
         screening_params = ScreeningParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
@@ -36,20 +35,21 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             number_of_frames=dialog_box_model.number_of_frames,
             detector_distance=dialog_box_model.detector_distance,
             photon_energy=dialog_box_model.photon_energy,
-            beam_size=(80,80) # TODO: get beam size
-            )
+            beam_size=(80, 80),  # TODO: get beam size
+        )
 
         prefect_parameters = {
-            "sample_id": dialog_box_model.sample_id, 
-            "crystal_id": 0, 
-            "data_collection_id": 0, 
+            "sample_id": dialog_box_model.sample_id,
+            "crystal_id": 0,
+            "data_collection_id": 0,
             "screening_params": screening_params.dict(),
             "run_data_processing_pipeline": False,
             "hardware_trigger": dialog_box_model.hardware_trigger,
-            }
-        
+        }
 
-        logging.getLogger("HWR").debug(f"parameters sent to prefect flow {prefect_parameters}")
+        logging.getLogger("HWR").debug(
+            f"parameters sent to prefect flow {prefect_parameters}"
+        )
 
         screening_flow = MX3PrefectClient(
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters

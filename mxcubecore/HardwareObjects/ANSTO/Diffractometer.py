@@ -1,28 +1,27 @@
-import time
+import ast
+import asyncio
 import logging
 import random
+import time
 import warnings
+from distutils.util import strtobool
+from os import getenv
 from typing import Tuple
 
-from mxcubecore.BaseHardwareObjects import HardwareObjectState
-from .prefect_flows.prefect_client import MX3PrefectClient
+import gevent
+import numpy as np
+import numpy.typing as npt
+from gevent.event import AsyncResult
+from scipy import optimize
 
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObjectState
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
     PhaseEnum,
 )
 
-from mxcubecore import HardwareRepository as HWR
-from gevent.event import AsyncResult
-from scipy import optimize
-import numpy as np
-import numpy.typing as npt
-import ast
-import gevent
-import asyncio
-from os import getenv
-from distutils.util import strtobool
-
+from .prefect_flows.prefect_client import MX3PrefectClient
 
 EXPORTER_TO_HWOBJ_STATE = {
     "Fault": HardwareObjectState.FAULT,
@@ -162,8 +161,7 @@ class Diffractometer(GenericDiffractometer):
         self.read_phase.connect_signal("update", self._update_phase_value)
         self.state.connect_signal("update", self._update_state)
 
-
-    def _update_phase_value(self, value: str=None) -> None:
+    def _update_phase_value(self, value: str = None) -> None:
         """
         Updates the phase of the md3
 
@@ -180,7 +178,7 @@ class Diffractometer(GenericDiffractometer):
             value = self.get_current_phase()
         self.emit("phaseChanged", (value))
 
-    def _update_state(self, value: str)-> None:
+    def _update_state(self, value: str) -> None:
         """
         Updates the state of the md3
 
@@ -387,7 +385,7 @@ class Diffractometer(GenericDiffractometer):
 
         self.save_centring_positions()
         return centered_position
-    
+
     def save_centring_positions(self) -> None:
         """
         Saves the centered positions

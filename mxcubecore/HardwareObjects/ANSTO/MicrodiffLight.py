@@ -1,13 +1,17 @@
-from .ExporterMotor import ExporterMotor
 import logging
 import math
+
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+
+from .ExporterMotor import ExporterMotor
+
 
 class MicrodiffLight(ExporterMotor):
     """
     MicrodiffLight class. This class is used to control
     the backlight and frontlight of the MD3
     """
+
     def __init__(self, name: str) -> None:
         """
         Parameters
@@ -97,4 +101,3 @@ class MicrodiffLight(ExporterMotor):
 
     def move_out(self):
         self.chan_light_is_on.set_value(False)
-

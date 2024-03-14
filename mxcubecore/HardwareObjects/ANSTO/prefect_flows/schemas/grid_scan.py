@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, Union
 
+
 class GridScanDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
@@ -18,7 +19,7 @@ class GridScanParams(BaseModel):
     grid_top_left_coordinate: Union[tuple[int, int], list[int]]
     grid_height: int
     grid_width: int
-    beam_position: Optional[Union[tuple[int, int], list[int]]] = [612,512]
+    beam_position: Optional[Union[tuple[int, int], list[int]]] = [612, 512]
     number_of_columns: int
     number_of_rows: int
     exposure_time: float
@@ -26,4 +27,3 @@ class GridScanParams(BaseModel):
     hardware_trigger: bool = False
     detector_distance: float
     photon_energy: float
-

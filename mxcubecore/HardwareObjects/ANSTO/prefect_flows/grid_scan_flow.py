@@ -68,31 +68,36 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         dialog_box_model = GridScanDialogBox.parse_obj(dialog_box_parameters)
 
-        redis_grid_scan_id = self.redis_connection.get(f"mxcube_grid_scan_id:{dialog_box_model.sample_id}")
+        redis_grid_scan_id = self.redis_connection.get(
+            f"mxcube_grid_scan_id:{dialog_box_model.sample_id}"
+        )
         if redis_grid_scan_id is None:
             grid_scan_id = 0
         else:
             grid_scan_id = int(redis_grid_scan_id) + 1
-        
 
         prefect_parameters = GridScanParams(
-            sample_id= dialog_box_model.sample_id,
-            grid_scan_id= grid_scan_id,
+            sample_id=dialog_box_model.sample_id,
+            grid_scan_id=grid_scan_id,
             grid_top_left_coordinate=screen_coordinate,
-            grid_height= height,
-            grid_width= width,
-            beam_position= beam_position,
-            number_of_columns= num_cols,
-            number_of_rows= num_rows,
-            exposure_time= dialog_box_model.exposure_time,
-            omega_range= dialog_box_model.omega_range,
-            hardware_trigger= dialog_box_model.hardware_trigger,
-            detector_distance= dialog_box_model.detector_distance,
+            grid_height=height,
+            grid_width=width,
+            beam_position=beam_position,
+            number_of_columns=num_cols,
+            number_of_rows=num_rows,
+            exposure_time=dialog_box_model.exposure_time,
+            omega_range=dialog_box_model.omega_range,
+            hardware_trigger=dialog_box_model.hardware_trigger,
+            detector_distance=dialog_box_model.detector_distance,
             photon_energy=dialog_box_model.photon_energy,
         )
 
-        self.redis_connection.set(f"mxcube_grid_scan_id:{dialog_box_model.sample_id}", grid_scan_id, ex=86400)
-        logging.getLogger("HWR").info(f"Parameters sent to prefect flow: {prefect_parameters}")
+        self.redis_connection.set(
+            f"mxcube_grid_scan_id:{dialog_box_model.sample_id}", grid_scan_id, ex=86400
+        )
+        logging.getLogger("HWR").info(
+            f"Parameters sent to prefect flow: {prefect_parameters}"
+        )
         grid_scan_flow = MX3PrefectClient(
             name=GRID_SCAN_DEPLOYMENT_NAME, parameters=prefect_parameters.dict()
         )
@@ -159,7 +164,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
                         heatmap[i] = [i, list(heatmap_array[i - 1])]
 
                 heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": heatmap}
-                self.sample_view.set_grid_data(sid, heat_and_crystal_map, data_file_path="this_is_not_used")
+                self.sample_view.set_grid_data(
+                    sid, heat_and_crystal_map, data_file_path="this_is_not_used"
+                )
 
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False

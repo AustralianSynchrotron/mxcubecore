@@ -1,14 +1,16 @@
 from pydantic import Field, BaseModel
 from typing import Union, Optional
 
+
 class ScreeningDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
     number_of_frames: int
     detector_distance: float
-    photon_energy: float 
+    photon_energy: float
     hardware_trigger: bool = True
     sample_id: Optional[str] = None
+
 
 class ScreeningParams(BaseModel):
     """Parameters for collecting screening data"""
@@ -40,6 +42,7 @@ class ScreeningParams(BaseModel):
         description="Determined by the crystal finder. Not currently used. "
         "Measured in um.",
     )
+
     class Config:
         extra = "forbid"
 
@@ -74,9 +77,10 @@ class FullDatasetParams(BaseModel):
         "Measured in um.",
     )
 
-    rotation_axis_offset: Union[int,None] = Field(
+    rotation_axis_offset: Union[int, None] = Field(
         default=None,
         description="Output from RadDose. Not yet implemented. Measured in um.",
     )
+
     class Config:
         extra = "forbid"
