@@ -107,7 +107,16 @@ class Diffractometer(GenericDiffractometer):
             self.motor_hwobj_dict["sampy"], "valueChanged", self.sampy_motor_moved
         )
 
-        self.movePhase = self.add_command(
+        self.save_positions = self.add_command(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "save_centring_positions",
+            },
+            "saveCentringPositions",
+        )
+
+        self.move_phase = self.add_command(
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
@@ -133,7 +142,7 @@ class Diffractometer(GenericDiffractometer):
             },
             "State",
         )
-        self.readPhase = self.add_channel(
+        self.read_phase = self.add_channel(
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
@@ -149,8 +158,9 @@ class Diffractometer(GenericDiffractometer):
             },
             "State",
         )
-        self.readPhase.connect_signal("update", self._update_phase_value)
+        self.read_phase.connect_signal("update", self._update_phase_value)
         self.state.connect_signal("update", self._update_state)
+
 
     def _update_phase_value(self, value=None):
         if value is None:
@@ -228,7 +238,7 @@ class Diffractometer(GenericDiffractometer):
         return centred_pos_dir
 
     def get_current_phase(self):
-        return self.readPhase.get_value()
+        return self.read_phase.get_value()
 
     def execute_server_task(self, method, timeout=30, *args):
         return
@@ -353,7 +363,18 @@ class Diffractometer(GenericDiffractometer):
         self.last_centred_position[0] = x
         self.last_centred_position[1] = y
 
+        self.save_centring_positions()
         return centered_position
+    
+    def save_centring_positions(self) -> None:
+        """
+        Saves the centered positions
+
+        Returns
+        -------
+        None
+        """
+        self.save_positions()
 
     def multiPointCentre(self, z: npt.NDArray, phis: list) -> npt.NDArray:
         """
@@ -674,7 +695,7 @@ class Diffractometer(GenericDiffractometer):
         """
         logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
-        self.movePhase(phase)
+        self.move_phase(phase)
         if wait:
             if timeout is None:
                 timeout = 40
