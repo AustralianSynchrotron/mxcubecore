@@ -21,27 +21,46 @@ class MicrodiffZoom(ExporterNState):
             self.set_limits(self._get_range())
             self._initialise_values()
 
-    def set_limits(self, limits=(None, None)):
-        """Set the low and high limits.
-        Args:
-            limits (tuple): two integers tuple (low limit, high limit).
+    def set_limits(self, limits: tuple[int, int]=(None, None)) -> None:
+        """
+        Set the low and high limits.
+
+        Parameters
+        ----------
+        limits : tuple[int, int], optional
+            two integers tuple (low limit, high limit), by default (None, None)
+
+        Returns
+        -------
+        None
         """
         self._nominal_limits = limits
 
-    def update_value(self, value=None):
-        """Check if the value has changed. Emits signal valueChanged.
-        Args:
-            value: value
+    def update_value(self, value=None) -> None:
+        """
+        Check if the value has changed. Emits signal valueChanged.
+
+        Returns
+        -------
+        None
         """
         # Make sure that update value of super class always is passed value=None
         # so that _get_value is called to get the Enum value and not the numeric
-        # value passed by underlaying event data.
+        # value passed by underlying event data.
         super().update_value()
 
-    def update_limits(self, limits=None):
-        """Check if the limits have changed. Emits signal limitsChanged.
-        Args:
-            limits (tuple): two integers tuple (low limit, high limit).
+    def update_limits(self, limits: tuple[int, int]=None) -> None:
+        """
+        Check if the limits have changed. Emits signal limitsChanged
+
+        Parameters
+        ----------
+        limits : tuple[int, int], optional
+            The zoom limits, by default None
+
+        Returns
+        -------
+        None
         """
         if not limits:
             limits = self.get_limits()
@@ -50,8 +69,14 @@ class MicrodiffZoom(ExporterNState):
         self._nominal_limits = limits
         self.emit("limitsChanged", (limits,))
 
-    def _initialise_values(self):
-        """Initialise the ValueEnum from the limits"""
+    def _initialise_values(self) -> None:
+        """
+        Initialise the ValueEnum from the limits
+
+        Returns
+        -------
+        None
+        """
         low, high = self.get_limits()
 
         values = {f"LEVEL{v}": v for v in range(low, high + 1)}
@@ -60,10 +85,14 @@ class MicrodiffZoom(ExporterNState):
             dict(values, **{item.name: item.value for item in self.VALUES}),
         )
 
-    def _get_range(self):
-        """Get the zoom range.
-        Returns:
-            (tuple): two integers tuple - min and max value.
+    def _get_range(self) -> tuple[int, int]:
+        """
+        Get the zoom range.
+
+        Returns
+        -------
+        tuple[int, int]
+            The min and max zoom values
         """
         try:
             _low, _high = self._exporter.execute("getZoomRange")

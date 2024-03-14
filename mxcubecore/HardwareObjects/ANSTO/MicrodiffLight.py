@@ -1,13 +1,34 @@
 from .ExporterMotor import ExporterMotor
 import logging
 import math
-
+from mxcubecore.BaseHardwareObjects import HardwareObjectState
 
 class MicrodiffLight(ExporterMotor):
-    def __init__(self, name):
+    """
+    MicrodiffLight class. This class is used to control
+    the backlight and frontlight of the MD3
+    """
+    def __init__(self, name: str) -> None:
+        """
+        Parameters
+        ----------
+        name: str
+            The name of the hardware object
+
+        Returns
+        -------
+        None
+        """
         ExporterMotor.__init__(self, name)
 
-    def init(self):
+    def init(self) -> None:
+        """
+        Object initialisation - executed after loading contents.
+
+        Returns
+        -------
+        None
+        """
         ExporterMotor.init(self)
         try:
             _low, _high = self.get_property("limits").split(",")
@@ -17,36 +38,26 @@ class MicrodiffLight(ExporterMotor):
         self.chan_light_is_on = self.get_channel_object("chanLightIsOn")
         self.update_state(self.STATES.READY)
 
-    def get_state(self):
-        """Get the light state as a motor.
-        Returns:
-            (enum 'HardwareObjectState'): Light state.
+    def _set_value(self, value: float) -> None:
         """
-        return self._state
+        Moves the motor to the absolute value
 
-    def get_limits(self):
-        return self._limits
+        Parameters
+        ----------
+        value : float
+            The target value
 
-    def light_is_out(self):
-        return self.chan_light_is_on.get_value()
-
-    def move_in(self):
-        self.chan_light_is_on.set_value(True)
-
-    def move_out(self):
-        self.chan_light_is_on.set_value(False)
-
-    def _set_value(self, value: float):
-        """Move motor to absolute value.
-        Args:
-            value (float): target value
+        Returns
+        -------
+        None
         """
         self.update_state(self.STATES.BUSY)
         self.motor_position_chan.set_value(round(value, 1))
         self.update_state(self.STATES.READY)
 
     def get_value(self) -> float:
-        """Gets the motor position.
+        """
+        Gets the motor position.
 
         Returns
         -------
@@ -63,3 +74,27 @@ class MicrodiffLight(ExporterMotor):
 
         self._nominal_value = _v
         return self._nominal_value
+
+    def get_state(self) -> HardwareObjectState:
+        """
+        Get the light state as a motor
+
+        Returns
+        -------
+        HardwareObjectState
+            The state of the hardware object
+        """
+        return self._state
+
+    def get_limits(self):
+        return self._limits
+
+    def light_is_out(self):
+        return self.chan_light_is_on.get_value()
+
+    def move_in(self):
+        self.chan_light_is_on.set_value(True)
+
+    def move_out(self):
+        self.chan_light_is_on.set_value(False)
+

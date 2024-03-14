@@ -1,12 +1,3 @@
-"""
-This class is effectively the same as
-
-from mxcubecore.HardwareObjects.ExporterNState import ExporterNState
-
-with the difference that we read the exporter address
-from and ENV variable, instead of the xml config file
-"""
-
 from enum import Enum
 from gevent import Timeout, sleep
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
@@ -14,12 +5,18 @@ from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
 from os import getenv
 
-__copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
-__license__ = "LGPLv3+"
 
 
 class ExporterNState(AbstractNState):
-    """Microdiff with Exporter implementation of AbstartNState"""
+    """
+    Microdiff with Exporter implementation of AbstractNState. This class 
+    is effectively the same as:
+
+    from mxcubecore.HardwareObjects.ExporterNState import ExporterNState
+
+    with the difference that we read the exporter address from and ENV variable, 
+    instead of the xml config file.
+    """
 
     SPECIFIC_STATES = ExporterStates
 
