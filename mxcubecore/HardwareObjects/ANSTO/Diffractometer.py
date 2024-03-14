@@ -41,20 +41,21 @@ SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME = getenv(
 
 class Diffractometer(GenericDiffractometer):
     """
-    Descript. :
+    MD3 Diffractometer
     """
 
     def __init__(self, *args) -> None:
         GenericDiffractometer.__init__(self, *args)
         self.exporter_addr = getenv("EXPORTER_ADDRESS", "12.345.678.10:1234")
 
-    def init(self):
+    def init(self) -> None:
         """
-        Descript. :
-        """
-        # self.image_width = 100
-        # self.image_height = 100
+        Object initialisation - executed *after* loading contents.
 
+        Returns
+        -------
+        None
+        """
         GenericDiffractometer.init(self)
         self.last_centred_position = [612, 512]
         self.beam_position = [612, 512]
@@ -162,12 +163,36 @@ class Diffractometer(GenericDiffractometer):
         self.state.connect_signal("update", self._update_state)
 
 
-    def _update_phase_value(self, value=None):
+    def _update_phase_value(self, value: str=None) -> None:
+        """
+        Updates the phase of the md3
+
+        Parameters
+        ----------
+        value : str, optional
+            The new phase value, by default None
+
+        Returns
+        -------
+        None
+        """
         if value is None:
             value = self.get_current_phase()
         self.emit("phaseChanged", (value))
 
-    def _update_state(self, value):
+    def _update_state(self, value: str)-> None:
+        """
+        Updates the state of the md3
+
+        Parameters
+        ----------
+        value : str
+           The state of the md3
+
+        Returns
+        -------
+        None
+        """
         self.update_state(
             EXPORTER_TO_HWOBJ_STATE.get(value, HardwareObjectState.UNKNOWN)
         )
@@ -253,9 +278,6 @@ class Diffractometer(GenericDiffractometer):
         return True
 
     def get_grid_direction(self):
-        """
-        Descript. :
-        """
         return self.grid_direction
 
     def start_automatic_centring(
@@ -339,7 +361,7 @@ class Diffractometer(GenericDiffractometer):
         z = Z[1]
         avg_pos = Z[0].mean()
 
-        r, a, offset = self.multiPointCentre(np.array(z).flatten(), phi_positions)
+        r, a, offset = self.multi_point_centre(np.array(z).flatten(), phi_positions)
         dy = r * np.sin(a)
         dx = r * np.cos(a)
 
@@ -376,7 +398,7 @@ class Diffractometer(GenericDiffractometer):
         """
         self.save_positions()
 
-    def multiPointCentre(self, z: npt.NDArray, phis: list) -> npt.NDArray:
+    def multi_point_centre(self, z: npt.NDArray, phis: list) -> npt.NDArray:
         """
         Multipoint centre function
 
@@ -391,7 +413,8 @@ class Diffractometer(GenericDiffractometer):
         Returns
         -------
         npt.NDArray
-            The solution to the error function `errfunc`
+            The amplitude, phase and offset used to align the
+            loop with the center of the beam
         """
 
         def fitfunc(p, x):
@@ -400,7 +423,6 @@ class Diffractometer(GenericDiffractometer):
         def errfunc(p, x, y):
             return fitfunc(p, x) - y
 
-        # The function call returns tuples of varying length
         result = optimize.leastsq(errfunc, [1.0, 0.0, 0.0], args=(phis, z))
         return result[0]
 

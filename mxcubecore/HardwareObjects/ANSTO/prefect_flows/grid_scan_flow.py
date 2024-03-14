@@ -21,7 +21,7 @@ GRID_SCAN_DEPLOYMENT_NAME = environ.get(
 )
 
 
-class RasterFlow(AbstractPrefectWorkflow):
+class GridScanFlow(AbstractPrefectWorkflow):
     """Prefect Raster Workflow"""
 
     def __init__(

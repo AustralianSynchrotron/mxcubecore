@@ -11,7 +11,7 @@ from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
 from mxcubecore.HardwareObjects.SampleView import SampleView
 
-from .prefect_flows.raster_flow import RasterFlow
+from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.screening_flow import ScreeningFlow
 
 
@@ -422,7 +422,7 @@ class PrefectWorkflow(HardwareObject):
 
             # logging.getLogger("HWR").debug(f"ACQ params: {acquisition_parameters}")
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.raster_flow = RasterFlow(
+            self.raster_flow = GridScanFlow(
                 sample_view=self.sample_view,
                 state=self._state,
                 redis_connection=self.redis_connection,

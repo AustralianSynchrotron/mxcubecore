@@ -29,7 +29,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
 
         screening_params = ScreeningParams(
-            start_omega=0, # TODO, get actual current start_omega
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,

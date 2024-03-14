@@ -13,9 +13,11 @@ class ScreeningDialogBox(BaseModel):
 class ScreeningParams(BaseModel):
     """Parameters for collecting screening data"""
 
-    start_omega: float = Field(
+    start_omega: Optional[float] = Field(
         default=0,
-        description="Output from loop centering (flat angle). Measured in degrees.",
+        description="This field does not matter as far as mxcube is concerned"
+        "since collection is done at the angle at which the flow is started "
+        "from mxcube",
     )
     omega_range: float = Field(
         default=10, description="Global default. Measured in degrees."
