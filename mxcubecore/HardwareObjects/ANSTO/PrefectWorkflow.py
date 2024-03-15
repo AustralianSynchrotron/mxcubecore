@@ -8,7 +8,6 @@ from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.HardwareObjects.ANSTO.Diffractometer import Diffractometer
 from mxcubecore.HardwareObjects.SampleView import SampleView
 
 from .prefect_flows.grid_scan_flow import GridScanFlow
@@ -130,10 +129,6 @@ class PrefectWorkflow(HardwareObject):
         self._state.value = "ON"
 
         hwr = HWR.get_hardware_repository()
-        _diffractometer: Diffractometer = hwr.get_hardware_object("/minidiff")
-        self.motor_x = _diffractometer.alignment_x
-        self.motor_z = _diffractometer.alignment_z
-
         self.sample_view: SampleView = hwr.get_hardware_object("/sample_view")
 
         # self.beamline = HWR.beamline
