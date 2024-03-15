@@ -157,7 +157,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 )
 
                 heatmap = {}
-                crystalmap = {}
 
                 if grid:
                     for i in range(1, num_rows * num_cols + 1):
