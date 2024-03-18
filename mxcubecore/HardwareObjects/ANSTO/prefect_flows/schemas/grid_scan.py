@@ -11,8 +11,6 @@ class GridScanDialogBox(BaseModel):
     sample_id: Optional[str] = None
 
 
-# For more information about the tables below see
-# the SCOMPMX-569-add-strategy-table branch of the mx-data-layer-api-2
 class GridScanParams(BaseModel):
     sample_id: str
     grid_scan_id: int = 0
