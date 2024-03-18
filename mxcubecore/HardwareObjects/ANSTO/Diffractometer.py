@@ -306,24 +306,31 @@ class Diffractometer(GenericDiffractometer):
         # NOTE:  self.beam.get_beam_size() returns the size of the beam in mm,
         # so we convert the units to micrometers
         # beam_size_micrometers = tuple([b * 1000 for b in self.beam.get_beam_size()])
-        sample_centering = MX3PrefectClient(
-            name=SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
-            parameters={
-                "sample_id": "test",
-                "beam_position": [self.beam_position[0], self.beam_position[1]],
-                "use_top_camera": USE_TOP_CAMERA,
-                "calibrated_alignment_z": CALIBRATED_ALIGNMENT_Z,
-            },
-        )
-        # NOTE: using asyncio.run() does not seem to work consistently
-        loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(sample_centering.trigger_flow(wait=True))
-        logging.getLogger("HWR").debug("Optical centering finished")
+        try:
+            sample_centering = MX3PrefectClient(
+                name=SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
+                parameters={
+                    "sample_id": "test",
+                    "beam_position": [self.beam_position[0], self.beam_position[1]],
+                    "use_top_camera": USE_TOP_CAMERA,
+                    "calibrated_alignment_z": CALIBRATED_ALIGNMENT_Z,
+                },
+            )
+            # NOTE: using asyncio.run() does not seem to work consistently
+            loop = asyncio.get_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(sample_centering.trigger_flow(wait=True))
+            logging.getLogger("HWR").debug("Optical centering finished")
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                "Automatic optical centering failed. Use three-click centering instead."
+            )
 
         self.emit_centring_successful()
         self.emit_progress_message("Centring successful")
         self.current_centring_method = None
+
+        self.emit("newAutomaticCentringPoint", self.current_motor_positions)
 
     def manual_centring(self) -> dict:
         """
