@@ -25,6 +25,7 @@ from mxcubecore import HardwareRepository as HWR
 from mxcubecore.queue_entry.base_queue_entry import (
     BaseQueueEntry,
     QueueAbortedException,
+    QueueExecutionException,
 )
 
 __credits__ = ["MXCuBE collaboration"]
@@ -71,15 +72,21 @@ class GenericWorkflowQueueEntry(BaseQueueEntry):
         # group_node_id = self._parent_container._data_model._node_id
         # workflow_params.append("group_node_id")
         # workflow_params.append("%d" % group_node_id)
-        workflow_hwobj.start(workflow_params)
-        if workflow_hwobj.command_failure():
-            msg = "Workflow start command failed! Please check workflow Tango server."
-            logging.getLogger("user_level_log").error(msg)
-            self.workflow_running = False
-        else:
-            self.workflow_running = True
-            while workflow_hwobj.state.value == "RUNNING":
-                time.sleep(1)
+        try:
+            workflow_hwobj.start(workflow_params)
+
+            if workflow_hwobj.command_failure():
+                msg = (
+                    "Workflow start command failed! Please check workflow Tango server."
+                )
+                logging.getLogger("user_level_log").error(msg)
+                self.workflow_running = False
+            else:
+                self.workflow_running = True
+                while workflow_hwobj.state.value == "RUNNING":
+                    time.sleep(1)
+        except Exception:
+            raise QueueExecutionException("Queue stopped", self)
 
     def workflow_state_handler(self, state):
         if isinstance(state, tuple):

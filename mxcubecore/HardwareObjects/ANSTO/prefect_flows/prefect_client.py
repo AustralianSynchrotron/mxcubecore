@@ -61,18 +61,15 @@ class MX3PrefectClient:
         """
         self.deployment_id = await self.get_deployment_id_from_name(self.name)
 
-        try:
-            response: FlowRunResponse = (
-                await self.prefect_client.create_flow_run_from_deployment(
-                    self.deployment_id, parameters=self.parameters
-                )
+        response: FlowRunResponse = (
+            await self.prefect_client.create_flow_run_from_deployment(
+                self.deployment_id, parameters=self.parameters
             )
-            self.flow_run_id = response.id
+        )
+        self.flow_run_id = response.id
 
-            if wait:
-                await self.wait()
-        except Exception as e:
-            logging.getLogger("HWR").info(f"Flow execution failed {e}")
+        if wait:
+            await self.wait()
 
     async def wait(self) -> None:
         """
