@@ -1,0 +1,7 @@
+<device class="ANSTO.ExporterNState">
+  <username>backlight_switch</username>
+  <value_channel_name>BackLightIsOn</value_channel_name>
+  <default_value>False</default_value>
+  <values>{"IN": True, "OUT": False}</values>
+  <use_hwstate>True</use_hwstate>
+</device>

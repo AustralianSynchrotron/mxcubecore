@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<object class="ANSTO.Diffractometer">
+  <username>diffractometer</username>
+  <object role="focus" hwrid="./md3/motor_x"></object>
+  <object role="zoom" hwrid="./md3/zoom"></object>
+  <object role="phi" hwrid="./md3/omega"></object>
+  <object role="phix" hwrid="./md3/motor_x"></object>
+  <object role="phiy" hwrid="./md3/motor_y"></object>
+  <object role="phiz" hwrid="./md3/motor_z"></object>
+  <object role="sampx" hwrid="./md3/sample_x"></object>
+  <object role="sampy" hwrid="./md3/sample_y"></object>
+  <object role="kappa" hwrid="./md3/kappa"></object>
+  <object role="kappa_phi" hwrid="./md3/kappa_phi"></object>
+  <object role="beam" hwrid="./beam"></object>
+
+  <object role="backlight" href="./md3/backlight"/>
+  <object role="backlightswitch" href="./md3/backlight_switch"/>
+  <object role="frontlight" href="./md3/frontlight"/>
+  <object role="frontlightswitch" href="./md3/frontlight_switch"/>
+
+  <object role="beamstop_distance" hwrid="./beamstop_alignment_x"></object>
+
+  <object role="beamstop" href="/beamstop"/>
+  <object role="aperture" href="/aperture"/>
+  <object role="capillary" href="/capillary"/>
+
+  <object role="camera" hwrid="./md3/camera"></object>
+
+  <zoomcentre>{"x":612,"y":512}</zoomcentre>
+  <omega_reference>{"motor_name": "phiz", "position":-0.2224, "camera_axis":"x"}</omega_reference>
+
+  <!-- MD2 -->
+  <!-- <gridDirection>{"fast": (1, 0), "slow": (0, -1)}</gridDirection>  -->
+
+  <!-- use sample_changer or plate to test different sample mounting modes -->
+  <sample_mount_mode>sample_changer</sample_mount_mode>
+  <!-- MD3 -->
+  <grid_direction>{"fast": (0, 1), "slow": (1, 0), "omega_ref": 0}</grid_direction>
+
+  <phaseList>["Transfer","Centring","BeamLocation", "DataCollection"]</phaseList>
+  <headType>MiniKappa</headType>
+  <exports>["abort", "status", "my_fancy_function", "my_other_funny_function"]</exports>
+  <chip_definition_file>chip_definition.json</chip_definition_file>
+</object>

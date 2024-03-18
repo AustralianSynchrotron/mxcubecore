@@ -1,0 +1,26 @@
+server:
+  SECRET_KEY: "ASECRETKEY"
+  SECURITY_PASSWORD_SALT: "ASALT"
+  SESSION_TYPE: "redis"
+  SESSION_KEY_PREFIX: "mxcube:session:"
+  PERMANENT_SESSION_LIFETIME: 60
+
+  DEBUG: False
+
+  ALLOWED_CORS_ORIGINS:
+    - "http://localhost:8081"
+    - "http://localhost:3000"
+    - "ws://localhost:8000"
+
+mxcube:
+  USE_EXTERNAL_STREAMER: False
+  VIDEO_FORMAT: MJPEG
+  # Mode, SSX-CHIP, SSX-INJECTOR, OSC
+  mode: OSC
+
+  usermanager:
+    class: UserManager
+    inhouse_is_staff: True
+    users:
+      - username: opid291
+        role: staff
