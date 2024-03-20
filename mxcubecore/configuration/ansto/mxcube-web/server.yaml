@@ -11,6 +11,8 @@ server:
     - "http://localhost:8081"
     - "http://localhost:3000"
     - "ws://localhost:8000"
+    - "https://mxcube.mx3.beamline.synchrotron.org.au"
+    - "http://mxcube.mx3.beamline.synchrotron.org.au"
 
 mxcube:
   USE_EXTERNAL_STREAMER: False
