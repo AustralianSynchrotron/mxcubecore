@@ -10,6 +10,8 @@ class ScreeningDialogBox(BaseModel):
     photon_energy: float
     hardware_trigger: bool = True
     sample_id: Optional[str] = None
+    processing_pipeline: str = "dials"
+    crystal_counter: int = 0
 
 
 class ScreeningParams(BaseModel):
