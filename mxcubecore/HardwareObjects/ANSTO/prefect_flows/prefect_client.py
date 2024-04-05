@@ -96,20 +96,17 @@ class MX3PrefectClient:
         self.flow_run_id = response.id
 
         task_len = 0
-
         while task_len == 0:
-            tasks = await self.get_tasks()
-
-            task_len = len(tasks)
             await asyncio.sleep(poll_interval)
+            tasks = await self.get_tasks()
+            task_len = len(tasks)
 
         state = "RUNNING"
-
         while state == "RUNNING":
+            await asyncio.sleep(poll_interval)
             tasks = await self.get_tasks()
             data_collection_task = tasks[0]
             state = data_collection_task.state.type
-            await asyncio.sleep(poll_interval)
 
 
     async def get_tasks(self, flow_run_id: UUID = None) -> None:
@@ -125,20 +122,14 @@ class MX3PrefectClient:
         -------
         tasks
             The tasks
-
-        Raises
-        ------
-        RuntimeError
-            An error if something has gone wrong
         """
         if flow_run_id is None:
             flow_run_id = self.flow_run_id
-        try:
-            q = FlowRunFilter(id={"any_": [flow_run_id]})
-            tasks = await self.prefect_client.read_task_runs(flow_run_filter=q)
-            return tasks
-        except Exception as e:
-            raise RuntimeError(f"failed to get tasks for {flow_run_id}: {str(e)}")
+
+        q = FlowRunFilter(id={"any_": [flow_run_id]})
+        tasks = await self.prefect_client.read_task_runs(flow_run_filter=q)
+        return tasks
+
 
 
     async def wait(self) -> None:
