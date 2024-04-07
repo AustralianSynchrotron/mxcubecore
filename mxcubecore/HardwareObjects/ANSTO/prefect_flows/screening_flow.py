@@ -39,14 +39,14 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         )
 
         prefect_parameters = {
-            "sample_id":dialog_box_model.sample_id,
-            "crystal_counter":dialog_box_model.crystal_counter,
-            "screening_params":screening_params.dict(),
-            "run_data_processing_pipeline":True,
+            "sample_id": dialog_box_model.sample_id,
+            "crystal_counter": dialog_box_model.crystal_counter,
+            "screening_params": screening_params.dict(),
+            "run_data_processing_pipeline": True,
             "hardware_trigger": dialog_box_model.hardware_trigger,
-            "add_dummy_pin":True,
-            "pipeline":  dialog_box_model.processing_pipeline,
-            "data_processing_config": None
+            "add_dummy_pin": True,
+            "pipeline": dialog_box_model.processing_pipeline,
+            "data_processing_config": None,
         }
 
         logging.getLogger("HWR").debug(
@@ -57,7 +57,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
-
         # NOTE: using asyncio.run() does not seem to work consistently
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -65,7 +64,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         logging.getLogger("user_level_log").info(
             "Screening complete. Data processing results will be displayed "
             "in MX-PRISM shortly"
-            )
+        )
 
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False

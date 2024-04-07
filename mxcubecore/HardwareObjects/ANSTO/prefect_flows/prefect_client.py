@@ -71,7 +71,7 @@ class MX3PrefectClient:
         if wait:
             await self.wait()
 
-    async def trigger_data_collection(self, poll_interval:float =3.0) -> None:
+    async def trigger_data_collection(self, poll_interval: float = 3.0) -> None:
         """
         Triggers a prefect flow but only waits until data collection is finished
         so that data processing happens in the background
@@ -86,7 +86,6 @@ class MX3PrefectClient:
         None
         """
         self.deployment_id = await self.get_deployment_id_from_name(self.name)
-
 
         response: FlowRunResponse = (
             await self.prefect_client.create_flow_run_from_deployment(
@@ -108,7 +107,6 @@ class MX3PrefectClient:
             data_collection_task = tasks[0]
             state = data_collection_task.state.type
 
-
     async def get_tasks(self, flow_run_id: UUID = None) -> None:
         """
         Gets prefect tasks
@@ -129,8 +127,6 @@ class MX3PrefectClient:
         q = FlowRunFilter(id={"any_": [flow_run_id]})
         tasks = await self.prefect_client.read_task_runs(flow_run_filter=q)
         return tasks
-
-
 
     async def wait(self) -> None:
         """
@@ -197,13 +193,8 @@ class MX3PrefectClient:
         """
         if flow_run_id is None:
             flow_run_id = self.flow_run_id
-        try:
-            flow_run = await self.get_flow_runs(flow_run_id)
-            return flow_run[0].state
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to get flow run state for {flow_run_id}: {str(e)}"
-            )
+        flow_run = await self.get_flow_runs(flow_run_id)
+        return flow_run[0].state
 
     async def get_flow_runs(self, flow_run_id: UUID = None) -> list[FlowRunResponse]:
         """Gets prefect flow runs
@@ -221,7 +212,4 @@ class MX3PrefectClient:
         if flow_run_id is None:
             flow_run_id = self.flow_run_id
         q = FlowRunFilter(id={"any_": [flow_run_id]})
-        try:
-            return await self.prefect_client.read_flow_runs(flow_run_filter=q)
-        except Exception as e:
-            raise RuntimeError(f"Cannot get flow runs for {flow_run_id}: {str(e)}")
+        return await self.prefect_client.read_flow_runs(flow_run_filter=q)
