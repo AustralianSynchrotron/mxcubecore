@@ -40,11 +40,13 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
         prefect_parameters = {
             "sample_id": dialog_box_model.sample_id,
-            "crystal_id": 0,
-            "data_collection_id": 0,
+            "crystal_counter": dialog_box_model.crystal_counter,
             "screening_params": screening_params.dict(),
-            "run_data_processing_pipeline": False,
+            "run_data_processing_pipeline": True,
             "hardware_trigger": dialog_box_model.hardware_trigger,
+            "add_dummy_pin": True,
+            "pipeline": dialog_box_model.processing_pipeline,
+            "data_processing_config": None,
         }
 
         logging.getLogger("HWR").debug(
@@ -55,13 +57,14 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
-        try:
-            # NOTE: using asyncio.run() does not seem to work consistently
-            loop = asyncio.get_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(screening_flow.trigger_flow(wait=True))
-        except Exception as e:
-            logging.getLogger("HWR").info(f"Failed to execute screening flow: {e}")
+        # NOTE: using asyncio.run() does not seem to work consistently
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(screening_flow.trigger_data_collection())
+        logging.getLogger("user_level_log").info(
+            "Screening complete. Data processing results will be displayed "
+            "in MX-PRISM shortly"
+        )
 
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
@@ -110,6 +113,19 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "default": 12700,
+                    "widget": "textarea",
+                },
+                "processing_pipeline": {
+                    "title": "Data processing pipeline",
+                    "type": "string",
+                    "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
+                    "default": "dials",
+                },
+                "crystal_counter": {
+                    "title": "Crystal counter",
+                    "type": "number",
+                    "minimum": 0,
+                    "default": 0,
                     "widget": "textarea",
                 },
                 "hardware_trigger": {
