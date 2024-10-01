@@ -73,8 +73,6 @@ class TangoLimaMpegVideo(TangoLimaVideo):
             self._video_stream_process = subprocess.Popen(
                 [
                     "video-streamer",
-                    "-tu",
-                    self.get_property("tangoname").strip(),
                     "-hs",
                     "localhost",
                     "-p",

@@ -2,7 +2,7 @@ import os
 import xmltodict
 import argparse
 import pprint
-import pydantic
+from pydantic.v1 import ValidationError
 
 from colorama import Fore, Back, Style
 from mxcubecore.model import configmodel
@@ -40,7 +40,7 @@ def check_xml(rpath="."):
                     if config_model:
                         try:
                             config_model(**_data_to_validate)
-                        except pydantic.ValidationError as ex:
+                        except ValidationError as ex:
                             print(f"{Fore.RED}WARNING in: {fpath}")
                             print(f"{str(ex)}")
                             print(Style.RESET_ALL)

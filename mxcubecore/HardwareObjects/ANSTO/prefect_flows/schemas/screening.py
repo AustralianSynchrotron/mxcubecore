@@ -1,4 +1,4 @@
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 from typing import Union, Optional
 
 

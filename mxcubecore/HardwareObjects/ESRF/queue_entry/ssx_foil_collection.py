@@ -4,7 +4,7 @@ import math
 
 from typing_extensions import Literal
 
-from pydantic import Field
+from pydantic.v1 import Field
 from devtools import debug
 
 from mxcubecore.model.common import (

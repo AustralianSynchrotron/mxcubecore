@@ -115,8 +115,6 @@ class MDCameraMockup(BaseHardwareObjects.Device):
             self._video_stream_process = subprocess.Popen(
                 [
                     "video-streamer",
-                    "-tu",
-                    "test",
                     "-hs",
                     "localhost",
                     "-p",
