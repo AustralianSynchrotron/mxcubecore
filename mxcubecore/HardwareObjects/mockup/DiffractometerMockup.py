@@ -22,7 +22,7 @@ import logging
 import random
 import warnings
 
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
