@@ -21,6 +21,7 @@ import json
 import gevent
 import logging
 
+from os import environ
 from enum import Enum, unique
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -92,12 +93,35 @@ class DataPublisher(HardwareObject):
         """
         super(DataPublisher, self).init()
 
-        rhost = self.get_property("host", "localhost")
-        rport = self.get_property("port", 6379)
-        rdb = self.get_property("db", 11)
+        rhost = self.get_property(
+            "host",
+            environ.get("MXCUBE_REDIS_HOST", "localhost"),
+        )
+        rport = self.get_property(
+            "port",
+            int(environ.get("MXCUBE_REDIS_PORT", "6379")),
+        )
+        username = self.get_property(
+            "username",
+            environ.get("MXCUBE_REDIS_USERNAME"),
+        )
+        password = self.get_property(
+            "password",
+            environ.get("MXCUBE_REDIS_PASSWORD"),
+        )
+        rdb = self.get_property(
+            "db",
+            int(environ.get("MXCUBE_REDIS_DB", "11")),
+        )
 
         self._r = redis.Redis(
-            host=rhost, port=rport, db=rdb, charset="utf-8", decode_responses=True
+            host=rhost,
+            port=rport,
+            username=username,
+            password=password,
+            db=rdb,
+            charset="utf-8",
+            decode_responses=True,
         )
 
         if not self._subsribe_task:
