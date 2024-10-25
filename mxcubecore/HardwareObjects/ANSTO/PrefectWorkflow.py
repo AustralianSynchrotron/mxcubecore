@@ -104,8 +104,13 @@ class PrefectWorkflow(HardwareObject):
         self.command_failed = False
         self.gevent_event = None
         self.workflow_name = None
-        self.redis_port = int(os.environ.get("DATA_PROCESSING_REDIS_PORT", "6379"))
-        self.redis_host = os.environ.get("DATA_PROCESSING_REDIS_HOST", "mx_redis")
+
+        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
+        self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_HOST", "6379"))
+        self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
+        self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
+        self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
+
         self.mxcubecore_workflow_aborted = False
 
     def _init(self) -> None:
@@ -133,7 +138,13 @@ class PrefectWorkflow(HardwareObject):
 
         # self.beamline = HWR.beamline
 
-        self.redis_connection = redis.StrictRedis(self.redis_host, self.redis_port)
+        self.redis_connection = redis.StrictRedis(
+            host=self.REDIS_HOST,
+            port=self.REDIS_PORT,
+            username=self.REDIS_USERNAME,
+            password=self.REDIS_PASSWORD,
+            db=self.REDIS_DB,
+    )
 
         self.raster_flow = None
 
@@ -269,7 +280,7 @@ class PrefectWorkflow(HardwareObject):
 
     def get_available_workflows(self) -> list[dict]:
         """
-        Gets the available workflows specified in the edna_params.xml file
+        Gets the available workflows specified in the prefect_flow.xml file
 
         Returns
         -------
@@ -290,6 +301,7 @@ class PrefectWorkflow(HardwareObject):
                 dict_workflow["requires"] = []
             dict_workflow["doc"] = ""
             workflow_list.append(dict_workflow)
+        logging.getLogger("HWR").info(f"Available workflows: {workflow_list}")
         return workflow_list
 
     def abort(self) -> None:
