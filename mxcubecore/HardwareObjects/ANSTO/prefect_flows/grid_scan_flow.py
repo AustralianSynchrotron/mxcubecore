@@ -19,6 +19,11 @@ from .schemas.grid_scan import GridScanDialogBox, GridScanParams
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
 )
+_number_of_processes = environ.get("GRID_SCAN_NUMBER_OF_PROCESSES", None)
+if _number_of_processes is not None:
+    GRID_SCAN_NUMBER_OF_PROCESSES = int(_number_of_processes)
+else:
+    GRID_SCAN_NUMBER_OF_PROCESSES = None
 
 
 class GridScanFlow(AbstractPrefectWorkflow):
@@ -66,8 +71,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
         width = round(grid.width)
         height = round(grid.height)
 
-        dialog_box_model = GridScanDialogBox.parse_obj(dialog_box_parameters)
+        dialog_box_model = GridScanDialogBox.model_validate(dialog_box_parameters)
 
+        # TODO: sample_id should be obtained from the database!
         redis_grid_scan_id = self.redis_connection.get(
             f"mxcube_grid_scan_id:{dialog_box_model.sample_id}"
         )
@@ -85,11 +91,13 @@ class GridScanFlow(AbstractPrefectWorkflow):
             beam_position=beam_position,
             number_of_columns=num_cols,
             number_of_rows=num_rows,
-            exposure_time=dialog_box_model.exposure_time,
-            omega_range=dialog_box_model.omega_range,
-            hardware_trigger=dialog_box_model.hardware_trigger,
             detector_distance=dialog_box_model.detector_distance,
             photon_energy=dialog_box_model.photon_energy,
+            omega_range=dialog_box_model.omega_range,
+            md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
+            hardware_trigger=dialog_box_model.hardware_trigger,
+            number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
+
         )
 
         self.redis_connection.set(
@@ -99,7 +107,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
         grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_DEPLOYMENT_NAME, parameters=prefect_parameters.dict()
+            name=GRID_SCAN_DEPLOYMENT_NAME, parameters=prefect_parameters.model_dump(exclude_none=True)
         )
 
         try:
@@ -129,12 +137,14 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 grid_size = num_cols * num_rows
                 logging.getLogger("user_level_log").warning("Processing data...")
                 number_of_spots_array = np.zeros((num_rows, num_cols))
+                resolution_array = np.zeros((num_rows, num_cols))
                 for _ in range(grid_size):
                     data, last_id = self.read_message_from_redis_streams(
                         topic=f"number_of_spots_{prefect_parameters.grid_scan_id}:{prefect_parameters.sample_id}",
                         id=last_id,
                     )
-                    number_of_spots = int(data[b"number_of_spots"])
+                    number_of_spots = float(data[b"number_of_spots"])
+                    resolution = float(data[b"resolution"])
                     heatmap_coordinate = pickle.loads(data[b"heatmap_coordinate"])
                     logging.getLogger("HWR").info(
                         f"heatmap coordinate: {heatmap_coordinate}, "
@@ -143,6 +153,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     number_of_spots_array[
                         heatmap_coordinate[1], heatmap_coordinate[0]
                     ] = number_of_spots
+                    resolution_array[
+                        heatmap_coordinate[1], heatmap_coordinate[0]
+                    ] = resolution
 
                 logging.getLogger("user_level_log").warning("Data processing finished")
 
@@ -155,14 +168,21 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     num_rows=num_rows,
                     number_of_spots_array=number_of_spots_array,
                 )
+                crystalmap_array = self.create_heatmap(
+                    num_cols=num_cols,
+                    num_rows=num_rows,
+                    number_of_spots_array=resolution_array,
+                )
 
                 heatmap = {}
+                crystalmap = {}
 
                 if grid:
                     for i in range(1, num_rows * num_cols + 1):
                         heatmap[i] = [i, list(heatmap_array[i - 1])]
+                        crystalmap[i] = [i, list(crystalmap_array[i - 1])]
 
-                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": heatmap}
+                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
                 self.sample_view.set_grid_data(
                     sid, heat_and_crystal_map, data_file_path="this_is_not_used"
                 )
@@ -268,40 +288,42 @@ class GridScanFlow(AbstractPrefectWorkflow):
         """
         dialog = {
             "properties": {
-                "exposure_time": {
-                    "title": "exposure time",
+                "md3_alignment_y_speed": {
+                    "title": "Alignment Y Speed [mm/s]",
                     "type": "number",
                     "minimum": 0,
-                    "default": 1,
+                    "maximum": 14.8,
+                    "default": 10,
                     "widget": "textarea",
                 },
                 "omega_range": {
-                    "title": "omega range",
+                    "title": "Omega Range [degrees]",
                     "type": "number",
                     "minimum": 0,
-                    "exclusiveMaximum": 361,
+                    "maximum": 360,
                     "default": 0,
                     "widget": "textarea",
                 },
                 "detector_distance": {
-                    "title": "detector distance",
+                    "title": "Detector Distance [m]",
                     "type": "number",
-                    "default": -0.298,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.396,
                     "widget": "textarea",
                 },
                 "photon_energy": {
-                    "title": "photon energy",
+                    "title": "Photon Energy [keV]",
                     "type": "number",
-                    "minimum": 0,
-                    "default": 12700,
+                    "minimum": 5,
+                    "maximum": 25,
+                    "default": 13,
                     "widget": "textarea",
                 },
                 "hardware_trigger": {
-                    "title": "Hardware trigger (dev only)",
+                    "title": "Hardware Trigger (dev only)",
                     "type": "boolean",
-                    "minimum": 0,
-                    "exclusiveMaximum": 361,
-                    "default": False,
+                    "default": True,
                     "widget": "textarea",
                 },
                 "sample_id": {
@@ -311,7 +333,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "widget": "textarea",
                 },
             },
-            "required": ["exposure_time", "omega_range"],
+            "required": ["detector_distance", "photon_energy"],
             "dialogName": "Grid scan parameters",
         }
 
