@@ -97,7 +97,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
             hardware_trigger=dialog_box_model.hardware_trigger,
             number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
-
         )
 
         self.redis_connection.set(
@@ -107,7 +106,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
         grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_DEPLOYMENT_NAME, parameters=prefect_parameters.model_dump(exclude_none=True)
+            name=GRID_SCAN_DEPLOYMENT_NAME,
+            parameters=prefect_parameters.model_dump(exclude_none=True),
         )
 
         try:
@@ -154,9 +154,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     number_of_spots_array[
                         heatmap_coordinate[1], heatmap_coordinate[0]
                     ] = number_of_spots
-                    resolution_array[
-                        heatmap_coordinate[1], heatmap_coordinate[0]
-                    ] = resolution
+                    resolution_array[heatmap_coordinate[1], heatmap_coordinate[0]] = (
+                        resolution
+                    )
 
                 logging.getLogger("user_level_log").warning("Data processing finished")
 

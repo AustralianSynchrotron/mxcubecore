@@ -144,7 +144,7 @@ class PrefectWorkflow(HardwareObject):
             username=self.REDIS_USERNAME,
             password=self.REDIS_PASSWORD,
             db=self.REDIS_DB,
-    )
+        )
 
         self.raster_flow = None
 
