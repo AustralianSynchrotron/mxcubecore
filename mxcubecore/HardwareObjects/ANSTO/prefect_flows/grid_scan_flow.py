@@ -148,6 +148,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     heatmap_coordinate = pickle.loads(data[b"heatmap_coordinate"])
                     logging.getLogger("HWR").info(
                         f"heatmap coordinate: {heatmap_coordinate}, "
+                        f"resolution: {resolution}, "
                         f"number of spots {number_of_spots}"
                     )
                     number_of_spots_array[
