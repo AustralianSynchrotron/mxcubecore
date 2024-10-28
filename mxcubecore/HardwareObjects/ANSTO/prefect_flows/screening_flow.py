@@ -81,14 +81,14 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         dialog = {
             "properties": {
                 "exposure_time": {
-                    "title": "exposure time",
+                    "title": "Total Exposure Time [s]",
                     "type": "number",
                     "minimum": 0,
                     "default": 1,
                     "widget": "textarea",
                 },
                 "omega_range": {
-                    "title": "omega range",
+                    "title": "Omega Range [degrees]",
                     "type": "number",
                     "minimum": 0,
                     "exclusiveMaximum": 361,
@@ -96,33 +96,33 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "widget": "textarea",
                 },
                 "number_of_frames": {
-                    "title": "number of frames",
+                    "title": "Number of Frames",
                     "type": "number",
                     "minimum": 1,
                     "default": 100,
                     "widget": "textarea",
                 },
                 "detector_distance": {
-                    "title": "detector distance",
+                    "title": "Detector Distance [m]",
                     "type": "number",
-                    "default": -0.298,
+                    "default": 0.396,
                     "widget": "textarea",
                 },
                 "photon_energy": {
-                    "title": "photon energy",
+                    "title": "Photon Energy [keV]",
                     "type": "number",
                     "minimum": 0,
-                    "default": 12700,
+                    "default": 13,
                     "widget": "textarea",
                 },
                 "processing_pipeline": {
-                    "title": "Data processing pipeline",
+                    "title": "Data Processing Pipeline",
                     "type": "string",
                     "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
                     "default": "dials",
                 },
                 "crystal_counter": {
-                    "title": "Crystal counter",
+                    "title": "Crystal Counter",
                     "type": "number",
                     "minimum": 0,
                     "default": 0,
@@ -131,9 +131,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "hardware_trigger": {
                     "title": "Hardware trigger (dev only)",
                     "type": "boolean",
-                    "minimum": 0,
-                    "exclusiveMaximum": 361,
-                    "default": False,
+                    "default": True,
                     "widget": "textarea",
                 },
                 "sample_id": {
