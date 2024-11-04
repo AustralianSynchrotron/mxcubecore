@@ -18,8 +18,8 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
-import logging
 import copy
+import logging
 import time
 
 try:
@@ -28,15 +28,19 @@ except ImportError:
     logging.getLogger("HWR").warning("EPICS support not available.")
 
 from mxcubecore import Poller
+from mxcubecore.CommandContainer import (
+    ChannelObject,
+    CommandObject,
+)
 from mxcubecore.dispatcher import saferef
-from mxcubecore.CommandContainer import CommandObject, ChannelObject
-
 
 __copyright__ = """ Copyright © 2010 - 2020 by MXCuBE Collaboration """
 __license__ = "LGPLv3+"
 
 
 class EpicsCommand(CommandObject):
+    """Epics Command"""
+
     def __init__(self, name, pv_name, username=None, args=None, **kwargs):
         CommandObject.__init__(self, name, username, **kwargs)
 
@@ -154,7 +158,7 @@ class EpicsCommand(CommandObject):
                 pass
 
     def get_pv_value(self):
-        # wrapper function to pv.get() in order to supply additional named parameter
+        """wrapper function to pv.get() in order to supply additional named parameter"""
         return self.pv.get(as_string=self.read_as_str)
 
     def poll(
@@ -201,7 +205,7 @@ class EpicsCommand(CommandObject):
 
 
 class EpicsChannel(ChannelObject):
-    """Emulation of a 'Epics channel' = an Epics command + polling"""
+    """Emulates an *Epics channel* with an EpicsCommand +polling"""
 
     def __init__(self, name, command, username=None, polling=None, args=None, **kwargs):
         ChannelObject.__init__(self, name, username, **kwargs)

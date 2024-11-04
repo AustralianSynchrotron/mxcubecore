@@ -22,9 +22,8 @@ Defines get_average_flux_density.
 """
 from scipy.interpolate import interp1d
 
-from mxcubecore.HardwareObjects.abstract.AbstractActuator import AbstractActuator
-
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects.abstract.AbstractActuator import AbstractActuator
 
 __copyright__ = """ Copyright © 2010-2022 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
@@ -78,7 +77,7 @@ class AbstractFlux(AbstractActuator):
 
     def get_average_flux_density(self, transmission=None):
         """Get average flux density over the beam area in photons / mm^2
-        for a given transmisison setting
+        for a given transmission setting
         Args:
             transmission (float): Target transmission [%]
                                   (defaults to current value)

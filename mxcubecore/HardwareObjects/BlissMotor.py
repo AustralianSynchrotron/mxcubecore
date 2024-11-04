@@ -19,17 +19,19 @@
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 """
 Example xml file:
-<device class="BlissMotor">
+<object class="BlissMotor">
   <username>Detector Distance</username>
   <actuator_name>dtox</actuator_name>
   <tolerance>1e-2</tolerance>
-</device>
+</object>
 """
 
 import enum
+
 from bliss.config import static
-from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
+
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
 __copyright__ = """ Copyright © 2019 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"

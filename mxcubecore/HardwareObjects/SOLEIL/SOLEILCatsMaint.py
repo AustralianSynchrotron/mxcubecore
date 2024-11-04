@@ -4,11 +4,14 @@ CATS maintenance commands hardware object.
 Functionality in addition to sample-transfer functionality: power control,
 lid control, error-recovery commands, ...
 """
+
 import logging
-from mxcubecore.TaskUtils import task
-from mxcubecore.BaseHardwareObjects import Equipment
-import gevent
 import time
+
+import gevent
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.TaskUtils import task
 
 __author__ = "Michael Hellmig"
 __credits__ = ["The MxCuBE collaboration"]
@@ -20,7 +23,7 @@ __status__ = "Beta"
 TOOLS = {"FLANGE": 0, "CRYOTONG": 1, "ESRF": 2, "PLATE": 3}
 
 
-class SOLEILCatsMaint(Equipment):
+class SOLEILCatsMaint(HardwareObject):
 
     __TYPE__ = "CATS"
 
@@ -36,7 +39,7 @@ class SOLEILCatsMaint(Equipment):
 
     def __init__(self, *args, **kwargs):
         logging.info("CatsMaint: __init__")
-        Equipment.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def init(self):
         logging.info("CatsMaint: init")

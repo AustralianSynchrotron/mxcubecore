@@ -2,27 +2,32 @@
 
 Example configuration:
 ----------------------
-<device class="TangoLimaVideo">
+<object class="TangoLimaVideo">
   <username>Prosilica 1350C</username>
   <tangoname>id23/limaccd/minidiff2</tangoname>
   <bpmname>id23/limabeamviewer/minidiff2</bpmname>
   <interval>15</interval>
   <video_mode>RGB24</video_mode>
-</device>
+</object>
 
 If video mode is not specified, BAYER_RG16 is used by default.
 """
-import logging
-import v4l2
-import gipc
-import os
+
 import fcntl
+import logging
+import os
 import subprocess
 import time
 import uuid
-import gevent
 
-from mxcubecore.HardwareObjects.TangoLimaVideo import TangoLimaVideo, poll_image
+import gevent
+import gipc
+import v4l2
+
+from mxcubecore.HardwareObjects.TangoLimaVideo import (
+    TangoLimaVideo,
+    poll_image,
+)
 
 
 def _poll_image(sleep_time, video_device, device_uri, video_mode, formats):
@@ -112,7 +117,7 @@ class TangoLimaVideoLoopback(TangoLimaVideo):
         super(TangoLimaVideoLoopback, self).__init__(name)
 
         self._video_stream_process = None
-        self._current_stream_size = "-1, -1"
+        self._current_stream_size = -1, -1
         self._original_stream_size = -1, -1
         self._stream_script_path = ""
         self.stream_hash = str(uuid.uuid1())
@@ -186,16 +191,16 @@ class TangoLimaVideoLoopback(TangoLimaVideo):
 
     def set_stream_size(self, w, h):
         w, h = self._encoder_friendly_size(w, h)
-        self._current_stream_size = "%s,%s" % (w, h)
+        self._current_stream_size = (int(w), int(h))
 
     def _set_stream_original_size(self, w, h):
         w, h = self._encoder_friendly_size(w, h)
         self._original_stream_size = w, h
 
     def get_stream_size(self):
-        current_size = self._current_stream_size.split(",")
-        scale = float(current_size[0]) / self._original_stream_size[0]
-        return current_size + list((scale,))
+        width, height = self._current_stream_size
+        scale = float(width) / self._original_stream_size[0]
+        return (width, height, scale)
 
     def get_available_stream_sizes(self):
         try:

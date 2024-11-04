@@ -6,18 +6,20 @@ e.g. class EPICSMotor(EPICSActuator, AbstractMotor):
 
 Example of xml file:
 
-<device class="LNLS.EPICSActuator">
+<object class="LNLS.EPICSActuator">
     <channel type="epics" name="epicsActuator_val">MNC:B:LUCIOLE01:LIGHT_CH1</channel>
     <channel type="epics" name="epicsActuator_rbv" polling="500">MNC:B:LUCIOLE01:LIGHT_CH1</channel>
     <username>BackLight</username>
     <motor_name>BackLight</motor_name>
     <default_limits>(0, 8000)</default_limits>
-</device>
+</object>
 """
 
-import time
 import random
+import time
+
 import gevent
+
 from mxcubecore.HardwareObjects.abstract import AbstractActuator
 
 

@@ -21,7 +21,11 @@
 """Exporter Client implementation"""
 
 import logging
-from .StandardClient import StandardClient, ProtocolError
+
+from .StandardClient import (
+    ProtocolError,
+    StandardClient,
+)
 
 __copyright__ = """ Copyright © 2019 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
@@ -137,7 +141,7 @@ class ExporterClient(StandardClient):
             ProtocolError
         """
         if ret[:4] == RET_ERR:
-            msg = "Diffractometer: {}".format(str(ret[4:]))
+            msg = f"{self.get_server_object_name()} : {str(ret[4:])}"
             logging.getLogger("HWR").error(msg)
             raise Exception(ret[4:])
         if ret == RET_NULL:

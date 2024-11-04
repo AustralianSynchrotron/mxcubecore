@@ -1,14 +1,16 @@
-from mxcubecore.BaseHardwareObjects import Device
-from mxcubecore.TaskUtils import task
 import time
+
 import gevent
 
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.TaskUtils import task
 
-class ID30Cryo(Device):
+
+class ID30Cryo(HardwareObject):
     states = {0: "out", 1: "in"}
 
     def __init__(self, name):
-        Device.__init__(self, name)
+        super().__init__(name)
 
     def init(self):
         controller = self.get_object_by_role("controller")

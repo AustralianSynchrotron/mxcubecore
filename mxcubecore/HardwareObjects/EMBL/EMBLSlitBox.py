@@ -22,7 +22,7 @@ The BeamSlitBox Hardware Object is used to operate slits.
 
 Example Hardware Object XML file :
 ==================================
-<equipment class="BeamSlitBox">
+<object class="BeamSlitBox">
     <focModeEq>/beamFocusing</focModeEq>             - focusing mode equipment
     <focModes>['Collimated', 'Horizontal', 'Vertical', 'Double']</focModes>
                                                      - used focusing modes
@@ -64,14 +64,13 @@ Example Hardware Object XML file :
           </motor>
        </motors>
     </gapV>
-    <device hwrid="/attocubeMotors/attoGroup" role="attocubeMotors"/>
-</equipment>
+    <object hwrid="/attocubeMotors/attoGroup" role="attocubeMotors"/>
+</object>
 """
 
 import logging
 
 from mxcubecore.HardwareObjects.abstract.AbstractSlits import AbstractSlits
-
 
 __credits__ = ["EMBL Hamburg"]
 __license__ = "LGPLv3+"

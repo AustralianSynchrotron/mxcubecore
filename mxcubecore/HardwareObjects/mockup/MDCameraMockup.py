@@ -1,10 +1,13 @@
-"""Class for cameras connected to framegrabbers run by Taco Device Servers
-"""
-import psutil
-import subprocess
+"""Class for cameras connected to framegrabbers run by Taco Device Servers"""
+
 import logging
+import subprocess
 import time
+from typing import List
+
 import gevent
+import psutil
+from PIL import Image
 
 from mxcubecore import BaseHardwareObjects
 from mxcubecore import HardwareRepository as HWR
@@ -13,9 +16,9 @@ MAX_TRIES = 3
 SLOW_INTERVAL = 1000
 
 
-class MDCameraMockup(BaseHardwareObjects.Device):
+class MDCameraMockup(BaseHardwareObjects.HardwareObject):
     def __init__(self, name):
-        BaseHardwareObjects.Device.__init__(self, name)
+        super().__init__(name)
 
     def _init(self):
         self._format = "MPEG1"
@@ -28,6 +31,7 @@ class MDCameraMockup(BaseHardwareObjects.Device):
         self.image = HWR.get_hardware_repository().find_in_repository(self.image_name)
         self.set_is_ready(True)
         self._video_stream_process = None
+        self._current_stream_size = (0, 0)
 
     def init(self):
         logging.getLogger("HWR").info("initializing camera object")
@@ -36,7 +40,7 @@ class MDCameraMockup(BaseHardwareObjects.Device):
         self.stopper = False  # self.polling_timer(self.pollInterval, self.poll)
         gevent.spawn(self.poll)
 
-    def udiffVersionChanged(self, value):
+    def udiffVersionChanged(self, value) -> None:
         if value == "MD2_2":
             print(("start polling MD camera with poll interval=", self.pollInterval))
         else:
@@ -45,11 +49,11 @@ class MDCameraMockup(BaseHardwareObjects.Device):
             )
             self.stopper = True
 
-    def connectToDevice(self):
+    def connectToDevice(self) -> bool:
         self.connected = True
         return self.connected
 
-    def poll(self):
+    def poll(self) -> None:
         logging.getLogger("HWR").info("going to poll images")
         while not self.stopper:
             time.sleep(1)
@@ -59,43 +63,42 @@ class MDCameraMockup(BaseHardwareObjects.Device):
             except Exception:
                 logging.getLogger("HWR").exception("Could not read image")
 
-    def imageUpdated(self, value):
+    def imageUpdated(self, value) -> None:
         print("<HW> got new image")
         print(value)
 
-    def gammaExists(self):
+    def gammaExists(self) -> bool:
         return False
 
-    def contrastExists(self):
+    def contrastExists(self) -> bool:
         return False
 
-    def brightnessExists(self):
+    def brightnessExists(self) -> bool:
         return False
 
-    def gainExists(self):
+    def gainExists(self) -> bool:
         return False
 
-    def get_width(self):
+    def get_width(self) -> int:
         # return 768 #JN ,20140807,adapt the MD2 screen to mxCuBE2
         return 659
 
-    def get_height(self):
+    def get_height(self) -> int:
         # return 576 # JN ,20140807,adapt the MD2 screen to mxCuBE2
         return 493
 
-    def set_live(self, state):
+    def set_live(self, state) -> bool:
         self.liveState = state
         return True
 
     def imageType(self):
         return None
 
-    def takeSnapshot(self, snapshot_filename, bw=True):
-        return True
+    def get_last_image(self) -> tuple[bytes, int, int]:
+        image = Image.open(self.image)
+        return image.tobytes(), image.size[0], image.size[1]
 
-    take_snapshot = takeSnapshot
-
-    def get_available_stream_sizes(self):
+    def get_available_stream_sizes(self) -> List[tuple[int, int]]:
         try:
             w, h = self.get_width(), self.get_height()
             video_sizes = [(w, h), (int(w / 2), int(h / 2)), (int(w / 4), int(h / 4))]
@@ -104,10 +107,15 @@ class MDCameraMockup(BaseHardwareObjects.Device):
 
         return video_sizes
 
-    def get_stream_size(self):
-        return self.get_width(), self.get_height(), 1
+    def set_stream_size(self, w, h) -> None:
+        self._current_stream_size = (int(w), int(h))
 
-    def start_video_stream_process(self, size):
+    def get_stream_size(self) -> tuple[int, int, float]:
+        width, height = self._current_stream_size
+        scale = float(width) / self.get_width()
+        return (width, height, scale)
+
+    def start_video_stream_process(self) -> None:
         if (
             not self._video_stream_process
             or self._video_stream_process.poll() is not None
@@ -115,43 +123,49 @@ class MDCameraMockup(BaseHardwareObjects.Device):
             self._video_stream_process = subprocess.Popen(
                 [
                     "video-streamer",
+                    "-uri",
+                    "test",
                     "-hs",
                     "localhost",
                     "-p",
-                    self._port,
+                    str(self._port),
                     "-of",
                     self._format,
                     "-q",
                     "4",
                     "-s",
-                    "%s,%s" % size,
+                    ", ".join(map(str, self._current_stream_size)),
                     "-id",
                     self.stream_hash,
                 ],
                 close_fds=True,
             )
 
-    def stop_streaming(self):
+    def stop_streaming(self) -> None:
         if self._video_stream_process:
-            ps = [self._video_stream_process] + psutil.Process(
-                self._video_stream_process.pid
-            ).children()
-            for p in ps:
-                p.kill()
+            try:
+                ps = [self._video_stream_process] + psutil.Process(
+                    self._video_stream_process.pid
+                ).children()
+                for p in ps:
+                    p.kill()
+            except psutil.NoSuchProcess:
+                pass
 
             self._video_stream_process = None
 
-    def start_streaming(self, _format="MPEG1", size=(0, 0), port="4042"):
+    def start_streaming(self, _format="MPEG1", size=(0, 0), port="8000") -> None:
         self._format = _format
         self._port = port
 
         if not size[0]:
             _s = int(self.get_width()), int(self.get_height())
         else:
-            _s = size
+            _s = int(size[0]), int(size[1])
 
-        self.start_video_stream_process(_s)
+        self.set_stream_size(_s[0], _s[1])
+        self.start_video_stream_process()
 
-    def restart_streaming(self, size):
+    def restart_streaming(self, size) -> None:
         self.stop_streaming()
-        self.start_streaming(size)
+        self.start_streaming(self._format, size=size)

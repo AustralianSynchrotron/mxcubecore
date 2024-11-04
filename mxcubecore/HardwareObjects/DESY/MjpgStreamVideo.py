@@ -1,3 +1,4 @@
+# encoding: utf-8
 #
 #  Project: MXCuBE
 #  https://github.com/mxcube
@@ -17,11 +18,14 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
+__copyright__ = """Copyright The MXCuBE Collaboration"""
+__license__ = "LGPLv3+"
 __author__ = "Jan Meyer"
 __email__ = "jan.meyer@desy.de"
-__copyright__ = "(c)2015 DESY, FS-PE, P11"
-__license__ = "GPL"
 
+
+import json
+import traceback
 
 import gevent
 
@@ -29,17 +33,26 @@ try:
     from httplib import HTTPConnection
 except ImportError:
     from http.client import HTTPConnection
-import json
 
-from mxcubecore.utils.qt_import import QImage, QPixmap, QPoint
-from mxcubecore.utils.conversion import string_types
+try:
+    import redis
 
+    redis_flag = True
+except ImportError:
+    traceback.print_exc()
+    redis_flag = False
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.abstract.AbstractVideoDevice import AbstractVideoDevice
+from mxcubecore.utils.conversion import string_types
+from mxcubecore.utils.qt_import import (
+    QImage,
+    QPixmap,
+    QPoint,
+)
 
-from mxcubecore.BaseHardwareObjects import Device
 
-
-class MjpgStreamVideo(AbstractVideoDevice, Device):
+class MjpgStreamVideo(AbstractVideoDevice):
     """
     Hardware object to capture images using mjpg-streamer
     and it's input_avt.so plugin for AVT Prosilica cameras.
@@ -264,8 +277,12 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
         self.plugin = 0
         self.update_controls = None
         self.input_avt = None
-
+        self.last_jpeg = None
         self.changing_pars = False
+        if redis_flag:
+            self.redis = redis.StrictRedis()
+        else:
+            self.redis = False
 
     def init(self):
         """
@@ -322,7 +339,7 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
                 sensor_height = int(sensor_info["value"])
             self.sensor_dimensions = (sensor_width, sensor_height)
 
-        self.set_is_ready(True)
+        # self.is_ready()
         self.set_zoom(0)  # overview camera
 
     def http_get(self, query, host=None, port=None, path=None):
@@ -802,8 +819,6 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
         else:
             self.using_overview = False
 
-            print("setting zoom to %s" % zoom)
-
             limits = self.get_zoom_min_max()
             if zoom < limits[0] or zoom > limits[1]:
                 return
@@ -851,9 +866,7 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
             w_i = int(self.get_cmd_info(self.IN_CMD_AVT_WIDTH)["value"])
             h_i = int(self.get_cmd_info(self.IN_CMD_AVT_HEIGHT)["value"])
 
-            print("zoom: %s" % zoom)
-            print("pos_x (%s, %s) - pos_y (%s,%s) " % (pos_x, x_i, pos_y, y_i))
-            print("width (%s, %s) - height (%s,%s) " % (width, w_i, height, h_i))
+            self.emit("zoomChanged", zoom)
 
             if (
                 abs(x_i - pos_x) > 3
@@ -868,8 +881,10 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
                 break
 
         self.changing_pars = False
-
-        self.emit("zoomChanged", self.get_zoom())
+        zoom = self.get_zoom()
+        if redis_flag:
+            self.redis.set("zoom", zoom)
+        self.emit("zoomChanged", zoom)
 
     def get_zoom(self):
         """
@@ -923,6 +938,9 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
 
         image = self.http_get("?action=snapshot")
         if image is not None:
+            self.last_jpeg = image
+            if redis_flag:
+                self.redis.set("last_image_data", image)
             return QImage.fromData(image).mirrored(fliph, flipv)
         return None
 
@@ -965,10 +983,7 @@ class MjpgStreamVideo(AbstractVideoDevice, Device):
 
             image = self.get_new_image()
             if image is not None:
-                # image.setOffset(QPoint(300,300))
-                # self.image = QPixmap.fromImage(image)
                 self.image = QPixmap.fromImage(
                     image.scaled(int(self.display_width), int(self.display_height))
                 )
                 self.emit("imageReceived", self.image)
-            # gevent.sleep(0.1)

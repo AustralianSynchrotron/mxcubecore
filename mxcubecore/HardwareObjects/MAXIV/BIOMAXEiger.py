@@ -20,17 +20,19 @@ hardware object status:
 
 """
 from __future__ import print_function
-import gevent
-import time
+
 import copy
 import logging
+import time
 
-from mxcubecore.TaskUtils import task
-from mxcubecore.BaseHardwareObjects import Equipment
+import gevent
+
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.TaskUtils import task
 
 
-class BIOMAXEiger(Equipment):
+class BIOMAXEiger(HardwareObject):
     """
     Description: Eiger hwobj based on tango
     """
@@ -39,7 +41,7 @@ class BIOMAXEiger(Equipment):
         """
         Descrip. :
         """
-        Equipment.__init__(self, *args)
+        super().__init__(*args)
 
         self.device = None
         self.file_suffix = None
@@ -700,8 +702,8 @@ class BIOMAXEiger(Equipment):
 
 
 def test():
-    import sys
     import os
+    import sys
 
     if len(sys.argv) != 5:
         print(

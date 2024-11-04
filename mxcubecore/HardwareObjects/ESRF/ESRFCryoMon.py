@@ -1,14 +1,16 @@
-from PyTango.gevent import DeviceProxy
-from mxcubecore.BaseHardwareObjects import Device
-import gevent
 import time
+
+import gevent
+from PyTango.gevent import DeviceProxy
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 CRYO_STATUS = ["OFF", "SATURATED", "READY", "WARNING", "FROZEN", "UNKNOWN"]
 
 
-class ESRFCryoMon(Device):
+class ESRFCryoMon(HardwareObject):
     def __init__(self, *args, **kwargs):
-        Device.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.n2level = None
         self.temp = None

@@ -1,12 +1,12 @@
 """Tango Shutter Hardware Object
 Example XML::
 
-  <device class="ALBAEpsActuator">
+  <object class="ALBAEpsActuator">
     <username>Photon Shutter</username>
     <taurusname>bl13/ct/eps-plc-01</taurusname>
     <channel type="sardana" polling="events" name="actuator">pshu</channel>
     <states>Open,Closed</states>
-  </device>
+  </object>
 
 
 Public Interface:
@@ -42,9 +42,10 @@ Public Interface:
 
 """
 
-from mxcubecore import HardwareRepository as HWR
-from mxcubecore import BaseHardwareObjects
 import logging
+
+from mxcubecore import BaseHardwareObjects
+from mxcubecore import HardwareRepository as HWR
 
 STATE_OUT, STATE_IN, STATE_MOVING, STATE_FAULT, STATE_ALARM, STATE_UNKNOWN = (
     0,
@@ -56,7 +57,7 @@ STATE_OUT, STATE_IN, STATE_MOVING, STATE_FAULT, STATE_ALARM, STATE_UNKNOWN = (
 )
 
 
-class ALBAEpsActuator(BaseHardwareObjects.Device):
+class ALBAEpsActuator(BaseHardwareObjects.HardwareObject):
 
     states = {
         STATE_OUT: "out",
@@ -70,7 +71,7 @@ class ALBAEpsActuator(BaseHardwareObjects.Device):
     default_state_strings = ["Out", "In"]
 
     def __init__(self, name):
-        BaseHardwareObjects.Device.__init__(self, name)
+        super().__init__(name)
 
     def init(self):
         self.actuator_state = STATE_UNKNOWN

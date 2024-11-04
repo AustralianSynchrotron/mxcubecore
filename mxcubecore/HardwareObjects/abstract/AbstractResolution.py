@@ -29,7 +29,13 @@ one set from the beamline configuration is used.
 
 import abc
 import logging
-from math import asin, atan, sin, tan
+from math import (
+    asin,
+    atan,
+    sin,
+    tan,
+)
+
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
@@ -84,11 +90,37 @@ class AbstractResolution(AbstractMotor):
 
     def get_limits(self):
         """Return resolution low and high limits.
+
+        Args:
+            wavelength: Returns the limits for given wavelength if
+                        passed, current wavelength is otherwised used
+
         Returns:
             (tuple): two floats tuple (low limit, high limit).
         """
         _low, _high = self._hwr_detector.distance.get_limits()
-        return (self.distance_to_resolution(_low), self.distance_to_resolution(_high))
+
+        return (
+            self.distance_to_resolution(_low),
+            self.distance_to_resolution(_high),
+        )
+
+    def get_limits_for_wavelength(self, wavelength: float):
+        """Return resolution low and high limits.
+
+        Args:
+            wavelength: Returns the limits for given wavelength if
+                        passed, current wavelength is otherwised used
+
+        Returns:
+            (tuple): two floats tuple (low limit, high limit).
+        """
+        _low, _high = self._hwr_detector.distance.get_limits()
+
+        return (
+            self.distance_to_resolution(_low, wavelength=wavelength),
+            self.distance_to_resolution(_high, wavelength=wavelength),
+        )
 
     def set_limits(self, limits):
         """Resolution limits are not settable.
@@ -196,6 +228,8 @@ class AbstractResolution(AbstractMotor):
             if ttheta:
                 self._nominal_value = _wavelength / (2 * sin(ttheta / 2))
                 self.emit("valueChanged", (self._nominal_value,))
+            # finally update the limits as wavelength changed
+            self.update_limits()
         except (TypeError, ZeroDivisionError):
             logging.getLogger().exception("Error while calculating resolution")
 
