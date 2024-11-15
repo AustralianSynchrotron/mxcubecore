@@ -19,6 +19,7 @@
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+
 import gevent
 import gevent.event
 
@@ -27,17 +28,19 @@ try:
 except ImportError:
     import queue
 
-
-from mxcubecore.CommandContainer import (
-    CommandObject,
-    ChannelObject,
-    ConnectionError,
-)
-from mxcubecore import Poller
-from mxcubecore.dispatcher import saferef
 import numpy
 
+from mxcubecore import Poller
+from mxcubecore.CommandContainer import (
+    ChannelObject,
+    CommandObject,
+    ConnectionError,
+)
+from mxcubecore.dispatcher import saferef
+
 gevent_version = list(map(int, gevent.__version__.split(".")))
+
+log = logging.getLogger("HWR")
 
 try:
     import PyTango
@@ -157,7 +160,7 @@ class TangoChannel(ChannelObject):
         username=None,
         polling=None,
         timeout=10000,
-        **kwargs
+        **kwargs,
     ):
         ChannelObject.__init__(self, name, username, **kwargs)
 
@@ -171,13 +174,6 @@ class TangoChannel(ChannelObject):
         self.timeout = int(timeout)
         self.read_as_str = kwargs.get("read_as_str", False)
         self._device_initialized = gevent.event.Event()
-        #logging.getLogger("HWR").debug(
-        #    "creating Tango attribute %s/%s, polling=%s, timeout=%d",
-        #    self.device_name,
-        #    self.attribute_name,
-        #    polling,
-        #    self.timeout,
-        #)
         self.init_device()
         self.continue_init(None)
         """
@@ -277,15 +273,24 @@ class TangoChannel(ChannelObject):
         TangoChannel._tangoEventsProcessingTimer.send()
 
     def poll(self):
+        def read_attr():
+            if self.read_as_str:
+                value = self.raw_device.read_attribute(
+                    self.attribute_name, PyTango.DeviceAttribute.ExtractAs.String
+                ).value
+            else:
+                value = self.raw_device.read_attribute(self.attribute_name).value
 
-        if self.read_as_str:
-            value = self.raw_device.read_attribute(
-                self.attribute_name, PyTango.DeviceAttribute.ExtractAs.String
-            ).value
-        else:
-            value = self.raw_device.read_attribute(self.attribute_name).value
+            return value
 
-        return value
+        while True:
+            try:  # in case of tango communication errors, retry reading the attribute
+                return read_attr()
+            except PyTango.CommunicationFailed:
+                log.warning(
+                    f"error polling {self.raw_device} {self.attribute_name} attribute, retrying.",
+                    exc_info=True,
+                )
 
     def poll_failed(self, e, poller_id):
         self.emit("update", None)

@@ -1,10 +1,11 @@
-from mxcubecore.HardwareObjects import Session
+import glob
 import os
 import time
-import glob
-from mxcubecore.model import queue_model_objects
-from mxcubecore import HardwareRepository as HWR
 from typing import Tuple
+
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects import Session
+from mxcubecore.model import queue_model_objects
 
 
 class ESRFSession(Session.Session):
@@ -44,14 +45,16 @@ class ESRFSession(Session.Session):
             os.path.join(self.get_base_image_directory(), subdir) + "/run*"
         )
 
-        runs = [1]
+        runs = [0]
         for folder in folders:
             runs.append(int(folder.split("/")[-1].strip("run_").split("_")[0]))
 
         run_num = max(runs) + 1
 
+        # Use the same sequnce numbering for all tags/types, (We are not
+        # creating individual run number per tag)
         full_path = os.path.join(
-            self.get_base_image_directory(), subdir, f"run_{run_num:02d}/"
+            self.get_base_image_directory(), subdir, f"run_{run_num:02d}_{tag}/"
         )
 
         # Check collects in queue not yet collected

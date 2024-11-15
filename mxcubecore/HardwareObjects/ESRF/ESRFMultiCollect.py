@@ -1,16 +1,13 @@
+import logging
+import math
+import os
+import time
+
+from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.abstract.AbstractMultiCollect import *
-import logging
-import time
-import os
-import math
 from mxcubecore.model.queue_model_objects import PathTemplate
 from mxcubecore.utils.conversion import string_types
-from mxcubecore import HardwareRepository as HWR
-
-from mxcubecore.HardwareObjects.ESRF.ESRFMetadataManagerClient import (
-    MXCuBEMetadataClient,
-)
 
 try:
     from httplib import HTTPConnection
@@ -50,6 +47,7 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
 
     def init(self):
         self._detector = HWR.beamline.detector
+        self.number_of_snapshots = self.get_property("num_snapshots", 4)
 
         self.setControlObjects(
             diffractometer=self.get_object_by_role("diffractometer"),
@@ -121,7 +119,6 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
         exptime,
         number_of_images,
         shutterless,
-        npass,
         first_frame,
     ):
         if shutterless:
@@ -129,14 +126,14 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
             exptime = (exptime + self._detector.get_deadtime()) * number_of_images
 
             if first_frame:
-                self.do_prepare_oscillation(start, end, exptime, npass)
+                self.do_prepare_oscillation(start, end, exptime)
         else:
             if osc_range < 1e-4:
                 # still image
                 end = start
             else:
                 end = start + osc_range
-                self.do_prepare_oscillation(start, end, exptime, npass)
+                self.do_prepare_oscillation(start, end, exptime)
 
         return start, end
 
@@ -146,26 +143,31 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
         time.sleep(exptime)
         self.close_fast_shutter()
 
+
     @task
-    def do_oscillation(self, start, end, exptime, shutterless, npass, first_frame):
+    def do_oscillation(
+        self, start, end, exptime, number_of_images, shutterless, first_frame,
+    ):
         if shutterless:
             if first_frame:
                 exptime = (exptime + self._detector.get_deadtime()) * number_of_images
-                self.oscillation_task = self.oscil(start, end, exptime, npass wait=False)
+                self.oscillation_task = self.oscil(
+                    start, end, exptime, number_of_images, wait=False
+                )
 
             if self.oscillation_task.ready():
                 self.oscillation_task.get()
         else:
-            self.oscil(start, end, exptime, npass)
+            self.oscil(start, end, exptime, number_of_images)
 
     @task
-    def oscil(self, start, end, exptime, npass, wait=False):
+    def oscil(self, start, end, exptime, number_of_images, wait=False):
         if math.fabs(end - start) < 1e-4:
             self.open_fast_shutter()
             time.sleep(exptime)
             self.close_fast_shutter()
         else:
-            return self.execute_command("do_oscillation", start, end, exptime, npass)
+            return self.execute_command("do_oscillation", start, end, exptime, number_of_images)
 
     def set_wavelength(self, wavelength):
         if HWR.beamline.tunable_wavelength:
@@ -318,27 +320,25 @@ class ESRFMultiCollect(AbstractMultiCollect, HardwareObject):
     def prepare_input_files(
         self, files_directory, prefix, run_number, process_directory
     ):
-        i = 1
 
-        while True:
-            xds_input_file_dirname = "xds_%s_run%s_%d" % (prefix, run_number, i)
-            autoprocessing_input_file_dirname = "autoprocessing_%s_run%s_%d" % (
-                prefix,
-                run_number,
-                i,
-            )
+        autoprocessing_input_file_dirname = "autoprocessing"
+        autoprocessing_directory = os.path.join(
+            process_directory, autoprocessing_input_file_dirname
+        )
+        xds_input_file_dirname = "xds_%s_run%s" % (prefix, run_number,)
+        mosflm_input_file_dirname = "mosflm_%s_run%s" % (prefix, run_number)
+        hkl2000_dirname = "hkl2000_%s_run%s" % (prefix, run_number)
+
+        i = 1
+        while os.path.exists(autoprocessing_directory):
+            autoprocessing_input_file_dirname = "autoprocessing_%d" % i
             autoprocessing_directory = os.path.join(
                 process_directory, autoprocessing_input_file_dirname
             )
-
-            if not os.path.exists(autoprocessing_directory):
-                break
-
+            xds_input_file_dirname = "xds_%s_run%s_%d" % (prefix, run_number, i)
+            mosflm_input_file_dirname = "mosflm_%s_run%s_%d" % (prefix, run_number, i)
+            hkl2000_dirname = "hkl2000_%s_run%s_%d" % (prefix, run_number, i)
             i += 1
-
-        mosflm_input_file_dirname = "mosflm_%s_run%s_%d" % (prefix, run_number, i)
-
-        hkl2000_dirname = "hkl2000_%s_run%s_%d" % (prefix, run_number, i)
 
         self.raw_data_input_file_dir = os.path.join(
             files_directory, "process", xds_input_file_dirname

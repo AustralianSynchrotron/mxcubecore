@@ -1,13 +1,14 @@
-import gevent
-import shutil
 import logging
 import os
+import shutil
 
-from mxcubecore.TaskUtils import task
-from .ESRFMultiCollect import ESRFMultiCollect
-from mxcubecore.HardwareObjects.LimaPilatusDetector import LimaPilatusDetector
+import gevent
 
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects.LimaPilatusDetector import LimaPilatusDetector
+from mxcubecore.TaskUtils import task
+
+from .ESRFMultiCollect import ESRFMultiCollect
 
 
 class MD2MultiCollect(ESRFMultiCollect):
@@ -28,7 +29,8 @@ class MD2MultiCollect(ESRFMultiCollect):
 
     @task
     def get_beam_size(self):
-        return HWR.beamline.beam.beam_width, HWR.beamline.beam.beam_height
+        _width, _height, _, _ = HWR.beamline.beam.get_value()
+        return _width, _height
 
     @task
     def get_slit_gaps(self):
@@ -58,29 +60,26 @@ class MD2MultiCollect(ESRFMultiCollect):
         diffr.move_sync_motors(motor_positions_copy, wait=True, timeout=200)
 
     @task
-    def take_crystal_snapshots(self, number_of_snapshots):
-        if HWR.beamline.diffractometer.in_plate_mode():
-            if number_of_snapshots > 0:
-                number_of_snapshots = 1
-        else:
-            # this has to be done before each chage of phase
-            HWR.beamline.diffractometer.save_centring_positions()
-            # not going to centring phase if in plate mode (too long)
-            HWR.beamline.diffractometer.set_phase("Centring", wait=True, timeout=600)
-
-        HWR.beamline.diffractometer.take_snapshots(number_of_snapshots, wait=True)
+    def take_crystal_snapshots(self, number_of_snapshots, image_path_list=[]):
+        HWR.beamline.diffractometer.take_snapshot(image_path_list)
 
     def do_prepare_oscillation(self, *args, **kwargs):
+        diffr = HWR.beamline.diffractometer
+
         # set the detector cover out
+        try:
+            diffr.open_detector_cover()
+        except Exception:
+            logging.getLogger("HWR").exception("Could not open detector cover")
+        """
         try:
             detcover = self.get_object_by_role("controller").detcover
 
             if detcover.state == "IN":
                 detcover.set_out(10)
         except:
-            logging.getLogger("HWR").exception("Could close detector cover")
-
-        diffr = HWR.beamline.diffractometer
+            logging.getLogger("HWR").exception("Could not open detector cover")
+        """
 
         # send again the command as MD2 software only handles one
         # centered position!!
@@ -94,8 +93,7 @@ class MD2MultiCollect(ESRFMultiCollect):
 
         # move to DataCollection phase
         logging.getLogger("user_level_log").info("Moving MD2 to DataCollection")
-        # AB next 3 lines to speed up the data collection
-        # diffr.set_phase("DataCollection", wait=True, timeout=200)
+        # AB next line to speed up the data collection
         diffr.set_phase("DataCollection", wait=False, timeout=0)
 
     @task
@@ -104,12 +102,14 @@ class MD2MultiCollect(ESRFMultiCollect):
         self.close_fast_shutter()
 
     @task
-    def oscil(self, start, end, exptime, npass, wait=True):
+    def oscil(self, start, end, exptime, number_of_images, wait=True):
         diffr = self.get_object_by_role("diffractometer")
         # make sure the diffractometer is ready to do the scan
         diffr.wait_ready(100)
         if self.helical:
-            diffr.oscilScan4d(start, end, exptime, self.helical_pos, wait=True)
+            diffr.oscilScan4d(
+                start, end, exptime, number_of_images, self.helical_pos, wait=True
+            )
         elif self.mesh:
             det = HWR.beamline.detector
             latency_time = det.get_property("latecy_time_mesh") or det.get_deadtime()
@@ -149,7 +149,7 @@ class MD2MultiCollect(ESRFMultiCollect):
                 wait=True,
             )
         else:
-            diffr.oscilScan(start, end, exptime, wait=True)
+            diffr.oscilScan(start, end, exptime, number_of_images, wait=True)
 
     @task
     def prepare_acquisition(

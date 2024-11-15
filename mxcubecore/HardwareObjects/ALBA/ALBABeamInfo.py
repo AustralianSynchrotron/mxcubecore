@@ -20,10 +20,11 @@ beamPosChanged
 """
 
 import logging
-from mxcubecore.BaseHardwareObjects import Equipment
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
-class ALBABeamInfo(Equipment):
+class ALBABeamInfo(HardwareObject):
     """
     Description:
     """
@@ -32,7 +33,7 @@ class ALBABeamInfo(Equipment):
         """
         Descrip. :
         """
-        Equipment.__init__(self, *args)
+        super().__init__(*args)
 
         self.aperture_hwobj = None
         self.slits_hwobj = None

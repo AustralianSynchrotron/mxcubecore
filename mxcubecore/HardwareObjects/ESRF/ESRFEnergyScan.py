@@ -1,25 +1,23 @@
 import logging
-import time
+import math
 import os
 import os.path
 import shutil
-import math
-import gevent
 
 # import PyChooch
 # to run chooch in shell
 import subprocess
+import time
+
+import gevent
 import numpy
-
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 
-from mxcubecore.TaskUtils import task
-from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.HardwareObjects.abstract.AbstractEnergyScan import (
-    AbstractEnergyScan,
-)
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.HardwareObjects.abstract.AbstractEnergyScan import AbstractEnergyScan
+from mxcubecore.TaskUtils import task
 
 
 class FixedEnergy:
@@ -86,8 +84,7 @@ class GetStaticParameters:
 
 class ESRFEnergyScan(AbstractEnergyScan, HardwareObject):
     def __init__(self, name, tunable_bl):
-        AbstractEnergyScan.__init__(self)
-        HardwareObject.__init__(self, name)
+        super().__init__(name)
         self._tunable_bl = tunable_bl
 
     def execute_command(self, command_name, *args, **kwargs):
@@ -202,7 +199,6 @@ class ESRFEnergyScan(AbstractEnergyScan, HardwareObject):
             StoreEnergyScanThread, HWR.beamline.lims, self.energy_scan_parameters
         )
 
-    # def do_chooch(self, elt, edge, directory, archive_directory, prefix):
     def do_chooch(self, elt, edge, directory, archive_directory, prefix):
         self.energy_scan_parameters["endTime"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -271,7 +267,7 @@ class ESRFEnergyScan(AbstractEnergyScan, HardwareObject):
         # while waiting fro chooch to work...
         subprocess.call(
             [
-                "/opt/pxsoft/bin/chooch",
+                "/cvmfs/sb.esrf.fr/bin/chooch",
                 "-e",
                 elt,
                 "-a",

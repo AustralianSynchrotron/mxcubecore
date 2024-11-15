@@ -1,3 +1,4 @@
+# encoding: utf-8
 #
 #  Project: MXCuBE
 #  https://github.com/mxcube
@@ -17,33 +18,35 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
-
+__copyright__ = """Copyright The MXCuBE Collaboration"""
+__license__ = "LGPLv3+"
 __author__ = "Jan Meyer"
 __email__ = "jan.meyer@desy.de"
-__copyright__ = "(c)2016 DESY, FS-PE, P11"
-__license__ = "GPL"
 
 
 import logging
-from mxcubecore.BaseHardwareObjects import Device
-from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
-from mxcubecore.HardwareObjects.abstract.AbstractMotor import MotorStates
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.HardwareObjects.abstract.AbstractMotor import (
+    AbstractMotor,
+    MotorStates,
+)
 
 
-class DigitalZoomMotor(AbstractMotor, Device):
+class DigitalZoomMotor(AbstractMotor, HardwareObject):
     """
     Works with camera devices which provide
     zoom_exists, set_zoom, get_zoom and get_zoom_min_max
-    <device class="DigitalZoomMotor">
+    <object class="DigitalZoomMotor">
         <username>Zoom</username>
         <actuator_name>Zoom</actuator_name>
         <object href="/mjpg-stream-video" role="camera"/>
-    </device>
+    </object>
     """
 
     def __init__(self, name):
         AbstractMotor.__init__(self, name)
-        Device.__init__(self, name)
+        super().__init__(name)
         self.camera = None
 
     def init(self):
@@ -71,8 +74,6 @@ class DigitalZoomMotor(AbstractMotor, Device):
             logging.getLogger("HWR").warning(
                 "DigitalZoomMotor: digital zoom is not supported " "by camera object"
             )
-
-        self.set_is_ready(self.get_state() == MotorStates.READY)
 
     def update_state(self):
         """

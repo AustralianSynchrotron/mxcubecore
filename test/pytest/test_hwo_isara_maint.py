@@ -1,9 +1,17 @@
 import pytest
-from tango import DeviceProxy, Except
-from tango.server import Device, attribute, command
-from tango.test_context import DeviceTestContext
-from mxcubecore.HardwareObjects.ISARAMaint import ISARAMaint
 from gevent.event import Event
+from tango import (
+    DeviceProxy,
+    Except,
+)
+from tango.server import (
+    Device,
+    attribute,
+    command,
+)
+from tango.test_context import DeviceTestContext
+
+from mxcubecore.HardwareObjects.ISARAMaint import ISARAMaint
 
 """
 Test the HardwareObjects.ISARAMaint sample changer maintenance hardware object.
@@ -172,8 +180,8 @@ def test_power_on_home(isara_maint: ISARAMaint):
     #
     _, commands_state, message = isara_maint.get_global_state()
     assert commands_state == dict(
-        powerOn=False,
-        powerOff=True,
+        PowerOn=False,
+        PowerOff=True,
         openLid=True,
         closeLid=True,
         home=False,
@@ -200,7 +208,7 @@ def test_power_off(isara_maint: ISARAMaint):
     cb_tracker.wait_for_callback()
 
     # issue 'power off' command
-    isara_maint.send_command("powerOff")
+    isara_maint.send_command("PowerOff")
     cb_tracker.wait_for_callback()
 
     #
@@ -208,8 +216,8 @@ def test_power_off(isara_maint: ISARAMaint):
     #
     _, commands_state, _ = isara_maint.get_global_state()
     assert commands_state == dict(
-        powerOn=True,
-        powerOff=False,
+        PowerOn=True,
+        PowerOff=False,
         openLid=True,
         closeLid=True,
         home=False,
@@ -299,7 +307,7 @@ def test_manual_mode_error(isara_maint: ISARAMaint):
     # trying to power on or off the robot, should generate an appropriate error message
     #
     with pytest.raises(RuntimeError, match="power off .*not in remote mode"):
-        isara_maint.send_command("powerOff")
+        isara_maint.send_command("PowerOff")
 
     with pytest.raises(RuntimeError, match="power on .*not in remote mode"):
-        isara_maint.send_command("powerOn")
+        isara_maint.send_command("PowerOn")

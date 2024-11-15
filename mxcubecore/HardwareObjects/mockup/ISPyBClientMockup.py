@@ -6,8 +6,8 @@ import logging
 import time
 import warnings
 
-from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 try:
     from urlparse import urljoin
@@ -43,13 +43,6 @@ class ISPyBClientMockup(HardwareObject):
         Init method declared by HardwareObject.
         """
         self.lims_rest = self.get_object_by_role("lims_rest")
-        self.authServerType = self.get_property("authServerType") or "ldap"
-        if self.authServerType == "ldap":
-            # Initialize ldap
-            self.ldap_connection = self.get_object_by_role("ldapServer")
-            if self.ldap_connection is None:
-                logging.getLogger("HWR").debug("LDAP Server is not available")
-
         self.beamline_name = HWR.beamline.session.beamline_name
 
         try:
@@ -102,9 +95,12 @@ class ISPyBClientMockup(HardwareObject):
 
     def login(self, login_id, psd, ldap_connection=None, create_session=True):
         # to simulate wrong loginID
-        if login_id != "idtest0":
+        if login_id not in ("idtest0", "idtest1"):
             return {
-                "status": {"code": "error", "msg": "loginID 'wrong' does not exist!"},
+                "status": {
+                    "code": "error",
+                    "msg": f"loginID '{login_id}' does not exist!",
+                },
                 "Proposal": None,
                 "Session": None,
             }
@@ -115,7 +111,7 @@ class ISPyBClientMockup(HardwareObject):
                 "Proposal": None,
                 "Session": None,
             }
-            # to simulate ispybDown, but login succeed
+        # to simulate ispybDown, but login succeed
         if psd == "ispybDown":
             return {
                 "status": {"code": "ispybDown", "msg": "ispyb is down"},

@@ -20,35 +20,50 @@
 
 from __future__ import absolute_import
 
-import typing
 import ast
 import enum
-from collections import OrderedDict
 import logging
-from gevent import event, Timeout
-import pydantic
+import typing
+import warnings
+from collections import OrderedDict
 from typing import (
     TYPE_CHECKING,
-    Callable,
-    Iterator,
-    Union,
     Any,
-    Generator,
-    List,
+    Callable,
     Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+)
+from typing import OrderedDict as TOrderedDict
+from typing import (
     Tuple,
     Type,
-    Optional,
-    OrderedDict as TOrderedDict,
+    Union,
 )
-from typing_extensions import Self, Literal
 
-from mxcubecore.dispatcher import dispatcher
+from gevent import (
+    Timeout,
+    event,
+)
+from pydantic.v1 import (
+    Field,
+    create_model,
+)
+from typing_extensions import (
+    Literal,
+    Self,
+)
+
 from mxcubecore.CommandContainer import CommandContainer
+from mxcubecore.dispatcher import dispatcher
 
 if TYPE_CHECKING:
     from logging import Logger
-    from pydantic import BaseModel
+
+    from pydantic.v1 import BaseModel
+
     from .CommandContainer import CommandObject
 
 __copyright__ = """ Copyright © 2010-2020 by the MXCuBE collaboration """
@@ -123,7 +138,7 @@ class ConfiguredObject:
     # NB this function must be re-implemented in nested subclasses
     @property
     def all_roles(self) -> Tuple[str]:
-        """Tuple of all content object roles, indefinition and loading order
+        """Tuple of all content object roles, in definition and loading order
 
         Returns:
             Tuple[str]: Content object roles
@@ -656,11 +671,11 @@ class HardwareObjectMixin(CommandContainer):
                 # Skipp return typehint
                 if _n != "return":
                     self._exports[attr_name].append(_n)
-                    fdict[_n] = (_t, pydantic.Field(alias=_n))
+                    fdict[_n] = (_t, Field(alias=_n))
 
             _models[attr_name] = (
-                pydantic.create_model(attr_name, **fdict),
-                pydantic.Field(alias=attr_name),
+                create_model(attr_name, **fdict),
+                Field(alias=attr_name),
             )
 
             self._pydantic_models[attr_name] = _models[attr_name][0]
@@ -670,7 +685,7 @@ class HardwareObjectMixin(CommandContainer):
                 attr_name
             ].schema_json()
 
-        model = pydantic.create_model(self.__class__.__name__, **_models)
+        model = create_model(self.__class__.__name__, **_models)
         self._pydantic_models["all"] = model
 
     def execute_exported_command(self, cmd_name: str, args: Dict[str, Any]) -> Any:
@@ -775,6 +790,16 @@ class HardwareObjectMixin(CommandContainer):
             bool: True if ready, otherwise False.
         """
         return self._ready_event.is_set()
+
+    def set_is_ready(self, value: bool):
+        warnings.warn(
+            "set_is_ready method ported from Device is Deprecated and will be removed",
+            DeprecationWarning,
+        )
+        if value:
+            self.update_state(HardwareObjectState.READY)
+        else:
+            self.update_state(HardwareObjectState.OFF)
 
     def update_state(self, state: Optional[HardwareObjectState] = None) -> None:
         """Update self._state, and emit signal stateChanged if the state has changed.
@@ -1083,7 +1108,7 @@ class HardwareObject(HardwareObjectNode, HardwareObjectMixin):
 class HardwareObjectYaml(ConfiguredObject, HardwareObjectMixin):
     """Yaml-configured hardware object.
 
-    For use when we move confiugration out of xml and into yaml.
+    For use when we move configuration out of xml and into yaml.
 
     The class is needed only to provide a single superclass
     that combines ConfiguredObject and HardwareObjectMixin"""
@@ -1136,7 +1161,17 @@ class Device(HardwareObject):
 
     (NOTREADY, READY) = (0, 1)  # device states
 
+    def __init_subclass__(cls, **kwargs):
+        warnings.warn(
+            f"{cls.__name__} will be deprecated.", DeprecationWarning, stacklevel=2
+        )
+        super().__init_subclass__(**kwargs)
+
     def __init__(self, name):
+        warnings.warn(
+            "class Device is Deprecated and will be removed",
+            DeprecationWarning,
+        )
         HardwareObject.__init__(self, name)
 
         self.state = Device.NOTREADY
@@ -1225,9 +1260,19 @@ class Equipment(HardwareObject, DeviceContainer):
     NB This class needs refactoring. Since many (soon: all??) contained
      objects are no longer of class Device, the code in here is unlikely to work."""
 
+    def __init_subclass__(cls, **kwargs):
+        warnings.warn(
+            f"{cls.__name__} will be deprecated.", DeprecationWarning, stacklevel=2
+        )
+        super().__init_subclass__(**kwargs)
+
     def __init__(self, name):
         HardwareObject.__init__(self, name)
         DeviceContainer.__init__(self)
+        warnings.warn(
+            "class Equipment is Deprecated and will be removed",
+            DeprecationWarning,
+        )
 
         self.__ready = None
 

@@ -32,21 +32,22 @@ machInfoChanged
          values['topup_remaining']
 """
 
-import gevent
 import time
 
+import gevent
+
 from mxcubecore import HardwareRepository as HWR
-from mxcubecore.BaseHardwareObjects import Equipment
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
-class MachInfoMockup(Equipment):
+class MachInfoMockup(HardwareObject):
     default_current = 200  # milliamps
     default_lifetime = 45  # hours Lifetime
     default_message = "Beam Delivered"
     default_topup_remaining = 70  # seconds
 
     def __init__(self, *args):
-        Equipment.__init__(self, *args)
+        super().__init__(*args)
 
         self.current = self.default_current
         self.lifetime = self.default_lifetime

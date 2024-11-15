@@ -1,8 +1,9 @@
 import logging
-from mxcubecore.BaseHardwareObjects import Device
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
-class PX1Attenuator(Device):
+class PX1Attenuator(HardwareObject):
     stateAttenuator = {
         "ALARM": "error",
         "OFF": "error",

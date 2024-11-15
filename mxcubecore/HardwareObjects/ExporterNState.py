@@ -20,20 +20,25 @@
 """
 Microdiff with Exporter implementation of AbstartNState
 Example xml file:
-<device class="ExporterNState">
+<object class="ExporterNState">
   <username>Fluorescence Detector</username>
   <exporter_address>wid30bmd2s:9001</exporter_address>
   <value_channel_name>FluoDetectorIsBack</value_channel_name>
   <state_channel_name>State</state_channel_name>
   <values>{"IN": False, "OUT": True}</values>
   <value_state>True</value_state>
-</device>
+</object>
 """
 from enum import Enum
-from gevent import Timeout, sleep
-from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
+
+from gevent import (
+    Timeout,
+    sleep,
+)
+
 from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
+from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
 __copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"
@@ -71,7 +76,7 @@ class ExporterNState(AbstractNState):
             },
             value_channel,
         )
-        self.value_channel.connect_signal("update", self.update_value)
+        self.value_channel.connect_signal("update", self._update_value)
 
         self.state_channel = self.add_channel(
             {
@@ -104,6 +109,9 @@ class ExporterNState(AbstractNState):
             while not self.get_state() == self.STATES.READY:
                 sleep(0.5)
 
+    def _update_value(self, value):
+        super().update_value(self.value_to_enum(value))
+
     def _update_state(self, state=None):
         """To be used to update the state when emiting the "update" signal.
         Args:
@@ -115,6 +123,7 @@ class ExporterNState(AbstractNState):
             state = self.get_state()
         else:
             state = self._str2state(state)
+
         return self.update_state(state)
 
     def _str2state(self, state):

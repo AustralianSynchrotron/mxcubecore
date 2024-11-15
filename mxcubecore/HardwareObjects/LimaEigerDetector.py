@@ -1,16 +1,18 @@
 """LimaEigerDetector Class
 Lima Tango Device Server implementation of the Dectris Eiger2 Detector.
 """
-import gevent
-import time
-import os
-import math
-import logging
 
-from mxcubecore.model.queue_model_objects import PathTemplate
-from mxcubecore.TaskUtils import task
+import logging
+import math
+import os
+import time
+
+import gevent
+
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.HardwareObjects.abstract.AbstractDetector import AbstractDetector
+from mxcubecore.model.queue_model_objects import PathTemplate
+from mxcubecore.TaskUtils import task
 
 
 class LimaEigerDetector(AbstractDetector):
@@ -230,12 +232,14 @@ class LimaEigerDetector(AbstractDetector):
         self.get_channel_object("saving_format").set_value("HDF5")
 
     def start_acquisition(self):
+        self.wait_ready()
         logging.getLogger("user_level_log").info("Preparing acquisition")
         self.get_command_object("prepare_acq")()
         logging.getLogger("user_level_log").info("Detector ready, continuing")
         self.get_command_object("start_acq")()
 
     def stop_acquisition(self):
+        self.update_state(self.STATES.BUSY)
         try:
             self.get_command_object("stop_acq")()
         except Exception:
@@ -244,9 +248,11 @@ class LimaEigerDetector(AbstractDetector):
         time.sleep(1)
         self.get_command_object("reset")()
         self.wait_ready()
+        self.update_state(self.STATES.READY)
 
     def reset(self):
         self.stop_acquisition()
+        return True
 
     @property
     def status(self):

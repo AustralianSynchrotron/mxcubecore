@@ -17,27 +17,27 @@
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
 """
-All queue entries inherits the baseclass BaseQueueEntry which inturn
+All queue entries inherits the baseclass BaseQueueEntry which in turn
 inherits QueueEntryContainer. This makes it possible to arrange and
-execute queue entries in a hierarchical maner.
+execute queue entries in a hierarchical manner.
 """
 
+import copy
 import logging
 import sys
-import traceback
 import time
-import logging
-import gevent
-
+import traceback
 from collections import namedtuple
 
+import gevent
+
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.HardwareObjects import autoprocessing
 from mxcubecore.model import queue_model_objects
 from mxcubecore.model.queue_model_enumerables import (
     CENTRING_METHOD,
+    EXPERIMENT_TYPE,
 )
-
-from mxcubecore.HardwareObjects import autoprocessing
 
 __credits__ = ["MXCuBE collaboration"]
 __license__ = "LGPLv3+"
@@ -64,7 +64,7 @@ class QueueAbortedException(QueueExecutionException):
     pass
 
 
-class QueueSkippEntryException(QueueExecutionException):
+class QueueSkipEntryException(QueueExecutionException):
     pass
 
 
@@ -244,8 +244,8 @@ class BaseQueueEntry(QueueEntryContainer):
     def set_view(self, view, view_set_queue_entry=True):
         """
         Sets the view of this queue entry to <view>. Makes the
-        correspodning bi-directional connection if view_set_queue_entry
-        is set to True. Which is normaly case, it can be usefull with
+        corresponding bidirectional connection if view_set_queue_entry
+        is set to True. Which is normally case, it can be useful with
         'uni-directional' connection in some rare cases.
 
         :param view: The view to associate with this entry
@@ -277,7 +277,7 @@ class BaseQueueEntry(QueueEntryContainer):
 
     def set_enabled(self, state):
         """
-        Enables or disables this entry, controls wether this item
+        Enables or disables this entry, controls if this item
         should be executed (enabled) or not (disabled)
 
         :param state: Enabled if state is True otherwise disabled.
@@ -369,7 +369,7 @@ class TaskGroupQueueEntry(BaseQueueEntry):
         self.interleave_task = None
         self.interleave_items = None
         self.interleave_sw_list = None
-        self.interleave_stoped = None
+        self.interleave_stopped = None
 
     def execute(self):
         BaseQueueEntry.execute(self)
@@ -472,7 +472,7 @@ class TaskGroupQueueEntry(BaseQueueEntry):
                         self.interleave_items.append(interleave_item)
 
                         if task_model.inverse_beam_num_images is not None:
-                            inverse_beam_item = copy(interleave_item)
+                            inverse_beam_item = copy.deepcopy(interleave_item)
                             inverse_beam_item["data_model"] = interleave_item[
                                 "data_model"
                             ].copy()
@@ -539,7 +539,7 @@ class TaskGroupQueueEntry(BaseQueueEntry):
 
         self._queue_controller.emit("queue_interleaved_started")
         for item_index, item in enumerate(self.interleave_sw_list):
-            if not self.interleave_stoped:
+            if not self.interleave_stopped:
                 self.get_view().setText(
                     1,
                     "Subwedge %d:%d)"
@@ -567,9 +567,9 @@ class TaskGroupQueueEntry(BaseQueueEntry):
                     acq_first_image,
                     acq_first_image + item["collect_num_images"] - 1,
                 )
-                self.interleave_items[item["collect_index"]][
-                    "queue_entry"
-                ].in_queue = item_index < (len(self.interleave_sw_list) - 1)
+                self.interleave_items[item["collect_index"]]["queue_entry"].in_queue = (
+                    item_index < (len(self.interleave_sw_list) - 1)
+                )
 
                 msg = "Executing %s collection (subwedge %d:%d, " % (
                     method_type,
@@ -613,7 +613,7 @@ class TaskGroupQueueEntry(BaseQueueEntry):
 
                 self._queue_controller.emit("queue_interleaved_sw_done", (sig_data,))
 
-        if not self.interleave_stoped:
+        if not self.interleave_stopped:
             logging.getLogger("queue_exec").info(
                 "%s collection finished" % method_type.title()
             )
@@ -631,7 +631,7 @@ class TaskGroupQueueEntry(BaseQueueEntry):
     def stop(self):
         BaseQueueEntry.stop(self)
         if self.interleave_task:
-            self.interleave_stoped = True
+            self.interleave_stopped = True
             self.interleave_task.kill()
         self.get_view().setText(1, "Interleave stoped")
 
@@ -675,7 +675,6 @@ class SampleQueueEntry(BaseQueueEntry):
                     self.sample_centring_result = gevent.event.AsyncResult()
                     try:
                         mount_sample(
-                            self._view,
                             self._data_model,
                             self.centring_done,
                             self.sample_centring_result,
@@ -689,7 +688,7 @@ class SampleQueueEntry(BaseQueueEntry):
                         )
                         log.error(msg)
                         self.status = QUEUE_ENTRY_STATUS.FAILED
-                        if isinstance(e, QueueSkippEntryException):
+                        if isinstance(e, QueueSkipEntryException):
                             raise
                         else:
                             raise QueueExecutionException(str(e), self)
@@ -697,7 +696,7 @@ class SampleQueueEntry(BaseQueueEntry):
                     log.info("Sample already mounted")
             else:
                 msg = (
-                    "SampleQueuItemPolicy does not have any "
+                    "SampleQueueItemPolicy does not have any "
                     + "sample changer hardware object, cannot "
                     + "mount sample"
                 )
@@ -766,16 +765,12 @@ class BasketQueueEntry(BaseQueueEntry):
         BaseQueueEntry.__init__(self, view, data_model)
 
 
-def mount_sample(view, data_model, centring_done_cb, async_result):
-    view.setText(1, "Loading sample")
+def mount_sample(data_model, centring_done_cb, async_result):
+    HWR.beamline.sample_changer.trigger_progress_message("Loading sample")
     HWR.beamline.sample_view.clear_all()
-    log = logging.getLogger("queue_exec")
+    log = logging.getLogger("user_level_log")
 
     loc = data_model.location
-    holder_length = data_model.holder_length
-
-    snapshot_before_filename = "/tmp/test_before.png"
-    snapshot_after_filename = "/tmp/test_after.png"
 
     robot_action_dict = {
         "actionType": "LOAD",
@@ -786,41 +781,13 @@ def mount_sample(view, data_model, centring_done_cb, async_result):
         "sessionId": HWR.beamline.session.session_id,
         "startTime": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
-    # "xtalSnapshotBefore": data_model.get_snapshot_filename(prefix="before"),
-    # "xtalSnapshotAfter": data_model.get_snapshot_filename(prefix="after")}
 
-    # This is a possible solution how to deal with two devices that
-    # can move sample on beam (sample changer, plate holder, in future
-    # also harvester)
-    # TODO make sample_Changer_one, sample_changer_two
-    if HWR.beamline.diffractometer.in_plate_mode():
-        sample_mount_device = HWR.beamline.plate_manipulator
-    else:
-        sample_mount_device = HWR.beamline.sample_changer
-
-    if hasattr(sample_mount_device, "__TYPE__"):
-        if sample_mount_device.__TYPE__ in ["Marvin", "CATS"]:
-            element = "%d:%02d" % tuple(loc)
-            sample_mount_device.load(sample=element, wait=True)
-        elif sample_mount_device.__TYPE__ == "PlateManipulator":
-            sample_mount_device.load_sample(sample_location=loc)
-        else:
-            if (
-                sample_mount_device.load_sample(
-                    holder_length, sample_location=loc, wait=True
-                )
-                is False
-            ):
-                # WARNING: explicit test of False return value.
-                # This is to preserve backward compatibility (load_sample was supposed to return None);
-                # if sample could not be loaded, but no exception is raised, let's skip
-                # the sample
-                raise QueueSkippEntryException(
-                    "Sample changer could not load sample", ""
-                )
+    if not HWR.beamline.sample_changer.load(sample=data_model.loc_str, wait=True):
+        raise QueueSkipEntryException("Sample changer could not load sample", "")
 
     robot_action_dict["endTime"] = time.strftime("%Y-%m-%d %H:%M:%S")
-    if sample_mount_device.has_loaded_sample():
+
+    if HWR.beamline.sample_changer.has_loaded_sample():
         robot_action_dict["status"] = "SUCCESS"
     else:
         robot_action_dict["message"] = "Sample was not loaded"
@@ -828,25 +795,18 @@ def mount_sample(view, data_model, centring_done_cb, async_result):
 
     HWR.beamline.lims.store_robot_action(robot_action_dict)
 
-    if not sample_mount_device.has_loaded_sample():
-        # Disables all related collections
-        view.setOn(False)
-        view.setText(1, "Sample not loaded")
-        raise QueueSkippEntryException("Sample not loaded", "")
+    if not HWR.beamline.sample_changer.has_loaded_sample():
+        HWR.beamline.sample_changer.trigger_progress_message("Sample not loaded")
+        raise QueueSkipEntryException("Sample not loaded", "")
     else:
-        view.setText(1, "Sample loaded")
+        HWR.beamline.sample_changer.trigger_progress_message("Sample loaded")
         dm = HWR.beamline.diffractometer
-        if dm is not None:
-            if hasattr(sample_mount_device, "__TYPE__"):
-                if sample_mount_device.__TYPE__ in (
-                    "Marvin",
-                    "PlateManipulator",
-                    "Mockup",
-                ):
-                    return
+        centring_method = HWR.beamline.queue_manager.centring_method
+
+        if centring_method != CENTRING_METHOD.NONE:
             try:
                 dm.connect("centringAccepted", centring_done_cb)
-                centring_method = view.listView().parent().parent().centring_method
+
                 if centring_method == CENTRING_METHOD.MANUAL:
                     log.warning(
                         "Manual centring used, waiting for" + " user to center sample"
@@ -864,21 +824,26 @@ def mount_sample(view, data_model, centring_done_cb, async_result):
                 else:
                     dm.start_centring_method(dm.MANUAL3CLICK_MODE)
 
-                view.setText(1, "Centring !")
+                HWR.beamline.sample_changer.trigger_progress_message("Centring !")
                 centring_result = async_result.get()
+
                 if centring_result["valid"]:
-                    view.setText(1, "Centring done !")
+                    HWR.beamline.sample_changer.trigger_progress_message(
+                        "Centring done !"
+                    )
                     log.info("Centring saved")
                 else:
-                    view.setText(1, "Centring failed !")
+                    HWR.beamline.sample_changer.trigger_progress_message(
+                        "Centring failed !"
+                    )
                     if centring_method == CENTRING_METHOD.FULLY_AUTOMATIC:
-                        raise QueueSkippEntryException(
+                        raise QueueSkipEntryException(
                             "Could not center sample, skipping", ""
                         )
                     else:
                         raise RuntimeError("Could not center sample")
-            except Exception as ex:
-                log.exception("Could not center sample: " + str(ex))
+            except Exception:
+                logging.getLogger("HWR").exception("")
             finally:
                 dm.disconnect("centringAccepted", centring_done_cb)
 

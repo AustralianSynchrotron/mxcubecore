@@ -1,22 +1,20 @@
-import sys
 import ast
 import importlib
+import logging
 import operator
-
-from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.TaskUtils import task
-from mxcubecore.CommandContainer import CommandObject
-from mxcubecore.utils.conversion import camel_to_snake
-from mxcubecore import HardwareRepository as HWR
-
-from mxcubecore.CommandContainer import (
-    CommandObject,
-    TWO_STATE_COMMAND_T,
-    ARGUMENT_TYPE_LIST,
-)
+import sys
 
 import gevent
-import logging
+
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.CommandContainer import (
+    ARGUMENT_TYPE_LIST,
+    TWO_STATE_COMMAND_T,
+    CommandObject,
+)
+from mxcubecore.TaskUtils import task
+from mxcubecore.utils.conversion import camel_to_snake
 
 
 class ControllerCommand(CommandObject):
@@ -87,6 +85,7 @@ class HWObjActuatorCommand(CommandObject):
         self.type = TWO_STATE_COMMAND_T
         self.argument_type = ARGUMENT_TYPE_LIST
         self._hwobj.connect("valueChanged", self._cmd_done)
+        self._running = False
 
     def _get_action(self):
         """Return which action has to be executed.
@@ -105,6 +104,7 @@ class HWObjActuatorCommand(CommandObject):
         Args: None
         Kwargs: None
         """
+        self._running = True
         self.emit("commandBeginWaitReply", (str(self.name()),))
         value = self._get_action()
         self._hwobj.set_value(value, timeout=60)
@@ -122,8 +122,10 @@ class HWObjActuatorCommand(CommandObject):
         else:
             if isinstance(res, gevent.GreenletExit):
                 self.emit("commandFailed", (str(self.name()),))
-            else:
+            elif self._running:
                 self.emit("commandReplyArrived", (str(self.name()), res))
+
+        self._running = False
 
     def value(self):
         """Return the current command vaue.
@@ -176,7 +178,7 @@ class BeamlineActions(HardwareObject):
         _cls_name = parts[-1]
         self._annotated_commands.append(_cls_name)
 
-        # Assume import from current module if only class name givien (no module)
+        # assume import from current module if only class name given (no module)
         if len(parts) == 1:
             _cls = getattr(sys.modules[__name__], _cls_name)
         else:

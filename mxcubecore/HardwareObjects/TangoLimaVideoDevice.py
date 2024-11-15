@@ -52,7 +52,7 @@ the LimaVideoDevice module instead
 [Configuration]
 Example Hardware Object XML file :
 ==================================
-<device class="QtLimaVideo">
+<object class="QtLimaVideo">
    <type>basler</type>
    <encoding>yuv422p</encoding>
    <tangoname>bl13/eh/lima_oav</tangoname>
@@ -60,12 +60,13 @@ Example Hardware Object XML file :
    <exposure>0.01</exposure>
    <mirror>(False, False)</mirror>
    <interval>30</interval>
-</device>
+</object>
 """
 from __future__ import print_function
-import struct
-import numpy as np
 
+import struct
+
+import numpy as np
 import PyTango
 
 from mxcubecore.HardwareObjects.abstract.AbstractVideoDevice import AbstractVideoDevice
@@ -132,9 +133,9 @@ class TangoLimaVideoDevice(AbstractVideoDevice):
         img_data = self.device.video_last_image
 
         if img_data[0] == "VIDEO_IMAGE":
-            raw_fmt = img_data[1][: self.header_size]
+            _ = img_data[1][: self.header_size]
             raw_buffer = np.fromstring(img_data[1][self.header_size :], np.uint16)
-            _, ver, img_mode, frame_number, width, height, _, _, _, _ = struct.unpack(
+            _, _, _, _, width, height, _, _, _, _ = struct.unpack(
                 self.header_fmt, img_data[1][: self.header_size]
             )
             return raw_buffer, width, height

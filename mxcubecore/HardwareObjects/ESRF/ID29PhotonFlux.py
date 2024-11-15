@@ -1,16 +1,18 @@
-import time
 import logging
 import math
-from calc_flux import CalculateFlux
 import sys
-from mxcubecore.BaseHardwareObjects import Equipment
-from mxcubecore.TaskUtils import task
+import time
+
+from calc_flux import CalculateFlux
+
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.TaskUtils import task
 
 
-class ID29PhotonFlux(Equipment):
+class ID29PhotonFlux(HardwareObject):
     def __init__(self, *args, **kwargs):
-        Equipment.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def init(self):
         self.counter = self.get_object_by_role("counter")

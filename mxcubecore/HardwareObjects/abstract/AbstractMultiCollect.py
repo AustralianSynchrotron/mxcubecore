@@ -1,18 +1,23 @@
-import os
-import sys
+import abc
+import collections
+import errno
 
 # import types
 import logging
+import os
+import socket
+import sys
 import time
-import errno
-import abc
-import collections
+
 import autoprocessing
 import gevent
-import socket
-from mxcubecore.TaskUtils import task, cleanup, error_cleanup
 
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.TaskUtils import (
+    cleanup,
+    error_cleanup,
+    task,
+)
 
 BeamlineControl = collections.namedtuple(
     "BeamlineControl",
@@ -83,6 +88,8 @@ class AbstractMultiCollect(object):
         self.mesh_range = None
         self.mesh_center = None
 
+        self.number_of_snapshots = 4
+
     def setControlObjects(self, **control_objects):
         self.bl_control = BeamlineControl(**control_objects)
 
@@ -127,12 +134,14 @@ class AbstractMultiCollect(object):
         pass
 
     @abc.abstractmethod
-    def do_oscillation(self, start, end, exptime, shutterless, npass, first_frame):
+    def do_oscillation(
+        self, start, end, exptime, number_of_images, shutterless, first_frame
+    ):
         pass
 
     @abc.abstractmethod
     def prepare_oscillation(
-        self, start, osc_range, exptime, number_of_images, shutterless, npass
+        self, start, osc_range, exptime, number_of_images, shutterless, first_frame
     ):
         pass
 
@@ -243,10 +252,6 @@ class AbstractMultiCollect(object):
     def generate_image_jpeg(self, filename, jpeg_path, jpeg_thumbnail_path):
         pass
 
-    @task
-    def take_crystal_snapshots(self, number_of_snapshots):
-        HWR.beamline.diffractometer.take_snapshots(number_of_snapshots, wait=True)
-
     def get_sample_info_from_parameters(self, parameters):
         """Returns sample_id, sample_location and sample_code from data collection parameters"""
         sample_info = parameters.get("sample_reference")
@@ -309,18 +314,35 @@ class AbstractMultiCollect(object):
         else:
             pass
 
-    def _take_crystal_snapshots(self, number_of_snapshots):
-        try:
-            if isinstance(number_of_snapshots, bool):
-                # backward compatibility, if number_of_snapshots is True|False
-                if number_of_snapshots:
-                    return self.take_crystal_snapshots(4)
-                else:
-                    return
-            if number_of_snapshots:
-                return self.take_crystal_snapshots(number_of_snapshots)
-        except Exception:
-            logging.getLogger("HWR").exception("Could not take crystal snapshots")
+    def take_snapshots(self, dc_params):
+        snapshot_directory = dc_params["fileinfo"]["archive_directory"]
+
+        if HWR.beamline.diffractometer.in_plate_mode():
+            if number_of_snapshots > 0:
+                number_of_snapshots = 1
+
+        if not os.path.exists(snapshot_directory):
+            self.create_directories(snapshot_directory)
+
+        image_path_list = []
+
+        for snapshot_index in range(self.number_of_snapshots):
+            snapshot_filename = os.path.join(
+                snapshot_directory,
+                "%s_%s_%s.snapshot.jpeg"
+                % (
+                    dc_params["fileinfo"]["prefix"],
+                    dc_params["fileinfo"]["run_number"],
+                    (snapshot_index + 1),
+                ),
+            )
+
+            image_path_list.append(snapshot_filename)
+            dc_params["xtalSnapshotFullPath%i" % (snapshot_index + 1)] = (
+                snapshot_filename
+            )
+
+        HWR.beamline.diffractometer.take_snapshot(image_path_list)
 
     @abc.abstractmethod
     def set_helical(self, helical_on):
@@ -443,9 +465,9 @@ class AbstractMultiCollect(object):
                 logging.getLogger("user_level_log").info(
                     "Getting synchrotron filling mode"
                 )
-                data_collect_parameters[
-                    "synchrotronMode"
-                ] = self.get_machine_fill_mode()
+                data_collect_parameters["synchrotronMode"] = (
+                    self.get_machine_fill_mode()
+                )
             data_collect_parameters["status"] = "failed"
 
             logging.getLogger("user_level_log").info("Storing data collection in LIMS")
@@ -485,9 +507,9 @@ class AbstractMultiCollect(object):
 
         if HWR.beamline.sample_changer is not None:
             try:
-                data_collect_parameters[
-                    "actualSampleBarcode"
-                ] = HWR.beamline.sample_changer.get_loaded_sample().get_id()
+                data_collect_parameters["actualSampleBarcode"] = (
+                    HWR.beamline.sample_changer.get_loaded_sample().get_id()
+                )
                 data_collect_parameters["actualContainerBarcode"] = (
                     HWR.beamline.sample_changer.get_loaded_sample()
                     .get_container()
@@ -554,13 +576,11 @@ class AbstractMultiCollect(object):
         self.move_motors(motors_to_move_before_collect)
         HWR.beamline.diffractometer.save_centring_positions()
 
-        # take snapshots, then assign centring status (which contains images) to
-        # centring_info variable
-        take_snapshots = data_collect_parameters.get("take_snapshots", False)
-
-        if take_snapshots:
-            logging.getLogger("user_level_log").info("Taking sample snapshosts")
-            self._take_crystal_snapshots(take_snapshots)
+        if data_collect_parameters.get("take_snapshots", False):
+            logging.getLogger("user_level_log").info(
+                f"Taking sample ({self.number_of_snapshots}) snapshosts"
+            )
+            self.take_snapshots(data_collect_parameters)
         centring_info = HWR.beamline.diffractometer.get_centring_status()
         # move *again* motors, since taking snapshots may change positions
         logging.getLogger("user_level_log").info(
@@ -571,9 +591,9 @@ class AbstractMultiCollect(object):
         if HWR.beamline.lims:
             try:
                 if self.current_lims_sample:
-                    self.current_lims_sample[
-                        "lastKnownCentringPosition"
-                    ] = positions_str
+                    self.current_lims_sample["lastKnownCentringPosition"] = (
+                        positions_str
+                    )
                     logging.getLogger("user_level_log").info(
                         "Updating sample information in LIMS"
                     )
@@ -622,9 +642,9 @@ class AbstractMultiCollect(object):
                         except Exception:
                             pass
 
-                    data_collect_parameters[
-                        "xtalSnapshotFullPath%i" % snapshot_i
-                    ] = full_snapshot
+                    data_collect_parameters["xtalSnapshotFullPath%i" % snapshot_i] = (
+                        full_snapshot
+                    )
 
                     snapshots.append(full_snapshot)
                     snapshot_i += 1
@@ -640,12 +660,12 @@ class AbstractMultiCollect(object):
                     "Updating data collection in LIMS"
                 )
                 if "kappa" in data_collect_parameters["actualCenteringPosition"]:
-                    data_collect_parameters["oscillation_sequence"][0][
-                        "kappaStart"
-                    ] = current_diffractometer_position["kappa"]
-                    data_collect_parameters["oscillation_sequence"][0][
-                        "phiStart"
-                    ] = current_diffractometer_position["kappa_phi"]
+                    data_collect_parameters["oscillation_sequence"][0]["kappaStart"] = (
+                        current_diffractometer_position["kappa"]
+                    )
+                    data_collect_parameters["oscillation_sequence"][0]["phiStart"] = (
+                        current_diffractometer_position["kappa_phi"]
+                    )
                 HWR.beamline.lims.update_data_collection(data_collect_parameters)
             except Exception:
                 logging.getLogger("HWR").exception(
@@ -751,6 +771,7 @@ class AbstractMultiCollect(object):
                 "Setting resolution to %f", resolution
             )
             try:
+                HWR.beamline.diffractometer.open_detector_cover()
                 HWR.beamline.resolution.set_value(resolution, timeout=3500)
             except RuntimeError:
                 logging.getLogger("user_level_log").info(
@@ -780,30 +801,12 @@ class AbstractMultiCollect(object):
             self.open_safety_shutter()
 
             flux_threshold = self.get_property("flux_threshold", 0)
-            cryo_threshold = self.get_property("cryo_threshold", 0)
 
-            check_flux = self.get_property("check_flux", False)
-            check_cryo = self.get_property("check_cryo", False)
-
-            if check_flux:
+            try:
                 HWR.beamline.flux.wait_for_beam()
-
-            # Wait for cryo
-            # from time to time cryo does not answer
-            cryo_temp = 999
-            while check_cryo and cryo_temp > cryo_threshold:
-                try:
-                    logging.getLogger("user_level_log").info(
-                        "Cryo temperature reading ..."
-                    )
-                    cryo_temp = HWR.beamline.diffractometer.cryostream.get_value()
-                    if cryo_temp > cryo_threshold:
-                        logging.getLogger("user_level_log").info(
-                            "Cryo temperature too high ..."
-                        )
-                        gevent.sleep(0.5)
-                except:
-                    break
+                HWR.beamline.cryo.wait_temperature()
+            except AttributeError:
+                pass
 
             logging.getLogger("user_level_log").info("Preparing intensity monitors")
             self.prepare_intensity_monitors()
@@ -823,18 +826,18 @@ class AbstractMultiCollect(object):
                     data_collect_parameters["flux_end"] = data_collect_parameters[
                         "flux"
                     ]
-                    data_collect_parameters[
-                        "wavelength"
-                    ] = HWR.beamline.energy.get_wavelength()
-                    data_collect_parameters[
-                        "detectorDistance"
-                    ] = HWR.beamline.detector.distance.get_value()
-                    data_collect_parameters[
-                        "resolution"
-                    ] = HWR.beamline.resolution.get_value()
-                    data_collect_parameters[
-                        "transmission"
-                    ] = HWR.beamline.transmission.get_value()
+                    data_collect_parameters["wavelength"] = (
+                        HWR.beamline.energy.get_wavelength()
+                    )
+                    data_collect_parameters["detectorDistance"] = (
+                        HWR.beamline.detector.distance.get_value()
+                    )
+                    data_collect_parameters["resolution"] = (
+                        HWR.beamline.resolution.get_value()
+                    )
+                    data_collect_parameters["transmission"] = (
+                        HWR.beamline.transmission.get_value()
+                    )
                     beam_centre_x, beam_centre_y = self.get_beam_centre()
                     data_collect_parameters["xBeam"] = beam_centre_x
                     data_collect_parameters["yBeam"] = beam_centre_y
@@ -846,9 +849,9 @@ class AbstractMultiCollect(object):
                         if key in und:
                             data_collect_parameters["undulatorGap%d" % (i)] = und[key]
                             i += 1
-                    data_collect_parameters[
-                        "resolutionAtCorner"
-                    ] = self.get_resolution_at_corner()
+                    data_collect_parameters["resolutionAtCorner"] = (
+                        self.get_resolution_at_corner()
+                    )
                     beam_size_x, beam_size_y = self.get_beam_size()
                     data_collect_parameters["beamSizeAtSampleX"] = beam_size_x
                     data_collect_parameters["beamSizeAtSampleY"] = beam_size_y
@@ -949,7 +952,6 @@ class AbstractMultiCollect(object):
                             exptime,
                             wedge_size,
                             data_collect_parameters.get("shutterless", True),
-                            npass,
                             j == wedge_size,
                         )
 
@@ -964,8 +966,8 @@ class AbstractMultiCollect(object):
                                 osc_start,
                                 osc_end,
                                 exptime,
+                                wedge_size,
                                 data_collect_parameters.get("shutterless", True),
-                                npass,
                                 j == wedge_size,
                             )
 
@@ -987,9 +989,9 @@ class AbstractMultiCollect(object):
 
                                 if archive_directory:
                                     lims_image["jpegFileFullPath"] = jpeg_full_path
-                                    lims_image[
-                                        "jpegThumbnailFileFullPath"
-                                    ] = jpeg_thumbnail_full_path
+                                    lims_image["jpegThumbnailFileFullPath"] = (
+                                        jpeg_thumbnail_full_path
+                                    )
 
                                 try:
                                     HWR.beamline.lims.store_image(lims_image)
@@ -1033,7 +1035,7 @@ class AbstractMultiCollect(object):
                                 ),
                             ):
                                 if last_image_saved <= 0:
-                                    last_image_saved = elf.last_image_saved(
+                                    last_image_saved = self.last_image_saved(
                                         _total_exptime, exptime, wedge_size
                                     )
 
@@ -1049,6 +1051,7 @@ class AbstractMultiCollect(object):
                             frame = max(
                                 start_image_number + 1,
                                 start_image_number + last_image_saved - 1,
+                                frame + 1,
                             )
                             self.emit("collectImageTaken", frame)
                             j = wedge_size - last_image_saved
@@ -1118,9 +1121,9 @@ class AbstractMultiCollect(object):
                     logging.getLogger("user_level_log").info(
                         "Data collection failed %s" % exc_value
                     )
-                    data_collect_parameters[
-                        "status"
-                    ] = "Data collection failed!"  # Message to be stored in LIMS
+                    data_collect_parameters["status"] = (
+                        "Data collection failed!"  # Message to be stored in LIMS
+                    )
                     failed_msg = "Data collection failed!\n%s" % exc_value
                     self.emit(
                         "collectOscillationFailed",

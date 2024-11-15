@@ -1,13 +1,15 @@
+import logging
+import os
+import time
+
+import gevent
+
+from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.abstract.AbstractMultiCollect import (
     AbstractMultiCollect,
 )
 from mxcubecore.TaskUtils import task
-from mxcubecore import HardwareRepository as HWR
-import logging
-import time
-import os
-import gevent
 
 
 class LNLSCollect(AbstractMultiCollect, HardwareObject):
@@ -184,7 +186,8 @@ class LNLSCollect(AbstractMultiCollect, HardwareObject):
                 )
                 return
 
-            import sys, subprocess
+            import subprocess
+            import sys
 
             try:
                 process = subprocess.Popen(
@@ -278,10 +281,6 @@ class LNLSCollect(AbstractMultiCollect, HardwareObject):
         )
 
     @task
-    def take_crystal_snapshots(self, number_of_snapshots):
-        self.bl_control.diffractometer.take_snapshots(number_of_snapshots, wait=True)
-
-    @task
     def data_collection_hook(self, data_collect_parameters):
         return
 
@@ -333,10 +332,14 @@ class LNLSCollect(AbstractMultiCollect, HardwareObject):
     ):
         return
 
-    def prepare_oscillation(self, start, osc_range, exptime, npass):
+    def prepare_oscillation(
+        self, start, osc_range, exptime, number_of_images, shutterless, first_frame
+    ):
         return (start, start + osc_range)
 
-    def do_oscillation(self, start, end, exptime, shutterless, npass, first_frame):
+    def do_oscillation(
+        self, start, end, exptime, number_of_images, shutterless, first_frame
+    ):
         gevent.sleep(exptime)
 
     def start_acquisition(self, exptime, npass, first_frame):

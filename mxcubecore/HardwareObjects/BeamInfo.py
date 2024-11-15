@@ -20,11 +20,12 @@ beamPosChanged
 """
 
 import logging
-from mxcubecore.BaseHardwareObjects import Equipment
+
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 
-class BeamInfo(Equipment):
+class BeamInfo(HardwareObject):
     """
     Description:
     """
@@ -33,7 +34,7 @@ class BeamInfo(Equipment):
         """
         Descrip. :
         """
-        Equipment.__init__(self, *args)
+        super().__init__(*args)
 
         self.aperture_hwobj = None
         self.beam_definer = None
