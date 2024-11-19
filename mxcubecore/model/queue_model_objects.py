@@ -42,17 +42,10 @@ try:
     yaml.indent(mapping=4, sequence=4, offset=2)
 except Exception:
     logging.getLogger("HWR").warning(
-        "Cannot import dependenices needed for GPHL workflows - GPhL workflows might not work"
+        "Cannot import dependencies needed for GPHL workflows - GPhL workflows might not work"
     )
 
-# This module is used as a self contained entity by the BES
-# workflows, so we need to make sure that this module can be
-# imported eventhough HardwareRepository is not avilable.
-try:
-    from mxcubecore import HardwareRepository as HWR
-except ImportError:
-    logging.getLogger("HWR").exception("Could not import HardwareRepository")
-
+from mxcubecore import HardwareRepository as HWR
 
 __copyright__ = """ Copyright © 2010 - 2020 by MXCuBE Collaboration """
 __license__ = "LGPLv3+"
@@ -2702,7 +2695,9 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
                 data_collection.experiment_type
             ],
             "skip_images": acq_params.skip_existing_images,
-            "position_name": centred_pos.get_index(),
+            "position_name": (
+                centred_pos.get_index() if centred_pos is not None else None
+            ),
             "motors": centred_pos.as_dict() if centred_pos is not None else {},
             "ispyb_group_data_collections": data_collection.ispyb_group_data_collections,
             "workflow_parameters": data_collection.workflow_parameters,
