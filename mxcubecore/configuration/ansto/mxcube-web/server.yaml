@@ -29,3 +29,13 @@ mxcube:
     users:
       - username: opid291
         role: staff
+
+sso:
+  USE_SSO: false                                              # True to use SSO false otherwise
+  ISSUER: https://websso.[site].[com]/realms/[site]/          # OpenIDConnect issuer URI
+  LOGOUT_URI: ""                                              # OpenIDConnect logout URI
+  TOKEN_INFO_URI: ""                                          # OpenIDConnect token info URI
+  CLIENT_SECRET: ASECRETKEY                                   # OpenIDConnect client secret
+  CLIENT_ID: mxcube                                           # OpenIDConnect client ID
+  SCOPE: openid email profile                                 # OpenIDConnect defualt scopes, none scope is actually beeing used
+  CODE_CHALLANGE_METHOD: S256                                 # OpenIDConnect challange method
