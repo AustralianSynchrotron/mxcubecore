@@ -505,9 +505,7 @@ class Diffractometer(GenericDiffractometer):
             self.emit("centringInvalid", ())
 
     def get_centred_point_from_coord(self, x, y, return_by_names=None):
-        logging.getLogger("HWR").info(
-            f"Getting centred point from coord {(x, y)}"
-        )
+        logging.getLogger("HWR").info(f"Getting centred point from coord {(x, y)}")
         self.get_zoom_calibration()
 
         # Update beam position
@@ -515,7 +513,6 @@ class Diffractometer(GenericDiffractometer):
             self.beam_position[0],
             self.beam_position[1],
         ) = HWR.beamline.beam.get_beam_position_on_screen()
-
 
         # Get current value of involved motors
         sample_x = self.motor_hwobj_dict["sampx"].get_value()

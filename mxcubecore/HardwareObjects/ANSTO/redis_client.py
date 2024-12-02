@@ -7,7 +7,10 @@ from typing import Union
 
 import numpy as np
 import redis
-from PIL import Image, ImageOps
+from PIL import (
+    Image,
+    ImageOps,
+)
 
 INT, FLOAT, STRING = 0, 1, 2
 TYPE_IDX, IS_RANGE_IDX, IS_GLOBAL_IDX, TEST_VALUES_IDX = 0, 1, 2, 3

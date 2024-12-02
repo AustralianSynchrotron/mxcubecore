@@ -1,5 +1,12 @@
-from pydantic.v1 import Field, BaseModel
-from typing import Union, Optional
+from typing import (
+    Optional,
+    Union,
+)
+
+from pydantic.v1 import (
+    BaseModel,
+    Field,
+)
 
 
 class ScreeningDialogBox(BaseModel):
