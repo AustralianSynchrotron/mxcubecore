@@ -309,7 +309,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "title": "Detector Distance [m]",
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 1,
+                    "maximum": 3,
                     "default": 0.396,
                     "widget": "textarea",
                 },
