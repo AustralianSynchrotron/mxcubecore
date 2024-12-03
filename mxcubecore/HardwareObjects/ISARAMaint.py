@@ -1,6 +1,11 @@
 from typing import Optional
-from tango import DeviceProxy, DevFailed
-from mxcubecore.BaseHardwareObjects import Equipment
+
+from tango import (
+    DevFailed,
+    DeviceProxy,
+)
+
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 """
 The sample changer maintenance hardware object for ISARA2 robot.
@@ -63,13 +68,13 @@ def _get_isara_command_error(ex: DevFailed) -> Optional[str]:
     return None
 
 
-class ISARAMaint(Equipment):
+class ISARAMaint(HardwareObject):
     def __init__(self, name):
         super().__init__(name)
 
         self._commands_state = dict(
-            powerOn=False,
-            powerOff=False,
+            PowerOn=False,
+            PowerOff=False,
             openLid=True,
             closeLid=True,
             home=True,
@@ -128,8 +133,8 @@ class ISARAMaint(Equipment):
         #
         # update 'power' commands
         #
-        self._commands_state["powerOn"] = not self._powered
-        self._commands_state["powerOff"] = self._powered
+        self._commands_state["PowerOn"] = not self._powered
+        self._commands_state["PowerOff"] = self._powered
 
         #
         # update 'positions' commands
@@ -188,9 +193,9 @@ class ISARAMaint(Equipment):
             raise RuntimeError(f"Can't power {state} sample changer, {isara_err}.")
 
     def send_command(self, cmd_name, _args=None):
-        if cmd_name == "powerOn":
+        if cmd_name == "PowerOn":
             self._toggle_power(True)
-        elif cmd_name == "powerOff":
+        elif cmd_name == "PowerOff":
             self._toggle_power(False)
         elif cmd_name == "openLid":
             self.isara_dev.OpenLid()
@@ -221,8 +226,8 @@ class ISARAMaint(Equipment):
             [
                 "Power",
                 [
-                    ["powerOn", "PowerOn", "Switch Power On"],
-                    ["powerOff", "PowerOff", "Switch Power Off"],
+                    ["PowerOn", "PowerOn", "Switch Power On"],
+                    ["PowerOff", "PowerOff", "Switch Power Off"],
                 ],
             ],
             [

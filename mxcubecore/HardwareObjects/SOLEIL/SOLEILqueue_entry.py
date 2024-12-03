@@ -1,5 +1,5 @@
-from mxcubecore.queue_entry import *
 from mxcubecore.model import queue_model_objects
+from mxcubecore.queue_entry import *
 
 
 class PX2DataCollectionQueueEntry(DataCollectionQueueEntry):
@@ -74,7 +74,6 @@ class PX2DataCollectionQueueEntry(DataCollectionQueueEntry):
 
                 param_list = queue_model_objects.to_collect_dict(
                     dc,
-                    self.session,
                     sample,
                     cpos if cpos != empty_cpos else None,
                 )

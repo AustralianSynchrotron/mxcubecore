@@ -24,25 +24,28 @@ Any object that inherhits from TaskNode can be added to and handled by
 the QueueModel.
 """
 import copy
-import os
 import logging
+import os
 
 from mxcubecore.model import queue_model_enumerables
 
 try:
+    from ruamel.yaml import YAML
+
     from mxcubecore.model import crystal_symmetry
-    import ruamel.yaml as yaml
+
+    # If you want to write out copies of the file, use typ="rt" instead
+    # pure=True uses yaml version 1.2, with fewere gotchas for strange type conversions
+    yaml = YAML(typ="safe", pure=True)
+    # The following are not needed for load, but define the default style.
+    yaml.default_flow_style = False
+    yaml.indent(mapping=4, sequence=4, offset=2)
 except Exception:
-    logging.getLogger("HWR").warning("Cannot import dependenices needed for GPHL workflows - GPhL workflows might not work")
+    logging.getLogger("HWR").warning(
+        "Cannot import dependencies needed for GPHL workflows - GPhL workflows might not work"
+    )
 
-# This module is used as a self contained entity by the BES
-# workflows, so we need to make sure that this module can be
-# imported eventhough HardwareRepository is not avilable.
-try:
-    from mxcubecore import HardwareRepository as HWR
-except ImportError as ex:
-    logging.getLogger("HWR").exception("Could not import HardwareRepository")
-
+from mxcubecore import HardwareRepository as HWR
 
 __copyright__ = """ Copyright © 2010 - 2020 by MXCuBE Collaboration """
 __license__ = "LGPLv3+"
@@ -350,7 +353,7 @@ class Sample(TaskNode):
         else:
             self.set_name(self.loc_str)
 
-    def init_from_lims_object(self, lims_sample):
+    def init_from_lims_object(self, lims_sample):  # noqa: C901
         if hasattr(lims_sample, "cellA"):
             self.crystals[0].cell_a = lims_sample.cellA
             self.processing_parameters.cell_a = lims_sample.cellA
@@ -434,12 +437,10 @@ class Sample(TaskNode):
         if hasattr(lims_sample, "containerSampleChangerLocation") and hasattr(
             lims_sample, "sampleLocation"
         ):
-
             if (
                 lims_sample.containerSampleChangerLocation
                 and lims_sample.sampleLocation
             ):
-
                 self.lims_sample_location = int(lims_sample.sampleLocation)
                 self.lims_container_location = int(
                     lims_sample.containerSampleChangerLocation
@@ -480,6 +481,7 @@ class Sample(TaskNode):
         self.free_pin_mode = p.get("freePinMode", False)
         self.loc_str = p.get("locStr", "")
         self.diffraction_plan = p.get("diffractionPlan")
+        self.name = p.get("sampleName", self.name)
 
         self.crystals[0].space_group = p.get("spaceGroup") or p.get(
             "crystalSpaceGroup", ""
@@ -491,6 +493,7 @@ class Sample(TaskNode):
         self.crystals[0].cell_c = p.get("cellC", "")
         self.crystals[0].cell_gamma = p.get("cellGamma", "")
         self.crystals[0].protein_acronym = p.get("proteinAcronym", "")
+        self.crystals[0].crystal_uuid = p.get("crystalUUID", "")
 
     def get_processing_parameters(self):
         processing_params = ProcessingParameters()
@@ -571,28 +574,6 @@ class Basket(TaskNode):
 
 
 class DataCollection(TaskNode):
-    """
-    Adds the child node <child>. Raises the exception TypeError
-    if child is not of type TaskNode.
-
-    Moves the child (reparents it) if it already has a parent.
-
-    :param parent: Parent TaskNode object.
-    :type parent: TaskNode
-
-    :param acquisition_list: List of Acquisition objects.
-    :type acquisition_list: list
-
-    :crystal: Crystal object
-    :type crystal: Crystal
-
-    :param processing_paremeters: Parameters used by autoproessing software.
-    :type processing_parameters: ProcessingParameters
-
-    :returns: None
-    :rtype: None
-    """
-
     def __init__(
         self,
         acquisition_list=None,
@@ -631,13 +612,15 @@ class DataCollection(TaskNode):
         self.workflow_id = None
         self.center_before_collect = False
         self.ispyb_group_data_collections = False
+        # The 'workflow_parameters' attribute is used for passing parameters
+        # from the automation workflows (BES) to ispyb-DRAC (see ICATLIMS.py)
+        self.workflow_parameters = {}
 
     @staticmethod
     def set_processing_methods(processing_methods):
         DataCollection.processing_methods = processing_methods
 
     def as_dict(self):
-
         acq = self.acquisitions[0]
         path_template = acq.path_template
         parameters = acq.acquisition_parameters
@@ -808,9 +791,9 @@ class DataCollection(TaskNode):
         return self.online_processing_results
 
     def set_snapshot(self, snapshot):
-        self.acquisitions[
-            0
-        ].acquisition_parameters.centred_position.snapshot_image = snapshot
+        self.acquisitions[0].acquisition_parameters.centred_position.snapshot_image = (
+            snapshot
+        )
 
     def add_processing_msg(self, time, method, status, msg):
         self.processing_msg_list.append((time, method, status, msg))
@@ -1048,6 +1031,7 @@ class EnergyScan(TaskNode):
         self.comments = None
         self.set_requires_centring(True)
         self.centred_position = cpos
+        self.shape = None
 
         if not sample:
             self.sample = Sample()
@@ -1153,6 +1137,7 @@ class XRFSpectrum(TaskNode):
         self.set_requires_centring(True)
         self.centred_position = cpos
         self.adjust_transmission = True
+        self.shape = None
 
         if not sample:
             self.sample = Sample()
@@ -1282,7 +1267,9 @@ class XrayCentring2(TaskNode):
     (transmission, grid step, ...)
     """
 
-    def __init__(self, name=None, motor_positions=None, grid_size=None):
+    def __init__(
+        self, name=None, motor_positions=None, grid_size=None, workflow_parameters=None
+    ):
         """
 
         :param name: (str) Task name - for queue display. Default to std. name
@@ -1293,6 +1280,7 @@ class XrayCentring2(TaskNode):
         self._centring_result = None
         self._motor_positions = motor_positions.copy() if motor_positions else {}
         self._grid_size = tuple(grid_size) if grid_size else None
+        self._workflow_parameters = workflow_parameters if workflow_parameters else {}
 
         # I do nto now if you need a path template; if not remove this
         # and the access to it in init_from_task_data
@@ -1327,6 +1315,9 @@ class XrayCentring2(TaskNode):
                 "SampleCentring.centringResult must be a CentredPosition"
                 " or None, was a %s" % value.__class__.__name__
             )
+
+    def get_workflow_parameters(self):
+        return self._workflow_parameters
 
     def init_from_task_data(self, sample_model, params):
         """Set parameters from task input dictionary.
@@ -1468,7 +1459,6 @@ class Acquisition(object):
             self.acquisition_parameters.num_images
             + self.acquisition_parameters.first_image,
         ):
-
             path = os.path.join(
                 self.path_template.get_archive_directory(),
                 self.path_template.get_image_file_name(suffix="thumb.jpeg") % i,
@@ -1609,7 +1599,6 @@ class PathTemplate(object):
             logging.getLogger("HWR").debug(
                 "PathTemplate (DESY) - (to be defined) directory is %s" % self.directory
             )
-            #archive_directory = self.directory
             archive_directory = HWR.beamline.session.get_archive_directory()
         elif PathTemplate.synchrotron_name == "ALBA":
             logging.getLogger("HWR").debug(
@@ -1666,7 +1655,6 @@ class PathTemplate(object):
             if self.start_num < (
                 rh_pt.start_num + rh_pt.num_files
             ) and rh_pt.start_num < (self.start_num + self.num_files):
-
                 result = True
 
         return result
@@ -1676,7 +1664,6 @@ class PathTemplate(object):
         file_name_template = self.get_image_file_name()
 
         for i in range(self.start_num, self.start_num + self.num_files):
-
             file_locations.append(os.path.join(self.directory, file_name_template % i))
 
         return file_locations
@@ -1693,7 +1680,6 @@ class PathTemplate(object):
                 and path_template.num_files + path_template.start_num
                 <= self.num_files + self.start_num
             ):
-
                 result = True
         else:
             result = False
@@ -1853,6 +1839,7 @@ class Crystal(object):
         self.cell_c = 0
         self.cell_gamma = 0
         self.protein_acronym = ""
+        self.crystal_uuid = ""
 
         # MAD energies
         self.energy_scan_result = EnergyScanResult()
@@ -2039,6 +2026,9 @@ class GphlWorkflow(TaskNode):
         self.acquisition_dose = 0.0
         self.strategy_length = 0.0
 
+        # Workflow attributes - for passing to LIMS (conf Olof Svensson)
+        self.workflow_parameters = {}
+
         # # Centring handling and MXCuBE-side flow
         self.set_requires_centring(False)
 
@@ -2049,7 +2039,7 @@ class GphlWorkflow(TaskNode):
         bl_defaults = HWR.beamline.get_default_acquisition_parameters().as_dict()
         exposure_time = self.exposure_time or bl_defaults.get("exp_time", 0)
         self.exposure_time = max(
-            exposure_time, HWR.beamline.detector.get_exposure_time_limits()[0]
+            exposure_time, HWR.beamline.detector.get_exposure_time_limits()[0] or 0
         )
         self.image_width = self.image_width or bl_defaults.get("osc_range", 0.1)
 
@@ -2093,7 +2083,7 @@ class GphlWorkflow(TaskNode):
             if hasattr(self, dict_item[0]):
                 setattr(self, dict_item[0], dict_item[1])
 
-    def set_pre_strategy_params(
+    def set_pre_strategy_params(  # noqa: C901
         self,
         space_group="",
         crystal_classes=(),
@@ -2124,12 +2114,23 @@ class GphlWorkflow(TaskNode):
         """
 
         from mxcubecore.HardwareObjects.Gphl import GphlMessages
-        from mxcubecore.model import crystal_symmetry
 
         if space_group:
-            self.space_group = space_group
+            sginfo = crystal_symmetry.SPACEGROUP_MAP.get(space_group)
+            if sginfo is None:
+                raise ValueError(
+                    "Invalid space group %s, not in crystal_symmetry.SPACEGROUP_MAP"
+                    % space_group
+                )
+            else:
+                space_group = sginfo.name
+                self.space_group = space_group
         else:
             space_group = self.space_group
+        if space_group == "None":
+            # Temporray fix - this should not happen
+            # 20240926 Rasmus Fogh and Olof Svensson
+            space_group = None
         if crystal_classes:
             self.crystal_classes = tuple(crystal_classes)
         elif space_group:
@@ -2311,18 +2312,16 @@ class GphlWorkflow(TaskNode):
         """
 
         from mxcubecore.HardwareObjects.Gphl import GphlMessages
-        import ruamel.yaml as yaml
 
         if self.automation_mode == "TEST_FROM_FILE":
             fname = os.getenv("GPHL_TEST_INPUT")
             if os.path.isfile(fname):
-                with open(fname, "r") as fp0:
+                with open(fname, "r", encoding="utf-8") as fp0:
                     task = yaml.load(fp0)["task"]
                     print(task)
                     params.update(task["parameters"])
             else:
                 print("WARNING no GPHL_TEST_INPUT found. test using default values")
-
 
         # Set attributes directly from params
         self.strategy_settings = HWR.beamline.gphl_workflow.workflow_strategies.get(
@@ -2342,6 +2341,11 @@ class GphlWorkflow(TaskNode):
             value = params.get(tag)
             if value:
                 setattr(self, tag, value)
+
+        # For external workflow parameters (conf. Olof Svensson)
+        dd1 = params.get("workflow_parameters")
+        if dd1:
+            self.workflow_parameters.update(dd1)
 
         settings = HWR.beamline.gphl_workflow.settings
         # NB settings is an internal attribute DO NOT MODIFY
@@ -2480,6 +2484,7 @@ class GphlWorkflow(TaskNode):
                 self._cell_parameters = tuple(float(x) for x in value)
             else:
                 raise ValueError("invalid value for cell_parameters: %s" % str(value))
+
     @property
     def total_strategy_length(self):
         """Total strategy length for a single repetition
@@ -2490,7 +2495,6 @@ class GphlWorkflow(TaskNode):
             result *= len(energy_tags)
         #
         return result
-
 
     def calc_maximum_dose(self, energy=None, exposure_time=None, image_width=None):
         """Dose at transmission=100 for given energy, exposure time and image width
@@ -2505,31 +2509,23 @@ class GphlWorkflow(TaskNode):
         Returns:
             float: Maximum dose in MGy
         """
-        energy = (
-            energy
-            or HWR.beamline.energy.calculate_energy(self.wavelengths[0].wavelength)
+        energy = energy or HWR.beamline.energy.calculate_energy(
+            self.wavelengths[0].wavelength
         )
         dose_rate = HWR.beamline.gphl_workflow.maximum_dose_rate(energy)
         exposure_time = exposure_time or self.exposure_time
-        image_width = image_width  or self.image_width
+        image_width = image_width or self.image_width
         total_strategy_length = self.strategy_length * len(self.wavelengths)
-        if (dose_rate and exposure_time and image_width and total_strategy_length):
-            return (dose_rate * total_strategy_length * exposure_time / image_width)
+        if dose_rate and exposure_time and image_width and total_strategy_length:
+            return dose_rate * total_strategy_length * exposure_time / image_width
         msg = (
             "WARNING: Dose could not be calculated from:\n"
             " energy:%s keV, total_strategy_length:%s deg, exposure_time:%s s, "
             "image_width:%s deg, dose_rate: %s"
-        )
-        raise UserWarning(
-            msg
-            % (
-                energy,
-                total_strategy_length,
-                exposure_time,
-                image_width,
-                dose_rate
-            )
-        )
+        ) % (energy, total_strategy_length, exposure_time, image_width, dose_rate)
+
+        logging.getLogger("HWR").warning(msg)
+        logging.getLogger("user_level_log").warning(msg)
         return 0
 
     def recommended_dose_budget(self, resolution=None):
@@ -2596,7 +2592,7 @@ def addXrayCentring(parent_node, **centring_parameters):
 #
 # Collect hardware object utility function.
 #
-def to_collect_dict(data_collection, session, sample, centred_pos=None):
+def to_collect_dict(data_collection, sample, centred_pos=None):
     """ return [{'comment': '',
           'helical': 0,
           'motors': {},
@@ -2658,12 +2654,14 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
             "detector_binning_mode": acq_params.detector_binning_mode,
             "detector_roi_mode": acq_params.detector_roi_mode,
             "shutterless": acq_params.shutterless,
-            "sessionId": session.session_id,
+            "sessionId": data_collection.lims_session_id,
             "do_inducedraddam": acq_params.induce_burn,
             "sample_reference": {
                 "spacegroup": proc_params.space_group,
                 "cell": proc_params.get_cell_str(),
                 "blSampleId": sample.lims_id,
+                "sample_name": sample.name,
+                "acronym": sample.crystals[0].protein_acronym,
             },
             "processing": str(proc_params.process_data and True),
             "processing_offline": data_collection.run_offline_processing,
@@ -2699,8 +2697,12 @@ def to_collect_dict(data_collection, session, sample, centred_pos=None):
                 data_collection.experiment_type
             ],
             "skip_images": acq_params.skip_existing_images,
+            "position_name": (
+                centred_pos.get_index() if centred_pos is not None else None
+            ),
             "motors": centred_pos.as_dict() if centred_pos is not None else {},
             "ispyb_group_data_collections": data_collection.ispyb_group_data_collections,
+            "workflow_parameters": data_collection.workflow_parameters,
         }
     ]
 

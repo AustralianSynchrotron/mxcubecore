@@ -387,8 +387,8 @@ class Diffractometer(GenericDiffractometer):
 
         logging.getLogger("HWR").info(f"centered_position: {centered_position}")
 
-        self.last_centred_position[0] = x
-        self.last_centred_position[1] = y
+        self.last_centred_position[0] = self.beam_position[0]
+        self.last_centred_position[1] = self.beam_position[1]
 
         self.save_centring_positions()
         return centered_position
@@ -505,11 +505,51 @@ class Diffractometer(GenericDiffractometer):
             self.emit("centringInvalid", ())
 
     def get_centred_point_from_coord(self, x, y, return_by_names=None):
-        """
-        Descript. :
-        """
-        centred_pos_dir = self._get_random_centring_position()
-        return centred_pos_dir
+        logging.getLogger("HWR").info(f"Getting centred point from coord {(x, y)}")
+        self.get_zoom_calibration()
+
+        # Update beam position
+        (
+            self.beam_position[0],
+            self.beam_position[1],
+        ) = HWR.beamline.beam.get_beam_position_on_screen()
+
+        # Get current value of involved motors
+        sample_x = self.motor_hwobj_dict["sampx"].get_value()
+        sample_y = self.motor_hwobj_dict["sampy"].get_value()
+        alignment_y = self.motor_hwobj_dict["phiy"].get_value()
+        omega = self.motor_hwobj_dict["phi"].get_value()
+
+        # mm to move sample_x
+        move_sample_x = (
+            np.sin(np.radians(omega))
+            * (x - self.beam_position[0])
+            / self.pixels_per_mm_x
+        )
+        # Move absolute
+        move_sample_x += sample_x
+
+        # mm to move sample_y
+        move_sample_y = (
+            np.cos(np.radians(omega))
+            * (x - self.beam_position[0])
+            / self.pixels_per_mm_x
+        )
+        # Move absolute
+        move_sample_y += sample_y
+
+        # mm to move alignment y
+        move_alignment_y = (y - self.beam_position[1]) / self.pixels_per_mm_y
+        # Move absolute
+        move_alignment_y += alignment_y
+
+        return {
+            "sampx": move_sample_x,
+            "sampy": move_sample_y,
+            "phiy": move_alignment_y,
+            "phi": self.motor_hwobj_dict["phi"].get_value(),
+            "phiz": self.motor_hwobj_dict["phiz"].get_value(),
+        }
 
     def get_calibration_data(self, offset):
         """

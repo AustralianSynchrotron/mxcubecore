@@ -4,7 +4,10 @@ from os import environ
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
-from .schemas.screening import ScreeningDialogBox, ScreeningParams
+from .schemas.screening import (
+    ScreeningDialogBox,
+    ScreeningParams,
+)
 
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"

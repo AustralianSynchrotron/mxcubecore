@@ -1,10 +1,12 @@
 import logging
+
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.mxcubecore.HardwareObjects.ProposalTypeISPyBLims import (
+    ProposalISPyBClient,
+)
 
-from ISPyBClient import ISPyBClient
 
-
-class ALBAISPyBClient(ISPyBClient):
+class ALBAISPyBClient(ProposalISPyBClient):
     def ldap_login(self, login_name, psd, ldap_connection):
         # overwrites standard ldap login  is ISPyBClient.py
         #  to query for homeDirectory

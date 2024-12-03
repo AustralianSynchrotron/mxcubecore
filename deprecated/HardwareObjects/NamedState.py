@@ -17,15 +17,15 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
-from mxcubecore import HardwareRepository as HWR
-from mxcubecore.BaseHardwareObjects import Device
-
 import logging
 
+from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
-class NamedState(Device):
+
+class NamedState(HardwareObject):
     def __init__(self, name):
-        Device.__init__(self, name)
+        super().__init__(name)
         self.stateList = []
 
     def _init(self):

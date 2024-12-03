@@ -24,10 +24,18 @@
 All HardwareObjects
 """
 
-from __future__ import division, absolute_import
-from __future__ import print_function, unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
-from typing import Union, Any
+from typing import (
+    Any,
+    Union,
+)
+
 from mxcubecore.dispatcher import dispatcher
 
 __copyright__ = """ Copyright © 2019 by the MXCuBE collaboration """
@@ -36,10 +44,13 @@ __author__ = "Rasmus H Fogh"
 
 import logging
 
-from mxcubecore.BaseHardwareObjects import ConfiguredObject, HardwareObject
+from mxcubecore.BaseHardwareObjects import (
+    ConfiguredObject,
+    HardwareObject,
+)
 
 # NBNB The acq parameter names match the attributes of AcquisitionParameters
-# Whereas the limit parmeter values use more udnerstandable names
+# Whereas the limit parameter values use more understandable names
 #
 # TODO Make all tags consistent, including AcquisitionParameters attributes.
 
@@ -51,8 +62,8 @@ class Beamline(ConfiguredObject):
     # NB the double underscore is deliberate - attribute must be hidden from subclasses
     __content_roles = []
 
-    # Names of procedures under Beamline - set of sttrings.
-    # NB subclasses must add additional parocedures to this set,
+    # Names of procedures under Beamline - set of strings.
+    # NB subclasses must add additional procedures to this set,
     # and may NOT override _procedure_names
     _procedure_names = set()
 
@@ -84,7 +95,7 @@ class Beamline(ConfiguredObject):
         """
 
         Args:
-            name (str) : Object name, generally saet to teh role name of the object
+            name (str) : Object name, generally set to the role name of the object
         """
         super(Beamline, self).__init__(name)
 
@@ -240,7 +251,6 @@ class Beamline(ConfiguredObject):
 
         return _path
 
-
     # Signal handling functions:
     def emit(self, signal: Union[str, object, Any], *args) -> None:
         """Emit signal. Accepts both multiple args and a single tuple of args.
@@ -290,7 +300,6 @@ class Beamline(ConfiguredObject):
         return self._objects.get("machine_info")
 
     __content_roles.append("machine_info")
-
 
     @property
     def authenticator(self):
@@ -459,9 +468,35 @@ class Beamline(ConfiguredObject):
     __content_roles.append("sample_changer_maintenance")
 
     @property
+    def harvester(self):
+        """Harvester Hardware object
+        can be a sample or plate holder
+
+        Returns:
+            Optional[AbstractHarvester]:
+        """
+        return self._objects.get("harvester")
+
+    __content_roles.append("harvester")
+
+    @property
+    def harvester_maintenance(self):
+        """harvester maintenance Hardware object
+
+        Returns:
+            Optional[Harvester]:
+        """
+        return self._objects.get("harvester_maintenance")
+
+    __content_roles.append("harvester_maintenance")
+
+    @property
     def plate_manipulator(self):
-        """Plate Manuipulator Hardware object
-        NBNB TODO REMOVE THIS and treat as an alternative sample changer instead.
+        """**DEPRECATED**
+        Plate Manipulator Hardware object
+        NBNB TODO REMOVE THIS From qt version usage and
+        and call HWR.beamline.sample_changer instead as plate_manipulator being
+        treated as an alternative sample changer.
 
         Returns:
             Optional[AbstractSampleChanger]:
@@ -774,10 +809,6 @@ class Beamline(ConfiguredObject):
 
         acq_parameters = queue_model_objects.AcquisitionParameters()
 
-        #logging.getLogger("HWR").debug(f"""
-            #Beamline object. Getting acquisition parameters for acquisition type {acquisition_type}
-        #""")
-
         params = self.default_acquisition_parameters["default"].copy()
         if acquisition_type != "default":
             dd0 = self.default_acquisition_parameters.get(acquisition_type)
@@ -789,10 +820,6 @@ class Beamline(ConfiguredObject):
             else:
 
                 params.update(dd0)
-
-        #logging.getLogger("HWR").debug(f"""
-              #params are {params}
-        #""")
 
         for tag, val in params.items():
             setattr(acq_parameters, tag, val)

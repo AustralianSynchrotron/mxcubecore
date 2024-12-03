@@ -2,9 +2,9 @@
 FLEX HCD maintenance mockup.
 """
 
-from mxcubecore.BaseHardwareObjects import Equipment
 import ast
 
+from mxcubecore.BaseHardwareObjects import HardwareObject
 
 TOOL_FLANGE, TOOL_UNIPUCK, TOOL_SPINE, TOOL_PLATE, TOOL_LASER, TOOL_DOUBLE_GRIPPER = (
     0,
@@ -25,7 +25,7 @@ TOOL_TO_STR = {
 }
 
 
-class FlexHCDMaintenance(Equipment):
+class FlexHCDMaintenance(HardwareObject):
 
     __TYPE__ = "FLEX_HCD"
     NO_OF_LIDS = 3
@@ -34,7 +34,7 @@ class FlexHCDMaintenance(Equipment):
     """
 
     def __init__(self, *args, **kwargs):
-        Equipment.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def init(self):
         self._sc = self.get_object_by_role("sample_changer")

@@ -17,20 +17,21 @@
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+
 import gevent
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.dispatcher import dispatcher
 from mxcubecore.model import queue_model_objects
 from mxcubecore.model.queue_model_enumerables import (
-    EXPERIMENT_TYPE,
     COLLECTION_ORIGIN_STR,
+    EXPERIMENT_TYPE,
 )
 from mxcubecore.queue_entry.base_queue_entry import (
-    BaseQueueEntry,
     QUEUE_ENTRY_STATUS,
-    QueueExecutionException,
+    BaseQueueEntry,
     QueueAbortedException,
+    QueueExecutionException,
     center_before_collect,
 )
 
@@ -52,6 +53,7 @@ class DataCollectionQueueEntry(BaseQueueEntry):
         self.enable_take_snapshots = True
         self.enable_store_in_lims = True
         self.in_queue = False
+        self._data_model.lims_session_id = HWR.beamline.session.session_id
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -245,7 +247,6 @@ class DataCollectionQueueEntry(BaseQueueEntry):
                 HWR.beamline.sample_view.inc_used_for_collection(cpos)
                 param_list = queue_model_objects.to_collect_dict(
                     dc,
-                    HWR.beamline.session,
                     sample,
                     cpos if cpos != empty_cpos else None,
                 )

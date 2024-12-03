@@ -33,7 +33,7 @@ in the XML file.
 
 Example Hardware Object XML file :
 ==================================
-<device class="Qt4_LimaVideo">
+<object class="Qt4_LimaVideo">
    <type>basler</type>
    <encoding>yuv422p</encoding>
    <address>84.89.227.6</address>
@@ -41,12 +41,12 @@ Example Hardware Object XML file :
    <exposure>0.01</exposure>
    <mirror>(False, False)</mirror>
    <interval>30</interval>
-</device>
+</object>
 """
-import os
-import time
 import logging
+import os
 import struct
+import time
 
 from mxcubecore.HardwareObjects.QtLimaVideo import QtLimaVideo
 
@@ -110,10 +110,10 @@ class PX2Qt4_LimaVideo(QtLimaVideo):
 
 
 def test_hwo():
-    from mxcubecore.utils.qt_import import *
     import time
 
     from mxcubecore import HardwareRepository as HWR
+    from mxcubecore.utils.qt_import import *
 
     hwr = HWR.get_hardware_repository()
     hwr.connect()

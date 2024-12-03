@@ -10,11 +10,17 @@ import numpy as np
 import numpy.typing as npt
 import redis
 
-from mxcubecore.HardwareObjects.SampleView import Grid, SampleView
+from mxcubecore.HardwareObjects.SampleView import (
+    Grid,
+    SampleView,
+)
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
-from .schemas.grid_scan import GridScanDialogBox, GridScanParams
+from .schemas.grid_scan import (
+    GridScanDialogBox,
+    GridScanParams,
+)
 
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
@@ -309,7 +315,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "title": "Detector Distance [m]",
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 1,
+                    "maximum": 3,
                     "default": 0.396,
                     "widget": "textarea",
                 },

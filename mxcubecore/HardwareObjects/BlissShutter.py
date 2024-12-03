@@ -28,13 +28,17 @@ Example xml file:
   <name>safshut</name>
   <type>tango</type>
   <object href="/bliss" role="controller"/>
-</device>
+</object>
 """
-from enum import Enum, unique
+from enum import (
+    Enum,
+    unique,
+)
+
 import gevent
-from mxcubecore.HardwareObjects.abstract.AbstractShutter import AbstractShutter
 
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.HardwareObjects.abstract.AbstractShutter import AbstractShutter
 
 __copyright__ = """ Copyright © 2020 by the MXCuBE collaboration """
 __license__ = "LGPLv3+"

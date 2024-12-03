@@ -16,8 +16,8 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
 
-import time
 import logging
+import time
 
 import gevent
 
@@ -72,21 +72,15 @@ class GenericWorkflowQueueEntry(BaseQueueEntry):
         # group_node_id = self._parent_container._data_model._node_id
         # workflow_params.append("group_node_id")
         # workflow_params.append("%d" % group_node_id)
-        try:
-            workflow_hwobj.start(workflow_params)
-
-            if workflow_hwobj.command_failure():
-                msg = (
-                    "Workflow start command failed! Please check workflow Tango server."
-                )
-                logging.getLogger("user_level_log").error(msg)
-                self.workflow_running = False
-            else:
-                self.workflow_running = True
-                while workflow_hwobj.state.value == "RUNNING":
-                    time.sleep(1)
-        except Exception:
-            raise QueueExecutionException("Queue stopped", self)
+        workflow_hwobj.start(workflow_params)
+        if workflow_hwobj.command_failure():
+            msg = "Workflow start command failed! Please check workflow Tango server."
+            logging.getLogger("user_level_log").error(msg)
+            self.workflow_running = False
+        else:
+            self.workflow_running = True
+            while workflow_hwobj.state.value == "RUNNING":
+                time.sleep(1)
 
     def workflow_state_handler(self, state):
         if isinstance(state, tuple):

@@ -1,25 +1,23 @@
 import logging
-import time
+import math
 import os
 import os.path
 import shutil
-import math
-import gevent
 
 # import PyChooch
 # to run chooch in shell
 import subprocess
+import time
+
+import gevent
 import numpy
-
-from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
 
-from mxcubecore.TaskUtils import task
-from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.HardwareObjects.abstract.AbstractEnergyScan import (
-    AbstractEnergyScan,
-)
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.HardwareObjects.abstract.AbstractEnergyScan import AbstractEnergyScan
+from mxcubecore.TaskUtils import task
 
 
 class FixedEnergy:
@@ -86,8 +84,7 @@ class GetStaticParameters:
 
 class ESRFEnergyScan(AbstractEnergyScan, HardwareObject):
     def __init__(self, name, tunable_bl):
-        AbstractEnergyScan.__init__(self)
-        HardwareObject.__init__(self, name)
+        super().__init__(name)
         self._tunable_bl = tunable_bl
 
     def execute_command(self, command_name, *args, **kwargs):
@@ -270,7 +267,7 @@ class ESRFEnergyScan(AbstractEnergyScan, HardwareObject):
         # while waiting fro chooch to work...
         subprocess.call(
             [
-                "/opt/pxsoft/bin/chooch",
+                "/cvmfs/sb.esrf.fr/bin/chooch",
                 "-e",
                 elt,
                 "-a",
@@ -441,7 +438,7 @@ def StoreEnergyScanThread(db_conn, scan_info):
     scan_info.pop("blSampleId")
 
     try:
-        db_status = db_conn.storeEnergyScan(scan_info)
+        db_status = db_conn.store_energy_scan(scan_info)
         if blsample_id is not None:
             try:
                 escan_id = int(db_status["energyScanId"])
@@ -449,6 +446,6 @@ def StoreEnergyScanThread(db_conn, scan_info):
                 pass
             else:
                 asso = {"blSampleId": blsample_id, "energyScanId": escan_id}
-                db_conn.associateBLSampleAndEnergyScan(asso)
+                db_conn.associate_bl_sample_and_energy_scan(asso)
     except Exception as e:
         print(e)
