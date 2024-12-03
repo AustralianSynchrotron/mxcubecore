@@ -26,6 +26,8 @@ from os import environ
 
 import gevent
 import redis
+import gevent
+import redis
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 
@@ -118,6 +120,7 @@ class DataPublisher(HardwareObject):
         )
 
         self._r = redis.Redis(
+            host=rhost, port=rport, db=rdb, encoding="utf-8", decode_responses=True
             host=rhost, port=rport, db=rdb, encoding="utf-8", decode_responses=True
         )
 
