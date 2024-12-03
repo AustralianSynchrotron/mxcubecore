@@ -26,8 +26,6 @@ from os import environ
 
 import gevent
 import redis
-import gevent
-import redis
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 
