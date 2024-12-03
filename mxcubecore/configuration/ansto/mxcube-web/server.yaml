@@ -16,6 +16,7 @@ server:
     - "wss://mxcube.mx3.beamline.synchrotron.org.au"
     - "http://mxcube.mx3.beamline.synchrotron.org.au"
     - "ws://mxcube.mx3.beamline.synchrotron.org.au"
+    - "http://mx3hpcp03:5173"
 
 mxcube:
   USE_EXTERNAL_STREAMER: False
