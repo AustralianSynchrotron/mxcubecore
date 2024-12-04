@@ -132,7 +132,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         float
             Position of the motor.
         """
-        return actual_sample_detector_distance.position
+        return actual_sample_detector_distance.get()
 
     def _set_value(self, value: float) -> None:
         """Set the motor to a positions
