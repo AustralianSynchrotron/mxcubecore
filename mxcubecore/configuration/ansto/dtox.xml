@@ -1,7 +1,5 @@
 <device class="ANSTO.DetectorDistance">
     <username>Detector distance</username>
-    <motor_name>detector_distance</motor_name>
-    <ophyd_name>actual_sample_detector_distance</ophyd_name>
     <GUIstep>0.1</GUIstep>
     <unit>1e-1</unit>
 </device>
