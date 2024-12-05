@@ -55,7 +55,6 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-        logging.getLogger("HWR").info("Diffractometer Updated")
         GenericDiffractometer.init(self)
         self.last_centred_position = [612, 512]
         self.beam_position = [612, 512]
