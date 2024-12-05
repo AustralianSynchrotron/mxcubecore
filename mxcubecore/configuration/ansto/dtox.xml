@@ -4,7 +4,5 @@
     <ophyd_name>actual_sample_detector_distance</ophyd_name>
     <GUIstep>0.1</GUIstep>
     <unit>1e-1</unit>
-    <default_limits>(150, 500)</default_limits>
-    <default_value>200</default_value>
 </device>
 

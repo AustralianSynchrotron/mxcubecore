@@ -1,6 +1,9 @@
 import time
 
-from mx3_beamline_library.devices.motors import actual_sample_detector_distance, detector_fast_stage
+from mx3_beamline_library.devices.motors import (
+    actual_sample_detector_distance,
+    detector_fast_stage,
+)
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
@@ -94,7 +97,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         tuple
             Low and High limits of a motor.
         """
-        self._nominal_limits = (0,2000) # Hardcoded for now
+        self._nominal_limits = (0, 2000)  # Hardcoded for now
         return self._nominal_limits
 
     @property
@@ -147,7 +150,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         None
         """
         actual_distance = actual_sample_detector_distance.get()
-        actual_detector_distance_setpoint = value 
+        actual_detector_distance_setpoint = value
         diff = actual_detector_distance_setpoint - actual_distance
         current_fast_stage_val = detector_fast_stage.position
 
