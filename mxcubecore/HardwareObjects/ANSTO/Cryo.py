@@ -1,5 +1,3 @@
-import time
-
 from mx3_beamline_library.devices.cryo import cryo_temperature
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
@@ -46,7 +44,6 @@ class Cryo(AbstractMotor, EPICSActuator):
 
         self.update_state(self.STATES.READY)
 
-
     def get_value(self) -> float:
         """Get the current position of the motor.
 
@@ -56,4 +53,3 @@ class Cryo(AbstractMotor, EPICSActuator):
             Position of the motor.
         """
         return cryo_temperature.get()
-

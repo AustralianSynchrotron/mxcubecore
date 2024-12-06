@@ -1,6 +1,7 @@
 import time
 
 from mx3_beamline_library.devices.optics import transmission
+
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
@@ -83,7 +84,6 @@ class Transmission(AbstractMotor, EPICSActuator):
         self._nominal_limits = (0, 100)  # Hardcoded for now
         return self._nominal_limits
 
-
     def get_value(self) -> float:
         """Get the current position of the motor.
 
@@ -92,7 +92,7 @@ class Transmission(AbstractMotor, EPICSActuator):
         float
             The transmission value in percentage
         """
-        return transmission.get()*100 # convert to percentage
+        return transmission.get() * 100  # convert to percentage
 
     def _set_value(self, value: float) -> None:
         """Set the transmission to a given value.
@@ -106,7 +106,7 @@ class Transmission(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        transmission.set(value/100)
+        transmission.set(value / 100)
 
         self.update_value(value)
         self.update_state(self.STATES.READY)
