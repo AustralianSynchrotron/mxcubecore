@@ -2650,7 +2650,7 @@ as-redis-signal = ["as-redis-signal @ git+https://bitbucket.synchrotron.org.au/s
 type = "git"
 url = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git"
 reference = "update_tray_plans"
-resolved_reference = "792bb7b02ccf0ddcda340f5d7a9d5871aff6f765"
+resolved_reference = "325ff0edc15fd475418559ac82177662e5316e92"
 
 [[package]]
 name = "myst-parser"
