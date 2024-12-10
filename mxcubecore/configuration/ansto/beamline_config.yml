@@ -1,7 +1,7 @@
 ---
 # The class to initialise, and init parameters
 _initialise_class:
-  class: mxcubecore.HardwareObjects.Beamline.Beamline
+  class: mxcubecore.HardwareObjects.ANSTO.Beamline.Beamline
   # Further key-value pairs here will be passed to the class init
 #    mode: devel
 
@@ -35,6 +35,7 @@ _objects:
   - energy: energy.xml
   - resolution: resolution.xml
   - safety_shutter: safety_shutter.xml
+  - white_beam_shutter: white_beam_shutter.xml
   - fast_shutter: md3/fast_shutter.xml
   - hutch_interlock: hutchtrigger.xml
   - sample_changer: sc.xml
@@ -88,14 +89,14 @@ default_acquisition_parameters:
   default:
     # Default values, also used for standard acquisition.
     # Values not given in other dictionaries are taken from here
-    exp_time: 0.02  # exposure time
-    osc_start: 0.0  # Only used if no current angle can be found
+    exp_time: 0.02 # exposure time
+    osc_start: 0.0 # Only used if no current angle can be found
     osc_range: 0.1
     num_passes: 1
     first_image: 1
     overlap: 0
     num_images: 1
-    detector_mode: 1  # Remove as not in practice used ?
+    detector_mode: 1 # Remove as not in practice used ?
     inverse_beam: false
     take_dark_current: true
     skip_existing_images: true
@@ -108,7 +109,7 @@ default_acquisition_parameters:
 
   characterisation:
     # Defaults for chareacterisation. Missing values are taken from default
-    exp_time: 0.05  # exposure time
+    exp_time: 0.05 # exposure time
     osc_range: 1
     overlap: -89
     num_images: 4
@@ -116,7 +117,7 @@ default_acquisition_parameters:
 
   mesh:
     # Defaults for 'advanced' acquisition. Missing values are taken from default
-    exp_time: 10  # exposure time
+    exp_time: 10 # exposure time
     range: 10
     num_images: 100
     cell_counting: zig-zag
