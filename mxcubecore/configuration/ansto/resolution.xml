@@ -1,4 +1,4 @@
-<object class = "ResolutionMockup">
+<object class = "ANSTO.Resolution">
   <username>Resolution</username>
   <object hwrid="/dtox" role="dtox"/>
   <object href="/energy" role="energy"/>

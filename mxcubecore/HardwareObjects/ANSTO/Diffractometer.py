@@ -817,3 +817,15 @@ class Diffractometer(GenericDiffractometer):
     def move_chip_to(self, x: int, y: int) -> None:
         print("moving chip to")
         return
+
+    def get_pixels_per_mm(self) -> tuple[float, float]:
+        """
+        Returns the pixels per mm based on the MD3 zoom level
+
+        Returns
+        -------
+        tuple[float, float]
+            The (x,y) pixels per mm
+        """
+        self.get_zoom_calibration()
+        return (self.pixels_per_mm_x, self.pixels_per_mm_y)

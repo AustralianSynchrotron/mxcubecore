@@ -1,6 +1,4 @@
-<object class ="ActuatorMockup">
-    <actuator_name>Cryo</actuator_name>
+<object class ="ANSTO.Cryo">
     <username>Cryo</username>
     <read_only>True</read_only>
-    <default_value>200</default_value>
 </object>
