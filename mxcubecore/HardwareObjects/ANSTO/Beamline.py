@@ -912,3 +912,5 @@ class Beamline(ConfiguredObject):
             Optional[AbstractMachineInfo]:
         """
         return self._objects.get("white_beam_shutter")
+
+    __content_roles.append("white_beam_shutter")
