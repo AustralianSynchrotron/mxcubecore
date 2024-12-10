@@ -10,14 +10,13 @@ from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 
 class DetectorDistance(AbstractMotor, EPICSActuator):
-    """Hardware Object that uses an Ophyd layer to control Epics motors
+    """Hardware Object that uses an Ophyd layer to control
+    the detector distance.
 
     Example of xml config file:
 
-    <device class="ANSTO.OphydMotor">
-        <username>PhiX</username>
-        <motor_name>Motor X</motor_name>
-        <pv_prefix>MX3:TESTRIG_X</pv_prefix>
+    <device class="ANSTO.DetectorDistance">
+        <username>Detector distance</username>
         <GUIstep>0.1</GUIstep>
         <unit>1e-1</unit>
     </device>
@@ -97,7 +96,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         tuple
             Low and High limits of a motor.
         """
-        self._nominal_limits = (1, 2000)  # Hardcoded for now
+        self._nominal_limits = (1, 2000)  # TODO: Need to get the actual limits
         return self._nominal_limits
 
     @property
@@ -138,7 +137,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         return actual_sample_detector_distance.get()
 
     def _set_value(self, value: float) -> None:
-        """Set the motor to a positions
+        """Sets the detector distance
 
         Parameters
         ----------

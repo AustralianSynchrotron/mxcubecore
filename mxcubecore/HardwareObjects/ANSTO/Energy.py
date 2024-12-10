@@ -8,8 +8,13 @@ from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 class Energy(EPICSActuator, AbstractEnergy):
     """
-    Sets and gets the energy and wavelength of the beam, while
-    checking if the energy threshold is okay.
+    Sets and gets the energy and wavelength of the beam
+
+    Example of xml config file:
+
+    <object class="ANSTO.Energy">
+        <username>energy</username>
+    </object>
     """
 
     def __init__(self, name: str) -> None:
@@ -61,11 +66,11 @@ class Energy(EPICSActuator, AbstractEnergy):
         self.update_state(self.STATES.READY)
 
     def get_limits(self):
-        return (5, 20)  # Hardcoded for now
+        return (5, 20)  # TODO: Get the real limits
 
     def get_value(self) -> float:
         """
-        Read the energy.
+        Read the energy in keV
 
         Returns
         -------
@@ -76,7 +81,7 @@ class Energy(EPICSActuator, AbstractEnergy):
 
         return value
 
-    def _move(self, value: float):
+    def _move(self, value: float) -> float:
         """
         Updates the mxcube UI to show that energy is changing
 
@@ -87,8 +92,8 @@ class Energy(EPICSActuator, AbstractEnergy):
 
         Returns
         -------
-        _type_
-            _description_
+        float
+            The energy value in keV
         """
 
         while round(energy_master.get(), 2) != round(value, 2):

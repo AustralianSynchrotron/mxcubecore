@@ -7,15 +7,13 @@ from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 
 class Transmission(AbstractMotor, EPICSActuator):
-    """Hardware Object that uses an Ophyd layer to control Epics motors
+    """Hardware Object that uses an Ophyd layer to the Transmission.
 
     Example of xml config file:
 
-    <device class="ANSTO.OphydMotor">
-        <username>PhiX</username>
-        <GUIstep>0.1</GUIstep>
-        <unit>1e-1</unit>
-    </device>
+    <object class = "ANSTO.Transmission">
+    <username>transmission</username>
+    </object>
     """
 
     def __init__(self, name: str) -> None:
@@ -81,7 +79,7 @@ class Transmission(AbstractMotor, EPICSActuator):
         tuple
             Low and High limits of a motor.
         """
-        self._nominal_limits = (0, 100)  # Hardcoded for now
+        self._nominal_limits = (0, 100)  # TODO: verify
         return self._nominal_limits
 
     def get_value(self) -> float:
