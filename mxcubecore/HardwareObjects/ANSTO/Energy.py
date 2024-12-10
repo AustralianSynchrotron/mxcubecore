@@ -1,6 +1,6 @@
 import time
 
-from mx3_beamline_library.devices.optics import energy_master
+from mx3_beamline_library.devices.beam import energy_master
 
 from mxcubecore.HardwareObjects.abstract.AbstractEnergy import AbstractEnergy
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator

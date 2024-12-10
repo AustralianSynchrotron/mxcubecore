@@ -1,6 +1,6 @@
 import time
 
-from mx3_beamline_library.devices.optics import transmission
+from mx3_beamline_library.devices.beam import transmission
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator

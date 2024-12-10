@@ -1,5 +1,5 @@
 import gevent
-from mx3_beamline_library.devices.optics import ring_current
+from mx3_beamline_library.devices.beam import ring_current
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.HardwareObjects.abstract.AbstractMachineInfo import AbstractMachineInfo
