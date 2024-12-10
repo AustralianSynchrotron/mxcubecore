@@ -905,10 +905,10 @@ class Beamline(ConfiguredObject):
                     )
 
     @property
-    def humidity(self):
-        """Humidity control Hardware object
+    def white_beam_shutter(self):
+        """White beam shutter Hardware object
 
         Returns:
             Optional[AbstractMachineInfo]:
         """
-        return self._objects.get("humidity")
+        return self._objects.get("white_beam_shutter")
