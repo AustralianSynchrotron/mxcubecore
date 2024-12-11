@@ -1,14 +1,16 @@
+import logging
 from enum import (
+    Enum,
     IntEnum,
     unique,
-    Enum
 )
+
+from mx3_beamline_library.devices import shutters
 
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
 from mxcubecore.HardwareObjects.abstract.AbstractShutter import AbstractShutter
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
-from mx3_beamline_library.devices import shutters
-import logging
+
 
 @unique
 class OpenCloseCmd(IntEnum):
@@ -27,6 +29,8 @@ class OpenCloseStatus(IntEnum):
 
 
 class OphydShutter(AbstractShutter, EPICSActuator):
+    # NOTE, TODO if this class does not work, we can revert to using the ShutterMockup class
+    # To test the addition of the white beam shutter to the UI
     """
     ShutterMockup for simulating a simple open/close shutter.
     Fake some of the states of the shutter to correspong to values.
@@ -75,13 +79,14 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         Enum
             The shutter position.
         """
-        if self.shutter.open_close_status.get() == OpenCloseStatus.CLOSED:
+        value = self.shutter.open_close_status.get()
+        if value == OpenCloseStatus.CLOSED:
             return self.VALUES.CLOSED
-        elif self.shutter.open_close_status.get() == OpenCloseStatus.OPEN:
+        elif value == OpenCloseStatus.OPEN:
             return self.VALUES.OPEN
         else:
             return self.VALUES.UNKNOWN
-        
+
     def set_value(self, value, timeout=0):
         """Set actuator to value.
         Args:
@@ -103,13 +108,28 @@ class OphydShutter(AbstractShutter, EPICSActuator):
             return
         self.wait_ready(timeout)
 
-
-    def _set_value(self, value: str):
-        # value e.g. OPEN or CLOSE
+    def _set_value(self, value: Enum):
+        # value, e.g.
+        # ValueEnum.OPEN: 'open'
         # TODO: Validate this with real hardware!
         logging.getLogger("HWR").info(f"Setting shutter {self.shutter.name} to {value}")
-        int_value = OpenCloseCmd(value)
-        self.shutter.open_close_cmd.set(value)
-        logging.getLogger("HWR").info(f"open_close_cmd successfully set to {self.shutter.open_close_cmd.get()}")
-        logging.getLogger("HWR").info(f"open_close_status value: {self.shutter.open_close_status.get() }")
-        return 
+        if value.value.lower() == "open":
+            logging.getLogger("HWR").info("Opening shutter...")
+            self.shutter.open_close_cmd.set(OpenCloseCmd.OPEN)
+            logging.getLogger("HWR").info("Shutter opened")
+        elif value.value.lower() == "closed":
+            logging.getLogger("HWR").info("Closing shutter..")
+            self.shutter.open_close_cmd.set(OpenCloseCmd.CLOSE)
+            logging.getLogger("HWR").info("Shutter closed")
+        else:
+            raise ValueError(
+                f"Invalid value {value}. Only {self.VALUES.OPEN} and {self.VALUES.CLOSED} are allowed."
+            )
+
+        logging.getLogger("HWR").info(
+            f"open_close_cmd successfully set to {self.shutter.open_close_cmd.get()}"
+        )
+        logging.getLogger("HWR").info(
+            f"open_close_status value: {self.shutter.open_close_status.get() }"
+        )
+        return

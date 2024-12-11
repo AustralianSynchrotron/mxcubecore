@@ -1,6 +1,5 @@
-
 """
-NOTE: This class is a copy of the Beamline class from the mxcubecore 
+NOTE: This class is a copy of the Beamline class from the mxcubecore
 package and should be updated accordingly.
 """
 
@@ -28,7 +27,6 @@ from mxcubecore.BaseHardwareObjects import (
     ConfiguredObject,
     HardwareObject,
 )
-
 
 
 class Beamline(ConfiguredObject):
@@ -252,9 +250,7 @@ class Beamline(ConfiguredObject):
                 args = args[0]
         responses: list = dispatcher.send(signal, self, *args)
         if not responses:
-            raise RuntimeError(
-                "Signal %s is not connected" % signal
-            )
+            raise RuntimeError("Signal %s is not connected" % signal)
 
     # NB this function must be re-implemented in nested subclasses
     @property
