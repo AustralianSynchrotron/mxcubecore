@@ -106,7 +106,7 @@ beamline_setup:
       attribute: fast_shutter
     - label: Safety shutter
       attribute: safety_shutter
-    - label: White beam shutter
+    - label: White Beam Shutter
       attribute: white_beam_shutter
     - label: Detector
       attribute: detector

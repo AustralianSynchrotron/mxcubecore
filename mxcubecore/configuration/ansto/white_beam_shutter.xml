@@ -1,5 +1,5 @@
-<object class ="ShutterMockup">
-    <actuator_name>safety_shutter</actuator_name>
+<object class ="ANSTO.OphydShutter">
+    <actuator_name>white_beam_shutter</actuator_name>
     <username>SafetyShutter</username>
     <values>{"OPEN": "open", "CLOSED": "closed"}</values>
 </object>
