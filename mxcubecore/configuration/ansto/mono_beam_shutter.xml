@@ -1,0 +1,5 @@
+<object class ="ANSTO.OphydShutter">
+    <actuator_name>mono_beam_shutter</actuator_name>
+    <username>MonoBeamShutter</username>
+    <values>{"OPEN": "open", "CLOSED": "closed"}</values>
+</object>

@@ -1,7 +1,7 @@
 ---
 # The class to initialise, and init parameters
 _initialise_class:
-  class: mxcubecore.HardwareObjects.Beamline.Beamline
+  class: mxcubecore.HardwareObjects.ANSTO.Beamline.Beamline
   # Further key-value pairs here will be passed to the class init
 #    mode: devel
 
@@ -34,7 +34,8 @@ _objects:
   - cryo: cryo.xml
   - energy: energy.xml
   - resolution: resolution.xml
-  - safety_shutter: safety_shutter.xml
+  - mono_beam_shutter: mono_beam_shutter.xml
+  - white_beam_shutter: white_beam_shutter.xml
   - fast_shutter: md3/fast_shutter.xml
   - hutch_interlock: hutchtrigger.xml
   - sample_changer: sc.xml
