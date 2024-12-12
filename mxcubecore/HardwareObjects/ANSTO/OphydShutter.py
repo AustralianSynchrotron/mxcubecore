@@ -1,4 +1,5 @@
 import logging
+import time
 from enum import (
     Enum,
     IntEnum,
@@ -29,11 +30,9 @@ class OpenCloseStatus(IntEnum):
 
 
 class OphydShutter(AbstractShutter, EPICSActuator):
-    # NOTE, TODO if this class does not work, we can revert to using the ShutterMockup class
-    # To test the addition of the white beam shutter to the UI
+    # TODO: Test if this class works with real hardware
     """
-    ShutterMockup for simulating a simple open/close shutter.
-    Fake some of the states of the shutter to correspong to values.
+    OphydShutter class to control the shutter using Ophyd
     """
 
     SPECIFIC_STATES = OpenCloseStatus
@@ -46,28 +45,46 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         self.update_state(self.STATES.READY)
 
     @property
-    def is_open(self):
-        """Check if the shutter is open.
-        Returns:
-            (bool): True if open, False otherwise.
+    def is_open(self) -> bool:
+        """
+        Check if the shutter is open
+
+        Returns
+        -------
+        bool
+            True if the shutter is open, False otherwise
         """
         return self.get_value() == self.VALUES.OPEN
 
     def open(self, timeout=None):
-        """Open the shutter.
-        Args:
-            timeout(float): optional - timeout [s],
-                            If timeout == 0: return at once and do not wait
-                            if timeout is None: wait forever.
+        """
+        Opens the shutter
+
+        Parameters
+        ----------
+        timeout : float, optional
+            If timeout == 0: return at once and do not wait.
+            if timeout is None: wait forever.
+
+        Returns
+        -------
+        None
         """
         self.set_value(self.VALUES.OPEN, timeout=timeout)
 
-    def close(self, timeout=None):
-        """Close the shutter.
-        Args:
-            timeout(float): optional - timeout [s],
-                            If timeout == 0: return at once and do not wait
-                            if timeout is None: wait forever.
+    def close(self, timeout: float = None) -> None:
+        """
+        Closes the shutter
+
+        Parameters
+        ----------
+        timeout : float, optional
+            If timeout == 0: return at once and do not wait.
+            if timeout is None: wait forever.
+
+        Returns
+        -------
+        None
         """
         self.set_value(self.VALUES.CLOSED, timeout=timeout)
 
@@ -87,17 +104,22 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         else:
             return self.VALUES.UNKNOWN
 
-    def set_value(self, value, timeout=0):
-        """Set actuator to value.
-        Args:
-            value: target value
-            timeout (float): optional - timeout [s],
-                             If timeout == 0: return at once and do not wait
-                                              (default);
-                             if timeout is None: wait forever.
-        Raises:
-            ValueError: Invalid value or attemp to set read only actuator.
-            RuntimeError: Timeout waiting for status ready  # From wait_ready
+    def set_value(self, value: Enum, timeout=0) -> None:
+        """Sets the actuator value
+
+        Parameters
+        ----------
+        value : Enum
+            The shutter value
+        timeout : int, optional
+            The timeout, by default 0
+
+        Raises
+        ------
+        ValueError
+            Invalid value or attempt to set read only actuator.
+        RuntimeError
+            Timeout waiting for status ready  # From wait_ready
         """
         if self.read_only:
             raise ValueError("Attempt to set value for read-only Actuator")
@@ -109,9 +131,18 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         self.wait_ready(timeout)
 
     def _set_value(self, value: Enum):
-        # value, e.g.
-        # ValueEnum.OPEN: 'open'
-        # TODO: Validate this with real hardware!
+        """Sets the shutter value
+
+        Parameters
+        ----------
+        value : Enum
+            The shutter value
+
+        Raises
+        ------
+        ValueError
+            Raised if the value is not valid
+        """
         logging.getLogger("HWR").info(f"Setting shutter {self.shutter.name} to {value}")
         if value.value.lower() == "open":
             logging.getLogger("HWR").info("Opening shutter...")
@@ -123,7 +154,8 @@ class OphydShutter(AbstractShutter, EPICSActuator):
             logging.getLogger("HWR").info("Shutter closed")
         else:
             raise ValueError(
-                f"Invalid value {value}. Only {self.VALUES.OPEN} and {self.VALUES.CLOSED} are allowed."
+                f"Invalid value {value}. Only `ValueEnum.OPEN: 'open'` and "
+                "`ValueEnum.CLOSED: 'closed'` are allowed."
             )
 
         logging.getLogger("HWR").info(
@@ -133,3 +165,25 @@ class OphydShutter(AbstractShutter, EPICSActuator):
             f"open_close_status value: {self.shutter.open_close_status.get() }"
         )
         return
+
+    def _move(self, value: float) -> float:
+        """Move the shutter to a given value.
+
+        Parameters
+        ----------
+        value : float
+            Position of the shutter.
+
+        Returns
+        -------
+        float
+            New position of the motor.
+        """
+        self.update_specific_state(self.SPECIFIC_STATES.MOVING)
+
+        while self.shutter.open_close_status.get() == OpenCloseStatus.MOVING:
+            time.sleep(0.1)
+            self.update_state(self.STATES.BUSY)
+
+        self.update_state(self.STATES.READY)
+        return value

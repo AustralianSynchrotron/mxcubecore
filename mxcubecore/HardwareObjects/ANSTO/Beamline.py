@@ -362,15 +362,15 @@ class Beamline(ConfiguredObject):
     __content_roles.append("sample_environment")
 
     @property
-    def safety_shutter(self):
-        """Safety Shutter Hardware object
+    def mono_beam_shutter(self):
+        """Mono beam shutter Hardware object
 
         Returns:
             Optional[AbstractShutter]:
         """
-        return self._objects.get("safety_shutter")
+        return self._objects.get("mono_beam_shutter")
 
-    __content_roles.append("safety_shutter")
+    __content_roles.append("mono_beam_shutter")
 
     @property
     def fast_shutter(self):
