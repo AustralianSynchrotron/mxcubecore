@@ -104,8 +104,10 @@ beamline_setup:
       attribute: capillary
     - label: Fast Shutter
       attribute: fast_shutter
-    - label: Safety shutter
-      attribute: safety_shutter
+    - label: Mono shutter
+      attribute: mono_beam_shutter
+    - label: White Beam Shutter
+      attribute: white_beam_shutter
     - label: Detector
       attribute: detector
     - label: Energy
