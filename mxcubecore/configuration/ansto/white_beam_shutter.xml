@@ -1,5 +1,5 @@
 <object class ="ANSTO.OphydShutter">
     <actuator_name>white_beam_shutter</actuator_name>
-    <username>SafetyShutter</username>
+    <username>WhiteBeamShutter</username>
     <values>{"OPEN": "open", "CLOSED": "closed"}</values>
 </object>
