@@ -3,30 +3,56 @@ from __future__ import annotations
 from gevent import monkey
 monkey.patch_all()
 
-import logging
-from typing import Annotated, Any, Optional, Union, overload
-from typing_extensions import Literal, TypedDict, deprecated
-from time import sleep as time_sleep
-from functools import lru_cache
-from requests import get as requests_get
-from pydantic import ConfigDict, Field, InstanceOf, Json, JsonValue, validate_call
-from gevent import sleep
-from mxcubecore.TaskUtils import task as dtask
-from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
+import logging  # noqa: E402
+from typing import Any, Optional, Union  # noqa: E402
+from typing_extensions import Literal, TypedDict  # noqa: E402
+from functools import lru_cache  # noqa: E402
+from asyncio import (  # noqa: E402
+    set_event_loop as asyncio_set_event_loop,
+    new_event_loop as asyncio_new_event_loop,
+)
+from time import time  # noqa: E402
+from pydantic import JsonValue  # noqa: E402
+from gevent import sleep  # noqa: E402
+from mxcubecore.TaskUtils import task as dtask  # noqa: E402
+from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (  # noqa: E402
     SampleChanger as AbstractSampleChanger,
     SampleChangerState,
 )
-from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (  # noqa: E402
     Basket as AbstractPuck,
     Pin as AbstractPin,
 )
-from mx_robot_library.config import get_settings as get_robot_settings
-from mx_robot_library.client.client import Client
-from mx_robot_library.schemas.common.sample import Puck as RobotPuck, Pin as RobotPin
-from .md3 import MD3Phase
+from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
+from mx_robot_library.client.client import Client  # noqa: E402
+from mx_robot_library.schemas.common.sample import (  # noqa: E402
+    Puck as RobotPuck,
+    Pin as RobotPin,
+)
+from mx_robot_library.schemas.common.path import RobotPaths
+from mx_robot_library.schemas.common.position import RobotPositions
+from mx_robot_library.schemas.common.tool import RobotTools
+from .md3 import MD3Phase  # noqa: E402
+from .prefect_flows.prefect_client import MX3PrefectClient  # noqa: E402
 
 hwr_logger = logging.getLogger("HWR")
 robot_config = get_robot_settings()
+
+
+class SampleChangerError(Exception):
+    """Sample Changer Error"""
+
+
+class PathTimeout(SampleChangerError):
+    """Path Timeout"""
+
+
+class PositionError(SampleChangerError):
+    """Position Error"""
+
+
+class ToolError(SampleChangerError):
+    """Tool Error"""
 
 
 class SampleData(TypedDict, total=True):
@@ -108,6 +134,9 @@ class SampleChanger(AbstractSampleChanger):
         self.update_info()
 
         self.log_filename = self.get_property("log_filename")
+
+        self._mount_deployment_name = self.get_property("mount_deployment_name")
+        self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
     @dtask
     def __update_timer_task(self, *args):
@@ -199,12 +228,9 @@ class SampleChanger(AbstractSampleChanger):
         """ """
         sample = self._resolve_component(sample)
         self.assert_not_charging()
-        return self._execute_task(
-            SampleChangerState.Loading,
-            wait,
-            self._do_unload_then_load,
-            sample,
-        )
+
+        self.unload()
+        self.load(sample)
 
     # @validate_call
     # def load(
@@ -354,44 +380,75 @@ class SampleChanger(AbstractSampleChanger):
         """ """
         _client = self.get_client()
         if isinstance(sample, str):
-            sample: tuple[int, int] = tuple(int(_item) for _item in sample.split(":", maxsplit=1))
+            sample: tuple[int, int] = tuple(
+                int(_item)
+                for _item in sample.split(":", maxsplit=1)
+            )
         elif isinstance(sample, Pin):
             sample: tuple[int, int] = (sample.container.robot_id, sample.robot_id)
 
         # Check position is currently SOAK
-        if _client.status.state.position.name != "SOAK":
-            _client.trajectory.soak(wait=True)
+        if _client.status.state.position != RobotPositions.SOAK:
+            _client.trajectory.soak(wait=False)
 
-        # Check MD3
-        _md3_client = MD3Phase(address="10.244.101.30", port=9001)
-        if _md3_client.get() != "Transfer":
-            _md3_client.set(value="Transfer", wait=True)
+            # Wait for robot to start running the path
+            _start_time_timeout = time() + 15
+            while _client.status.state.path != RobotPaths.SOAK:
+                # Timeout after 15 seconds if path not started
+                if time() >= _start_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
 
-        # Mount pin
-        _client.trajectory.puck.mount(sample, wait=True)
+            # Wait for robot to finish running the path
+            _end_time_timeout = time() + 120
+            while _client.status.state.path != RobotPaths.UNDEFINED:
+                # Timeout after 120 seconds if path not finished
+                if time() >= _end_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
 
-    def _do_unload_then_load(
-        self,
-        sample: Union[tuple[int, int], str, Pin],
-    ) -> None:
-        """ """
-        _client = self.get_client()
-        if isinstance(sample, str):
-            sample: tuple[int, int] = tuple(int(_item) for _item in sample.split(":", maxsplit=1))
-        elif isinstance(sample, Pin):
-            sample: tuple[int, int] = (sample.container.robot_id, sample.robot_id)
+            if _client.status.state.position != RobotPositions.SOAK:
+                raise PositionError()
 
-        # Check position is currently SOAK
-        if _client.status.state.position.name != "SOAK":
-            _client.trajectory.soak(wait=True)
+        # Check double gripper tool mounted
+        if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
+            _client.trajectory.change_tool(tool=RobotTools.DOUBLE_GRIPPER, wait=False)
 
-        # Check MD3
-        _md3_client = MD3Phase(address="10.244.101.30", port=9001)
-        if _md3_client.get() != "Transfer":
-            _md3_client.set(value="Transfer", wait=True)
 
-        # Mount pin
-        _client.trajectory.puck.unmount_then_mount(sample, wait=True)
+            # Wait for robot to start running the path
+            _start_time_timeout = time() + 15
+            while _client.status.state.path != RobotPaths.CHANGE_TOOL:
+                # Timeout after 15 seconds if path not started
+                if time() >= _start_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
+
+            # Wait for robot to finish running the path
+            _end_time_timeout = time() + 240
+            while _client.status.state.path != RobotPaths.UNDEFINED:
+                # Timeout after 240 seconds if path not finished
+                if time() >= _end_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
+
+            if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
+                raise ToolError()
+
+        # Mount pin using `mount` Prefect Flow
+        _prefect_mount_client = MX3PrefectClient(
+            name=self._mount_deployment_name,
+            parameters={
+                "pin": {
+                    "id": sample[1],
+                    "puck": {
+                        "id": sample[0],
+                    }
+                }
+            },
+        )
+        _event_loop = asyncio_new_event_loop()
+        asyncio_set_event_loop(_event_loop)
+        _event_loop.run_until_complete(_prefect_mount_client.trigger_flow(wait=True))
 
     def _do_unload(
         self,
@@ -401,16 +458,60 @@ class SampleChanger(AbstractSampleChanger):
         _client = self.get_client()
 
         # Check position is currently SOAK
-        if _client.status.state.position.name != "SOAK":
-            _client.trajectory.soak(wait=True)
+        if _client.status.state.position != RobotPositions.SOAK:
+            _client.trajectory.soak(wait=False)
 
-        # Check MD3
-        _md3_client = MD3Phase(address="10.244.101.30", port=9001)
-        if _md3_client.get() != "Transfer":
-            _md3_client.set(value="Transfer", wait=True)
+            # Wait for robot to start running the path
+            _start_time_timeout = time() + 15
+            while _client.status.state.path != RobotPaths.SOAK:
+                # Timeout after 15 seconds if path not started
+                if time() >= _start_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
 
-        # Unmount pin
-        _client.trajectory.puck.unmount(wait=True)
+            # Wait for robot to finish running the path
+            _end_time_timeout = time() + 120
+            while _client.status.state.path != RobotPaths.UNDEFINED:
+                # Timeout after 120 seconds if path not finished
+                if time() >= _end_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
+
+            if _client.status.state.position != RobotPositions.SOAK:
+                raise PositionError()
+
+        # Check double gripper tool mounted
+        if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
+            _client.trajectory.change_tool(tool=RobotTools.DOUBLE_GRIPPER, wait=False)
+
+
+            # Wait for robot to start running the path
+            _start_time_timeout = time() + 15
+            while _client.status.state.path != RobotPaths.CHANGE_TOOL:
+                # Timeout after 15 seconds if path not started
+                if time() >= _start_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
+
+            # Wait for robot to finish running the path
+            _end_time_timeout = time() + 240
+            while _client.status.state.path != RobotPaths.UNDEFINED:
+                # Timeout after 240 seconds if path not finished
+                if time() >= _end_time_timeout:
+                    raise PathTimeout()
+                sleep(0.5)
+
+            if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
+                raise ToolError()
+
+        # Mount pin using `unmount` Prefect Flow
+        _prefect_unmount_client = MX3PrefectClient(
+            name=self._unmount_deployment_name,
+            parameters={},
+        )
+        _event_loop = asyncio_new_event_loop()
+        asyncio_set_event_loop(_event_loop)
+        _event_loop.run_until_complete(_prefect_unmount_client.trigger_flow(wait=True))
 
     def _do_reset(self) -> None:
         """ """
