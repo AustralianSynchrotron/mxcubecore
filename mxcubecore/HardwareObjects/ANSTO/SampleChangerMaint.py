@@ -1,11 +1,10 @@
-import logging
+import time
 from typing import Literal
 
-from mxcubecore.TaskUtils import task
-from mxcubecore.BaseHardwareObjects import Equipment
-
 import gevent
-import time
+
+from mxcubecore.BaseHardwareObjects import Equipment
+from mxcubecore.TaskUtils import task
 
 
 class SampleChangerMaint(Equipment):

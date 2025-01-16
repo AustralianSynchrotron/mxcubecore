@@ -1,38 +1,46 @@
 from __future__ import annotations
 
 from gevent import monkey
+
 monkey.patch_all()
 
 import logging  # noqa: E402
-from typing import Any, Optional, Union  # noqa: E402
-from typing_extensions import Literal, TypedDict  # noqa: E402
+from asyncio import new_event_loop as asyncio_new_event_loop
+from asyncio import set_event_loop as asyncio_set_event_loop  # noqa: E402
 from functools import lru_cache  # noqa: E402
-from asyncio import (  # noqa: E402
-    set_event_loop as asyncio_set_event_loop,
-    new_event_loop as asyncio_new_event_loop,
-)
 from time import time  # noqa: E402
-from pydantic import JsonValue  # noqa: E402
+from typing import (  # noqa: E402
+    Any,
+    Optional,
+    Union,
+)
+
 from gevent import sleep  # noqa: E402
-from mxcubecore.TaskUtils import task as dtask  # noqa: E402
+from mx_robot_library.client.client import Client  # noqa: E402
+from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
+from mx_robot_library.schemas.common.path import RobotPaths  # noqa: E402
+from mx_robot_library.schemas.common.position import RobotPositions  # noqa: E402
+from mx_robot_library.schemas.common.sample import Pin as RobotPin
+from mx_robot_library.schemas.common.sample import Puck as RobotPuck  # noqa: E402
+from mx_robot_library.schemas.common.tool import RobotTools  # noqa: E402
+from pydantic import JsonValue  # noqa: E402
+from typing_extensions import (  # noqa: E402
+    Literal,
+    TypedDict,
+)
+
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (  # noqa: E402
     SampleChanger as AbstractSampleChanger,
-    SampleChangerState,
 )
+from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import SampleChangerState
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (  # noqa: E402
     Basket as AbstractPuck,
+)
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
     Pin as AbstractPin,
 )
-from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
-from mx_robot_library.client.client import Client  # noqa: E402
-from mx_robot_library.schemas.common.sample import (  # noqa: E402
-    Puck as RobotPuck,
-    Pin as RobotPin,
-)
-from mx_robot_library.schemas.common.path import RobotPaths
-from mx_robot_library.schemas.common.position import RobotPositions
-from mx_robot_library.schemas.common.tool import RobotTools
-from .md3 import MD3Phase  # noqa: E402
+from mxcubecore.TaskUtils import task as dtask  # noqa: E402
+
 from .prefect_flows.prefect_client import MX3PrefectClient  # noqa: E402
 
 hwr_logger = logging.getLogger("HWR")
@@ -82,7 +90,9 @@ class Pin(AbstractPin):
 class Puck(AbstractPuck):
     """MXCuBE Puck"""
 
-    def __init__(self, container, number: int, samples_num: int = 10, name: str = "Puck") -> None:
+    def __init__(
+        self, container, number: int, samples_num: int = 10, name: str = "Puck"
+    ) -> None:
         super(AbstractPuck, self).__init__(
             self.__TYPE__, container, Puck.get_basket_address(number), True
         )
@@ -203,8 +213,7 @@ class SampleChanger(AbstractSampleChanger):
         _client = self.get_client()
         if isinstance(sample_to_load, str):
             sample_to_load: tuple[int, int] = tuple(
-                int(_item)
-                for _item in sample_to_load.split(":", maxsplit=1)
+                int(_item) for _item in sample_to_load.split(":", maxsplit=1)
             )
         elif isinstance(sample_to_load, Pin):
             sample_to_load: tuple[int, int] = (
@@ -256,9 +265,7 @@ class SampleChanger(AbstractSampleChanger):
 
     def is_mounted_sample(self, sample: tuple[int, int]) -> bool:
         return (
-            self.get_component_by_address(
-                Pin.get_sample_address(sample[0], sample[1])
-            )
+            self.get_component_by_address(Pin.get_sample_address(sample[0], sample[1]))
             == self.get_loaded_sample()
         )
 
@@ -381,8 +388,7 @@ class SampleChanger(AbstractSampleChanger):
         _client = self.get_client()
         if isinstance(sample, str):
             sample: tuple[int, int] = tuple(
-                int(_item)
-                for _item in sample.split(":", maxsplit=1)
+                int(_item) for _item in sample.split(":", maxsplit=1)
             )
         elif isinstance(sample, Pin):
             sample: tuple[int, int] = (sample.container.robot_id, sample.robot_id)
@@ -414,7 +420,6 @@ class SampleChanger(AbstractSampleChanger):
         if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
             _client.trajectory.change_tool(tool=RobotTools.DOUBLE_GRIPPER, wait=False)
 
-
             # Wait for robot to start running the path
             _start_time_timeout = time() + 15
             while _client.status.state.path != RobotPaths.CHANGE_TOOL:
@@ -442,7 +447,7 @@ class SampleChanger(AbstractSampleChanger):
                     "id": sample[1],
                     "puck": {
                         "id": sample[0],
-                    }
+                    },
                 }
             },
         )
@@ -483,7 +488,6 @@ class SampleChanger(AbstractSampleChanger):
         # Check double gripper tool mounted
         if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
             _client.trajectory.change_tool(tool=RobotTools.DOUBLE_GRIPPER, wait=False)
-
 
             # Wait for robot to start running the path
             _start_time_timeout = time() + 15
