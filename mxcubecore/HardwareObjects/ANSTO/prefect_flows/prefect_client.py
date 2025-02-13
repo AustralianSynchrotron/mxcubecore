@@ -9,7 +9,7 @@ from uuid import UUID
 try:
     # NOTE: State must be imported first,
     # otherwise the prefect client does not work properly
-    from prefect.server.schemas.states import (
+    from prefect import (
         State
     ) # noqa
     from prefect.server.schemas.states import StateType # noqa
