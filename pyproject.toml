@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mxcubecore"
-version = "1.195.0.3"
+version = "1.195.0.4"
 license = "LGPL-3.0-or-later"
 description = "Core libraries for the MXCuBE application"
 authors = ["The MXCuBE collaboration <mxcube@esrf.fr>"]
@@ -35,7 +35,7 @@ lxml = "^4.9.1"
 matplotlib = "^3.6.2"
 numpy = "^1.23.5"
 Pillow = "^10.4.0"
-pydantic = ">=2.8.2,<2.9.0"
+pydantic = ">=2.8.2,<2.11.0"
 PyDispatcher = "^2.0.6"
 "ruamel.yaml" = "^0.17.21"
 scipy = "^1.9.3"
@@ -49,9 +49,9 @@ PyTango = { version = "^9.3.6"}
 python-ldap = "^3.4.0"
 requests = "^2.31.0"
 colorama = "^0.4.6"
-prefect = { version = "2.19.9", optional = true }
+prefect = { version = "3.1.15", optional = true, python = ">=3.10"  }
 cachetools = ">=5.3.3"
-mx3-beamline-library = { git = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git", rev = "v1.2.6", python = ">=3.10" }
+mx3-beamline-library = { git = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git", rev = "v1.3.0", python = ">=3.10" }
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.5.0"
