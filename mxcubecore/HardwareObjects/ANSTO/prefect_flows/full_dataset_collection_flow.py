@@ -4,17 +4,17 @@ from os import environ
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
-from .schemas.screening import (
-    ScreeningDialogBox,
-    ScreeningParams,
+from .schemas.full_dataset import (
+    FullDatasetParams,
+    FullDatasetDialogBox
 )
 
-SCREENING_DEPLOYMENT_NAME = environ.get(
-    "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
+FULL_DATASET_DEPLOYMENT_NAME = environ.get(
+    "FULL_DATASET_DEPLOYMENT_NAME", "mxcube-full-data-collection/plans"
 )
 
 
-class ScreeningFlow(AbstractPrefectWorkflow):
+class FullDatasetFlow(AbstractPrefectWorkflow):
     def run(self, dialog_box_parameters: dict) -> None:
         """Runs the screening flow
 
@@ -27,10 +27,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         -------
         None
         """
-        # This is the payload we get from the UI"
-        dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
+        # This is the payload we get from the UI
+        dialog_box_model = FullDatasetDialogBox.parse_obj(dialog_box_parameters)
 
-        screening_params = ScreeningParams(
+        full_dataset_params = FullDatasetParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
@@ -44,7 +44,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         prefect_parameters = {
             "sample_id": dialog_box_model.sample_id,
             "crystal_counter": dialog_box_model.crystal_counter,
-            "screening_params": screening_params.dict(),
+            "collection_params": full_dataset_params.dict(),
             "run_data_processing_pipeline": True,
             "hardware_trigger": dialog_box_model.hardware_trigger,
             "add_dummy_pin": True,
@@ -57,7 +57,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         )
 
         screening_flow = MX3PrefectClient(
-            name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
+            name=FULL_DATASET_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
         # NOTE: using asyncio.run() does not seem to work consistently

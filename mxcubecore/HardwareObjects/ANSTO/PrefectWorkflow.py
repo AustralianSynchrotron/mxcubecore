@@ -13,6 +13,7 @@ from mxcubecore.HardwareObjects.SampleView import SampleView
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
+from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 
 
 class State(object):
@@ -408,25 +409,16 @@ class PrefectWorkflow(HardwareObject):
             self.screening_flow.run(dialog_box_parameters=dialog_box_parameters)
 
         elif self.workflow_name == PrefectFlows.collect_dataset:
-            raise NotImplementedError()
-            # logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            # updated_parameters = self.open_dialog(self.collect_workflow.dialog_box())
-            # # TODO get sample id from Sample Changer
-            # updated_parameters["sample_id"] = "my_sample"
-            # self.collect_workflow.run(metadata=updated_parameters)
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            self.full_dataset_flow = FullDatasetFlow(state=self._state)
+            dialog_box_parameters = self.open_dialog(self.full_dataset_flow.dialog_box())
+            logging.getLogger("HWR").info(
+                f"Dialog box parameters: {dialog_box_parameters}"
+            )
+            self.full_dataset_flow.run(dialog_box_parameters=dialog_box_parameters)
 
         elif self.workflow_name == PrefectFlows.grid_scan:
-            # acquisition_parameters = self.beamline.get_default_acquisition_parameters(
-            #     acquisition_type="default_ansto"
-            # ).as_dict()
-            # acquisition_parameters["wavelenght"] = self.beamline.energy.get_wavelength()
 
-            # # TODO get sample id from Sample Changer
-            # acquisition_parameters["sample_id"] = "my_sample"
-
-            # # Bluesky does not like empty strings
-            # if not acquisition_parameters["comments"]:
-            #     acquisition_parameters["comments"] = None
 
             # logging.getLogger("HWR").debug(f"ACQ params: {acquisition_parameters}")
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")

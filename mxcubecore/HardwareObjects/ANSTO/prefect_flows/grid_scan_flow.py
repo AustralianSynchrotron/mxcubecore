@@ -300,7 +300,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "maximum": 14.8,
-                    "default": 10,
+                    "default": 1,
                     "widget": "textarea",
                 },
                 "omega_range": {
