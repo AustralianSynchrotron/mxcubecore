@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from gevent import monkey
 
-monkey.patch_all()
+# monkey.patch_all()
 
 import logging  # noqa: E402
 from asyncio import new_event_loop as asyncio_new_event_loop
@@ -285,6 +285,7 @@ class SampleChanger(AbstractSampleChanger):
             _loaded_pucks: dict[int, RobotPuck] = {}
             for _puck in _client.status.get_loaded_pucks():
                 _loaded_pucks[_puck.id] = _puck
+            # logging.getLogger("HWR").info(f"LOADED PUCKS: {_loaded_pucks}")
 
             _components: list[Puck] = self.get_components()
             for _mxcube_puck_idx in range(self.no_of_baskets):
@@ -305,6 +306,9 @@ class SampleChanger(AbstractSampleChanger):
                             id=_pin_id,
                             puck=_puck,
                         )
+                        # NOTE _puck is the barcode!
+                        # logging.getLogger("HWR").info(f"_puck: {_puck}")
+                    
                     _address = Pin.get_sample_address(_puck_id, _pin_id)
                     _mxcube_pin: Pin = self.get_component_by_address(_address)
                     _pin_datamatrix = f"matr{_puck_id}_{_pin_id}"
