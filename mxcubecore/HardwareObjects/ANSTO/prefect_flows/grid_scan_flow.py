@@ -124,7 +124,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
             success = True
         except Exception as ex:
-            logging.getLogger("HWR").info(f"Failed to execute raster flow: {e}")
+            logging.getLogger("HWR").info(f"Failed to execute raster flow: {ex}")
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
             success = False
