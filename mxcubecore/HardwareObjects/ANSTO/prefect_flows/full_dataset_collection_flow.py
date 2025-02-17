@@ -8,6 +8,8 @@ from .schemas.full_dataset import (
     FullDatasetParams,
     FullDatasetDialogBox
 )
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+
 
 FULL_DATASET_DEPLOYMENT_NAME = environ.get(
     "FULL_DATASET_DEPLOYMENT_NAME", "mxcube-full-data-collection/plans"
@@ -56,18 +58,20 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             f"parameters sent to prefect flow {prefect_parameters}"
         )
 
-        screening_flow = MX3PrefectClient(
+        full_dataset_flow = MX3PrefectClient(
             name=FULL_DATASET_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
-        # NOTE: using asyncio.run() does not seem to work consistently
-        loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(screening_flow.trigger_data_collection())
-        logging.getLogger("user_level_log").info(
-            "Screening complete. Data processing results will be displayed "
-            "in MX-PRISM shortly"
-        )
+        try:
+            loop = asyncio.get_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(full_dataset_flow.trigger_data_collection())
+            logging.getLogger("user_level_log").info(
+                "Full dataset collection complete. Data processing results will be displayed "
+                "in MX-PRISM shortly"
+            )
+        except Exception as ex:
+            raise QueueExecutionException(str(ex), self) from ex
 
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
@@ -125,7 +129,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                     "default": "fast_dp",
                 },
                 "crystal_counter": {
-                    "title": "Crystal Counter",
+                    "title": "Crystal ID",
                     "type": "number",
                     "minimum": 0,
                     "default": 0,

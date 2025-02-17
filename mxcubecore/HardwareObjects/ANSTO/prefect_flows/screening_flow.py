@@ -8,6 +8,8 @@ from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
 )
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+
 
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
@@ -59,18 +61,19 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         screening_flow = MX3PrefectClient(
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
+        try:
+            loop = asyncio.get_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(screening_flow.trigger_data_collection())
+            logging.getLogger("user_level_log").info(
+                "Screening complete. Data processing results will be displayed "
+                "in MX-PRISM shortly"
+            )
 
-        # NOTE: using asyncio.run() does not seem to work consistently
-        loop = asyncio.get_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(screening_flow.trigger_data_collection())
-        logging.getLogger("user_level_log").info(
-            "Screening complete. Data processing results will be displayed "
-            "in MX-PRISM shortly"
-        )
-
-        self._state.value = "ON"
-        self.mxcubecore_workflow_aborted = False
+            self._state.value = "ON"
+            self.mxcubecore_workflow_aborted = False
+        except Exception as ex:
+            raise QueueExecutionException(str(ex), self) from ex
 
     def dialog_box(self) -> dict:
         """
@@ -125,7 +128,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "default": "fast_dp",
                 },
                 "crystal_counter": {
-                    "title": "Crystal Counter",
+                    "title": "Crystal ID",
                     "type": "number",
                     "minimum": 0,
                     "default": 0,

@@ -21,6 +21,8 @@ from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+
 
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
@@ -117,12 +119,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
         )
 
         try:
-            # NOTE: using asyncio.run() does not seem to work consistently
             loop = asyncio.get_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
             success = True
-        except Exception as e:
+        except Exception as ex:
             logging.getLogger("HWR").info(f"Failed to execute raster flow: {e}")
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
@@ -130,6 +131,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             logging.getLogger("user_level_log").warning(
                 "Grid scan flow was not successful"
             )
+            raise QueueExecutionException(str(ex), self) from ex
 
         if success:
             logging.getLogger("HWR").info(f"grid id: {sid}")
