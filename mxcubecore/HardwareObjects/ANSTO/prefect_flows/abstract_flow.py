@@ -2,19 +2,21 @@ from abc import (
     ABC,
     abstractmethod,
 )
+from http import HTTPStatus
 from os import getenv
+from urllib.parse import urljoin
 
+import httpx
 from mx_robot_library.client import Client
 from mx_robot_library.schemas.common.sample import Pin
+
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-import httpx
-from urllib.parse import urljoin
-from http import HTTPStatus
+
 from .schemas.data_layer import PinRead
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
-EPN_STRING = getenv("EPN_STRING", "ABC") # TODO: could be obtained from somewhere else
+EPN_STRING = getenv("EPN_STRING", "ABC")  # TODO: could be obtained from somewhere else
 
 
 class AbstractPrefectWorkflow(ABC):
@@ -171,24 +173,24 @@ class AbstractPrefectWorkflow(ABC):
         Raises
         ------
         QueueExecutionException
-            _description_
+            An exception if Pin cannot be read from the data layer
         """
         port, barcode = self._get_barcode_and_port_of_mounted_pin()
-  
-        
+
         with httpx.Client() as client:
-            r=client.get(urljoin(DATA_LAYER_API, f"/pin/by_barcode_port_and_epn/{port}/{barcode}/{EPN_STRING}"))
+            r = client.get(
+                urljoin(
+                    DATA_LAYER_API,
+                    f"/pin/by_barcode_port_and_epn/{port}/{barcode}/{EPN_STRING}",
+                )
+            )
             if r.status_code != HTTPStatus.OK:
                 raise QueueExecutionException(
-                    f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}", 
-                    self)
-            
+                    f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
+                    self,
+                )
+
             return PinRead.model_validate(r.json())
-            
-
-        
-
-
 
     def _get_barcode_and_port_of_mounted_pin(self) -> tuple[int, str]:
         """
@@ -206,12 +208,11 @@ class AbstractPrefectWorkflow(ABC):
         """
         pucks = self.robot_client.status.get_loaded_pucks()
 
-        mounted_sample = self.robot_client.status.state.goni_pin 
+        mounted_sample = self.robot_client.status.state.goni_pin
         if mounted_sample is not None:
             for puck in pucks:
                 if puck.id == mounted_sample.puck.id:
                     return (mounted_sample.id, puck.name)
-        
+
         else:
             raise QueueExecutionException("No pin mounted on the goni", self)
-

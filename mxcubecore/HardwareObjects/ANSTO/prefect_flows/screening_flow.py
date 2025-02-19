@@ -2,14 +2,14 @@ import asyncio
 import logging
 from os import environ
 
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
 from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
 )
-from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-
 
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"

@@ -9,13 +9,11 @@ from uuid import UUID
 try:
     # NOTE: State must be imported first,
     # otherwise the prefect client does not work properly
-    from prefect import (
-        State
-    ) # noqa
-    from prefect.server.schemas.states import StateType # noqa
+    from prefect import State  # noqa
     from prefect.client.orchestration import PrefectClient
     from prefect.server.schemas.filters import FlowRunFilter
     from prefect.server.schemas.responses import FlowRunResponse
+    from prefect.server.schemas.states import StateType  # noqa
 
 except ImportError:
     logging.getLogger("HWR").info(

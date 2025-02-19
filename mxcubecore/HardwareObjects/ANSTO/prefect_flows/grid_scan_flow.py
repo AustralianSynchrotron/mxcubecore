@@ -14,6 +14,7 @@ from mxcubecore.HardwareObjects.SampleView import (
     Grid,
     SampleView,
 )
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -21,8 +22,6 @@ from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
-from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-
 
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"

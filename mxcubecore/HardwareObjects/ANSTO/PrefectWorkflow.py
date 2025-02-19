@@ -9,12 +9,12 @@ from gevent.event import Event
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.SampleView import SampleView
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
-from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
-from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 
 class State(object):
@@ -347,6 +347,7 @@ class PrefectWorkflow(HardwareObject):
         """
         logging.getLogger("HWR").info("Start workflow......")
         logging.getLogger("HWR").info(f"workflow name: {self.workflow_name}")
+        logging.getLogger("HWR").info(f"list_arguments: {list_arguments}")
         self.list_arguments = list_arguments
 
         if not self.gevent_event.is_set():
@@ -417,7 +418,9 @@ class PrefectWorkflow(HardwareObject):
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.full_dataset_flow = FullDatasetFlow(state=self._state)
-            dialog_box_parameters = self.open_dialog(self.full_dataset_flow.dialog_box())
+            dialog_box_parameters = self.open_dialog(
+                self.full_dataset_flow.dialog_box()
+            )
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
                     f"Dialog box parameters: {dialog_box_parameters}"
