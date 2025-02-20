@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from gevent import monkey
-
-# monkey.patch_all()
-
 import logging  # noqa: E402
 from asyncio import new_event_loop as asyncio_new_event_loop
 from asyncio import set_event_loop as asyncio_set_event_loop  # noqa: E402
 from functools import lru_cache  # noqa: E402
+from os import getenv
 from time import time  # noqa: E402
 from typing import (  # noqa: E402
     Any,
@@ -16,6 +13,7 @@ from typing import (  # noqa: E402
 )
 
 from gevent import sleep  # noqa: E402
+from gevent import monkey
 from mx_robot_library.client.client import Client  # noqa: E402
 from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
 from mx_robot_library.schemas.common.path import RobotPaths  # noqa: E402
@@ -43,8 +41,13 @@ from mxcubecore.TaskUtils import task as dtask  # noqa: E402
 
 from .prefect_flows.prefect_client import MX3PrefectClient  # noqa: E402
 
+# monkey.patch_all()
+
+
 hwr_logger = logging.getLogger("HWR")
 robot_config = get_robot_settings()
+
+ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 
 
 class SampleChangerError(Exception):
@@ -165,7 +168,7 @@ class SampleChanger(AbstractSampleChanger):
         """Cache the client, this allows the client to be used in dependencies and
         for overwriting in tests
         """
-        return Client(host=self.get_property("robot_host"), readonly=False)
+        return Client(host=ROBOT_HOST, readonly=False)
 
     def get_log_filename(self):
         return self.log_filename
@@ -285,7 +288,6 @@ class SampleChanger(AbstractSampleChanger):
             _loaded_pucks: dict[int, RobotPuck] = {}
             for _puck in _client.status.get_loaded_pucks():
                 _loaded_pucks[_puck.id] = _puck
-            # logging.getLogger("HWR").info(f"LOADED PUCKS: {_loaded_pucks}")
 
             _components: list[Puck] = self.get_components()
             for _mxcube_puck_idx in range(self.no_of_baskets):
@@ -306,9 +308,7 @@ class SampleChanger(AbstractSampleChanger):
                             id=_pin_id,
                             puck=_puck,
                         )
-                        # NOTE _puck is the barcode!
-                        # logging.getLogger("HWR").info(f"_puck: {_puck}")
-                    
+
                     _address = Pin.get_sample_address(_puck_id, _pin_id)
                     _mxcube_pin: Pin = self.get_component_by_address(_address)
                     _pin_datamatrix = f"matr{_puck_id}_{_pin_id}"
