@@ -1,3 +1,4 @@
-<object class = "SampleChangerMockup">
- <!-- SC3 commands and channels -->
+<object class = "ANSTO.SampleChanger">
+  <mount_deployment_name>mount-pin-plan/plans</mount_deployment_name>
+  <unmount_deployment_name>unmount-pin-plan/plans</unmount_deployment_name>
 </object>

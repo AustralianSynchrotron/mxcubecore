@@ -14,6 +14,7 @@ from mxcubecore.HardwareObjects.SampleView import (
     Grid,
     SampleView,
 )
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -117,19 +118,19 @@ class GridScanFlow(AbstractPrefectWorkflow):
         )
 
         try:
-            # NOTE: using asyncio.run() does not seem to work consistently
             loop = asyncio.get_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
             success = True
-        except Exception as e:
-            logging.getLogger("HWR").info(f"Failed to execute raster flow: {e}")
+        except Exception as ex:
+            logging.getLogger("HWR").info(f"Failed to execute raster flow: {ex}")
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
             success = False
             logging.getLogger("user_level_log").warning(
                 "Grid scan flow was not successful"
             )
+            raise QueueExecutionException(str(ex), self) from ex
 
         if success:
             logging.getLogger("HWR").info(f"grid id: {sid}")
@@ -300,7 +301,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "maximum": 14.8,
-                    "default": 10,
+                    "default": 1,
                     "widget": "textarea",
                 },
                 "omega_range": {

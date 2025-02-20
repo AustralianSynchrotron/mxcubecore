@@ -6,18 +6,18 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
-from .schemas.screening import (
-    ScreeningDialogBox,
-    ScreeningParams,
+from .schemas.full_dataset import (
+    FullDatasetDialogBox,
+    FullDatasetParams,
 )
 
-SCREENING_DEPLOYMENT_NAME = environ.get(
-    "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
+FULL_DATASET_DEPLOYMENT_NAME = environ.get(
+    "FULL_DATASET_DEPLOYMENT_NAME", "mxcube-full-data-collection/plans"
 )
 ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "true"
 
 
-class ScreeningFlow(AbstractPrefectWorkflow):
+class FullDatasetFlow(AbstractPrefectWorkflow):
     def run(self, dialog_box_parameters: dict) -> None:
         """Runs the screening flow
 
@@ -30,10 +30,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         -------
         None
         """
-        # This is the payload we get from the UI"
-        dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
+        # This is the payload we get from the UI
+        dialog_box_model = FullDatasetDialogBox.parse_obj(dialog_box_parameters)
 
-        screening_params = ScreeningParams(
+        full_dataset_params = FullDatasetParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
@@ -59,7 +59,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         prefect_parameters = {
             "sample_id": sample_id,
             "crystal_counter": dialog_box_model.crystal_counter,
-            "screening_params": screening_params.dict(),
+            "collection_params": full_dataset_params.dict(),
             "run_data_processing_pipeline": True,
             "hardware_trigger": dialog_box_model.hardware_trigger,
             "add_dummy_pin": ADD_DUMMY_PIN_TO_DB,
@@ -71,22 +71,23 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             f"parameters sent to prefect flow {prefect_parameters}"
         )
 
-        screening_flow = MX3PrefectClient(
-            name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
+        full_dataset_flow = MX3PrefectClient(
+            name=FULL_DATASET_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
+
         try:
             loop = asyncio.get_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(screening_flow.trigger_data_collection())
+            loop.run_until_complete(full_dataset_flow.trigger_data_collection())
             logging.getLogger("user_level_log").info(
-                "Screening complete. Data processing results will be displayed "
+                "Full dataset collection complete. Data processing results will be displayed "
                 "in MX-PRISM shortly"
             )
-
-            self._state.value = "ON"
-            self.mxcubecore_workflow_aborted = False
         except Exception as ex:
             raise QueueExecutionException(str(ex), self) from ex
+
+        self._state.value = "ON"
+        self.mxcubecore_workflow_aborted = False
 
     def dialog_box(self) -> dict:
         """
