@@ -8,7 +8,6 @@ from urllib.parse import urljoin
 
 import httpx
 from mx_robot_library.client import Client
-from mx_robot_library.schemas.common.sample import Pin
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
@@ -16,7 +15,9 @@ from .schemas.data_layer import PinRead
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
-EPN_STRING = getenv("EPN_STRING", "ABC")  # TODO: could be obtained from somewhere else
+EPN_STRING = getenv(
+    "EPN_STRING", "my_epn"
+)  # TODO: could be obtained from somewhere else
 
 
 class AbstractPrefectWorkflow(ABC):
@@ -162,7 +163,7 @@ class AbstractPrefectWorkflow(ABC):
         """
         self._state = new_state
 
-    def get_sample_name_of_mounted_sample(self) -> PinRead:
+    def get_pin_model_of_mounted_sample_from_db(self) -> PinRead:
         """Gets the pin model from the mx-data-layer-api
 
         Returns
@@ -212,7 +213,9 @@ class AbstractPrefectWorkflow(ABC):
         if mounted_sample is not None:
             for puck in pucks:
                 if puck.id == mounted_sample.puck.id:
-                    return (mounted_sample.id, puck.name)
+                    # NOTE: The robot returns the barcode as e.g ASP-3018,
+                    # but the data layer expects the format ASP3018
+                    return (mounted_sample.id, puck.name.replace("-", ""))
 
         else:
             raise QueueExecutionException("No pin mounted on the goni", self)

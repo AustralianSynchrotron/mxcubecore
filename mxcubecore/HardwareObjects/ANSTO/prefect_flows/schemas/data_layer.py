@@ -4,16 +4,16 @@ from datetime import datetime
 class TimeStampMixin(BaseModel):
     """Timestamp Mixin"""
 
-    create_date: datetime = Field(
+    createDate: datetime = Field(
         title="Create Date",
         description="Date entry created.",
     )
-    write_date: datetime = Field(
+    writeDate: datetime = Field(
         title="Write Date",
         description="Date entry updated.",
     )
 
-class PinRead(BaseModel, TimeStampMixin):
+class PinRead(TimeStampMixin, BaseModel):
     """Abstract Pin Schema"""
     id: int = Field(title="Pin ID", examples=[1])
     puckId: int = Field(title="Puck ID", examples=[1])

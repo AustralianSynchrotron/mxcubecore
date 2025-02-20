@@ -14,6 +14,7 @@ from .schemas.screening import (
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
 )
+ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "true"
 
 
 class ScreeningFlow(AbstractPrefectWorkflow):
@@ -43,13 +44,25 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             beam_size=(80, 80),  # TODO: get beam size
         )
 
+        if not ADD_DUMMY_PIN_TO_DB:
+            logging.getLogger("HWR").info("Getting pin from the data layer...")
+            pin = self.get_pin_model_of_mounted_sample_from_db()
+            logging.getLogger("HWR").info(f"Mounted pin: {pin}")
+            sample_id = pin.id
+        else:
+            logging.getLogger("HWR").warning(
+                "A dummy pin will be added to the database. NOTE that this should "
+                "only be used for development"
+            )
+            sample_id = dialog_box_model.sample_id
+
         prefect_parameters = {
-            "sample_id": dialog_box_model.sample_id,
+            "sample_id": sample_id,
             "crystal_counter": dialog_box_model.crystal_counter,
             "screening_params": screening_params.dict(),
             "run_data_processing_pipeline": True,
             "hardware_trigger": dialog_box_model.hardware_trigger,
-            "add_dummy_pin": True,
+            "add_dummy_pin": ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
         }
