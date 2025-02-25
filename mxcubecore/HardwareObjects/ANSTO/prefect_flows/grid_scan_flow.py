@@ -15,6 +15,8 @@ from mxcubecore.HardwareObjects.SampleView import (
     SampleView,
 )
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -98,7 +100,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             beam_position=beam_position,
             number_of_columns=num_cols,
             number_of_rows=num_rows,
-            detector_distance=dialog_box_model.detector_distance,
+            detector_distance=dialog_box_model.detector_distance/1000,
             photon_energy=dialog_box_model.photon_energy,
             omega_range=dialog_box_model.omega_range,
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
@@ -309,15 +311,15 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "maximum": 360,
-                    "default": 0,
+                    "default": -360,
                     "widget": "textarea",
                 },
                 "detector_distance": {
-                    "title": "Detector Distance [m]",
+                    "title": "Detector Distance [mm]",
                     "type": "number",
-                    "minimum": 0,
-                    "maximum": 3,
-                    "default": 0.396,
+                    "minimum": 0, # TODO: get limits from distance PV
+                    "maximum": 3000, # TODO: get limits from distance PV
+                    "default": actual_sample_detector_distance.get(),
                     "widget": "textarea",
                 },
                 "photon_energy": {
@@ -325,13 +327,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 5,
                     "maximum": 25,
-                    "default": 13,
-                    "widget": "textarea",
-                },
-                "hardware_trigger": {
-                    "title": "Hardware Trigger (dev only)",
-                    "type": "boolean",
-                    "default": True,
+                    "default": energy_master.get(),
                     "widget": "textarea",
                 },
                 "sample_id": {
@@ -341,7 +337,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "widget": "textarea",
                 },
             },
-            "required": ["detector_distance", "photon_energy"],
+            "required": [
+                "md3_alignment_y_speed"
+                "detector_distance", 
+                "photon_energy"
+                ],
             "dialogName": "Grid scan parameters",
         }
 

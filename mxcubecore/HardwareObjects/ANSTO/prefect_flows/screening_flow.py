@@ -3,6 +3,8 @@ import logging
 from os import environ
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -39,7 +41,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             number_of_passes=1,
             count_time=None,
             number_of_frames=dialog_box_model.number_of_frames,
-            detector_distance=dialog_box_model.detector_distance,
+            detector_distance=dialog_box_model.detector_distance/1000, # meters
             photon_energy=dialog_box_model.photon_energy,
             beam_size=(80, 80),  # TODO: get beam size
         )
@@ -122,16 +124,19 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "widget": "textarea",
                 },
                 "detector_distance": {
-                    "title": "Detector Distance [m]",
+                    "title": "Detector Distance [mm]",
                     "type": "number",
-                    "default": 0.396,
+                    "minimum": 0, # TODO: get limits from distance PV
+                    "maximum": 3000, # TODO: get limits from distance PV
+                    "default": actual_sample_detector_distance.get(),
                     "widget": "textarea",
                 },
                 "photon_energy": {
                     "title": "Photon Energy [keV]",
                     "type": "number",
-                    "minimum": 0,
-                    "default": 13,
+                    "minimum": 5, # TODO: get limits from PV?
+                    "maximum": 25,
+                    "default": energy_master.get(),
                     "widget": "textarea",
                 },
                 "processing_pipeline": {
@@ -147,12 +152,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "default": 0,
                     "widget": "textarea",
                 },
-                "hardware_trigger": {
-                    "title": "Hardware trigger (dev only)",
-                    "type": "boolean",
-                    "default": True,
-                    "widget": "textarea",
-                },
                 "sample_id": {
                     "title": "Sample id (dev only)",
                     "type": "string",
@@ -160,8 +159,16 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                     "widget": "textarea",
                 },
             },
-            "required": ["exposure_time"],
-            "dialogName": "Grid scan parameters",
+            "required": [
+                "exposure_time", 
+                "omega_range", 
+                "number_of_frames", 
+                "detector_distance",
+                "photon_energy",
+                "processing_pipeline"
+                "crystal_counter"
+                ],
+            "dialogName": "Screening Parameters",
         }
 
         return dialog

@@ -8,12 +8,14 @@ from pydantic.v1 import (
     Field,
 )
 
-
+# NOTE: The detector_distance and energy units used in 
+# the FullDatasetDialogBox and Prefect FullDatasetParams are different
+# on purpose
 class FullDatasetDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
     number_of_frames: int
-    detector_distance: float
+    detector_distance: float = Field(description="Measured in millimeters")
     photon_energy: float
     hardware_trigger: bool = True
     sample_id: Optional[str] = None
@@ -40,10 +42,10 @@ class FullDatasetParams(BaseModel):
         description="Global default. Determined by the detector frame rate and exposure time.",
     )
     detector_distance: float = Field(
-        default=-0.298, description="Output from XPLAN. Measured in m."
+        description="Output from XPLAN. Measured in m."
     )
     photon_energy: float = Field(
-        default=12700, description="Global default. Measured in eV."
+        description="Global default. Measured in keV."
     )
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),
