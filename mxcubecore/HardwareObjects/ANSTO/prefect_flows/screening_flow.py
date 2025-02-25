@@ -165,7 +165,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "number_of_frames", 
                 "detector_distance",
                 "photon_energy",
-                "processing_pipeline"
+                "processing_pipeline",
                 "crystal_counter"
                 ],
             "dialogName": "Screening Parameters",

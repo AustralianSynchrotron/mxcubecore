@@ -12,7 +12,6 @@ class GridScanDialogBox(BaseModel):
     detector_distance: float = Field(description="Distance measured in millimeters")
     photon_energy: float
     hardware_trigger: bool = True
-    sample_id: Optional[str] = None
 
 
 class GridScanParams(BaseModel):
