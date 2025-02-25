@@ -1,0 +1,44 @@
+---
+server:
+  SECRET_KEY: "ASECRETKEY"
+  SECURITY_PASSWORD_SALT: "ASALT"
+  SESSION_TYPE: "redis"
+  SESSION_KEY_PREFIX: "mxcube:session:"
+  PERMANENT_SESSION_LIFETIME: 3600
+
+  DEBUG: false
+
+  ALLOWED_CORS_ORIGINS:
+    - "http://localhost:8081"
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "ws://localhost:8000"
+    - "https://mxcube.mx3.beamline.synchrotron.org.au"
+    - "wss://mxcube.mx3.beamline.synchrotron.org.au"
+    - "http://mxcube.mx3.beamline.synchrotron.org.au"
+    - "ws://mxcube.mx3.beamline.synchrotron.org.au"
+    - "http://mx3hpcp03:5173"
+
+mxcube:
+  USE_EXTERNAL_STREAMER: false
+  VIDEO_FORMAT: MJPEG
+  # Mode, SSX-CHIP, SSX-INJECTOR, OSC
+  mode: OSC
+
+  usermanager:
+    class: UserManager
+    inhouse_is_staff: true
+    users:
+      - username: opid291
+        role: staff
+
+sso:
+  USE_SSO: false  # True to use SSO false otherwise
+  ISSUER: https://websso.[site].[com]/realms/[site]/  # OpenIDConnect issuer URI
+  LOGOUT_URI: ""  # OpenIDConnect logout URI
+  TOKEN_INFO_URI: ""  # OpenIDConnect token info URI
+  CLIENT_SECRET: ASECRETKEY  # OpenIDConnect client secret
+  CLIENT_ID: mxcube  # OpenIDConnect client ID
+  # OpenIDConnect defualt scopes, none scope is actually beeing used
+  SCOPE: openid email profile
+  CODE_CHALLANGE_METHOD: S256  # OpenIDConnect challange method

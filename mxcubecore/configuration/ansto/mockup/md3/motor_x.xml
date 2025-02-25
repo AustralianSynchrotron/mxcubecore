@@ -1,0 +1,6 @@
+<object class="MotorMockup">
+  <username>PhiX</username>
+  <actuator_name>AlignmentX</actuator_name>
+  <GUIstep>0.1</GUIstep>
+  <unit>1e-3</unit>
+</object>

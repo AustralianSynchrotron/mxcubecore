@@ -1,0 +1,13 @@
+<object class = "ANSTO.Detector">
+  <username>detector</username>
+  <object hwrid="/dtox" role="detector_distance"/>
+  <tempThreshold>33.5</tempThreshold>
+  <humidityThreshold>20.0</humidityThreshold>
+  <tolerance>0.2</tolerance>
+  <type>Eiger2</type>
+  <model>9M</model>
+  <manufacturer>DECTRIS</manufacturer>
+  <hasShutterless>True</hasShutterless>
+  <roi_mode_list>["4M", "16M"]</roi_mode_list>
+  <exports>["restart"]</exports>
+</object>
