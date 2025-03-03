@@ -17,6 +17,7 @@ class ScreeningDialogBox(BaseModel):
     number_of_frames: int
     detector_distance: float = Field(description="Detector distance in millimeters")
     photon_energy: float = Field(description="Detector distance in keV")
+    transmission: float = 0.1
     hardware_trigger: bool = True
     sample_id: Optional[str] = None
     processing_pipeline: str = "dials"

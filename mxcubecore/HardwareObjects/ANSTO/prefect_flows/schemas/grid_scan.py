@@ -25,9 +25,10 @@ class GridScanParams(BaseModel):
     detector_distance: float = Field(description="Distance measured in meters")
     photon_energy: float
     omega_range: float = 0
-    md3_alignment_y_speed: float = 10
+    md3_alignment_y_speed: float = 1
     beam_position: Union[tuple[int, int], list[int]] = (612, 512)
     count_time: Optional[float] = None
     hardware_trigger: bool = True
     crystal_finder_threshold: int = 1
     number_of_processes: Optional[float] = None
+    transmission: float = 0.1

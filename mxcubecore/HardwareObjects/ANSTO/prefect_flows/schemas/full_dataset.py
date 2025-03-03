@@ -47,6 +47,7 @@ class FullDatasetParams(BaseModel):
     photon_energy: float = Field(
         description="Global default. Measured in keV."
     )
+    transmission: float = 0.1
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),
         description="Determined by the crystal finder. Not currently used. "
