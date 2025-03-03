@@ -334,7 +334,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0, # TODO: get limits from distance PV
                     "maximum": 3000, # TODO: get limits from distance PV
-                    "default": actual_sample_detector_distance.get(),
+                    "default": round(actual_sample_detector_distance.get(),2),
                     "widget": "textarea",
                 },
                 "photon_energy": {
@@ -342,7 +342,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 5, # TODO: get limits from PV?
                     "maximum": 25,
-                    "default": energy_master.get(),
+                    "default": round(energy_master.get(),2),
                     "widget": "textarea",
                 },
             },
