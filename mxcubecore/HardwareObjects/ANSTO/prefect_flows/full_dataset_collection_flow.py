@@ -47,7 +47,6 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
 
         if not ADD_DUMMY_PIN_TO_DB:
-            logging.getLogger("HWR").info("Getting pin from the data layer...")
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
             sample_id = pin.id
@@ -100,8 +99,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
-        dialog = {
-            "properties": {
+        properties = {
                 "exposure_time": {
                     "title": "Total Exposure Time [s]",
                     "type": "number",
@@ -153,13 +151,18 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                     "default": 0,
                     "widget": "textarea",
                 },
-                "sample_id": {
+            }
+        
+        if ADD_DUMMY_PIN_TO_DB:
+            properties["sample_id"] = {
                     "title": "Sample id (dev only)",
                     "type": "string",
                     "default": "my_sample",
                     "widget": "textarea",
-                },
-            },
+                }
+
+        dialog = {
+            "properties": properties,
             "required": [
                 "exposure_time", 
                 "omega_range", 

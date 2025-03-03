@@ -10,6 +10,7 @@ import httpx
 from mx_robot_library.client import Client
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+import logging
 
 from .schemas.data_layer import PinRead
 
@@ -176,7 +177,16 @@ class AbstractPrefectWorkflow(ABC):
         QueueExecutionException
             An exception if Pin cannot be read from the data layer
         """
+        logging.getLogger("HWR").info(
+            "Getting barcode from mounted pin using the mx-robot-api"
+        )
         port, barcode = self._get_barcode_and_port_of_mounted_pin()
+
+        logging.getLogger("HWR").info(
+            f"Getting pin id from the mx-data-layer-api for port {port}, "
+            f"barcode {barcode}, and epn_string {EPN_STRING}"
+            
+        )
 
         with httpx.Client() as client:
             r = client.get(
