@@ -184,6 +184,9 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         while self.shutter.open_close_status.get() == OpenCloseStatus.MOVING:
             time.sleep(0.1)
             self.update_state(self.STATES.BUSY)
+            current_value = self.get_value()
+            self.update_value(current_value)
 
+        self.update_value(self.get_value())
         self.update_state(self.STATES.READY)
         return value
