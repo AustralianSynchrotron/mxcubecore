@@ -1,7 +1,5 @@
-<device class="ANSTO.MicrodiffLight">
-  <username>Back light</username>
-  <actuator_name>BackLight</actuator_name>
-  <limits>0, 2</limits>
-  <position_suffix>Factor</position_suffix>
-</device>
-
+<object class="MotorMockup">
+  <username>backlight</username>
+  <motor_name>backlight</motor_name>
+  <exporter_address>192.168.96.43:9001</exporter_address>
+</object>
