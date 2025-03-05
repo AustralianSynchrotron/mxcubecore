@@ -1,6 +1,9 @@
 import time
 
-from mx3_beamline_library.devices.beam import transmission, filter_wheel_is_moving
+from mx3_beamline_library.devices.beam import (
+    filter_wheel_is_moving,
+    transmission,
+)
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator

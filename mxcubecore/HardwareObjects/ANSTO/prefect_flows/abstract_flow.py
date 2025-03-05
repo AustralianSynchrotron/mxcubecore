@@ -1,3 +1,4 @@
+import logging
 from abc import (
     ABC,
     abstractmethod,
@@ -10,7 +11,6 @@ import httpx
 from mx_robot_library.client import Client
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-import logging
 
 from .schemas.data_layer import PinRead
 
@@ -185,7 +185,6 @@ class AbstractPrefectWorkflow(ABC):
         logging.getLogger("HWR").info(
             f"Getting pin id from the mx-data-layer-api for port {port}, "
             f"barcode {barcode}, and epn_string {EPN_STRING}"
-            
         )
 
         with httpx.Client() as client:

@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import redis
+from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.HardwareObjects.SampleView import (
     Grid,
     SampleView,
 )
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-from mx3_beamline_library.devices.beam import energy_master
-from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -88,7 +88,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             logging.getLogger("HWR").info("Getting pin from the data layer...")
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
-            sample_id = str(pin.id) # Could also be sample name
+            sample_id = str(pin.id)  # Could also be sample name
         else:
             logging.getLogger("HWR").warning(
                 "The sample id will not be obtained from the data layer. "
@@ -115,7 +115,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             beam_position=beam_position,
             number_of_columns=num_cols,
             number_of_rows=num_rows,
-            detector_distance=dialog_box_model.detector_distance/1000,
+            detector_distance=dialog_box_model.detector_distance / 1000,
             photon_energy=dialog_box_model.photon_energy,
             omega_range=dialog_box_model.omega_range,
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
@@ -332,26 +332,26 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "detector_distance": {
                     "title": "Detector Distance [mm]",
                     "type": "number",
-                    "minimum": 0, # TODO: get limits from distance PV
-                    "maximum": 3000, # TODO: get limits from distance PV
-                    "default": round(actual_sample_detector_distance.get(),2),
+                    "minimum": 0,  # TODO: get limits from distance PV
+                    "maximum": 3000,  # TODO: get limits from distance PV
+                    "default": round(actual_sample_detector_distance.get(), 2),
                     "widget": "textarea",
                 },
                 "photon_energy": {
                     "title": "Photon Energy [keV]",
                     "type": "number",
-                    "minimum": 5, # TODO: get limits from PV?
+                    "minimum": 5,  # TODO: get limits from PV?
                     "maximum": 25,
-                    "default": round(energy_master.get(),2),
+                    "default": round(energy_master.get(), 2),
                     "widget": "textarea",
                 },
             },
             "required": [
                 "md3_alignment_y_speed",
                 "omega_range",
-                "detector_distance", 
-                "photon_energy"
-                ],
+                "detector_distance",
+                "photon_energy",
+            ],
             "dialogName": "Grid Scan Parameters",
         }
 
