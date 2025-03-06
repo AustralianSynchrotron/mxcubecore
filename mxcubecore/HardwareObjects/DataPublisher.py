@@ -118,7 +118,13 @@ class DataPublisher(HardwareObject):
         )
 
         self._r = redis.Redis(
-            host=rhost, port=rport, db=rdb, encoding="utf-8", decode_responses=True
+            host=rhost,
+            port=rport,
+            db=rdb,
+            username=username,
+            password=password,
+            encoding="utf-8",
+            decode_responses=True,
         )
 
         if not self._subsribe_task:
