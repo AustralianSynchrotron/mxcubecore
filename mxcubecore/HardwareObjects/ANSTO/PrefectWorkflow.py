@@ -10,6 +10,9 @@ from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+import asyncio
+from time import perf_counter, sleep
+import gevent
 
 from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
@@ -315,6 +318,18 @@ class PrefectWorkflow(HardwareObject):
         None
         """
         logging.getLogger("HWR").info("Aborting current workflow")
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # TODO: MXcube takes some significant time to cancel workflows (investigate why)
+            timeout = 30
+            logging.getLogger("HWR").warning(f"Loop is still running, waiting for {timeout} s to complete")
+            t = perf_counter()
+            while loop.is_running():
+                gevent.sleep(1)
+                logging.getLogger("HWR").warning(f"Loop is still running")
+                if perf_counter() > t + timeout:
+                    raise QueueExecutionException("Asyncio Loop is still running", self)
+
         # If necessary unblock dialog
         if not self.gevent_event.is_set():
             self.gevent_event.set()
@@ -323,10 +338,8 @@ class PrefectWorkflow(HardwareObject):
             self.raster_flow.prefect_flow_aborted = True
             self.raster_flow.mxcubecore_workflow_aborted = True
 
-        else:
-            raise NotImplementedError(
-                "Only Raster workflows can be aborted at the moment"
-            )
+        self.state.value = "ON"
+
 
     def start(self, list_arguments: list[str]) -> None:
         """

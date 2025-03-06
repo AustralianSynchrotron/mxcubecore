@@ -122,7 +122,7 @@ class MX3PrefectClient:
         """
         self.deployment_id = await self.get_deployment_id_from_name(self.name)
         await self.async_redis_connection.set(
-            f"state:{sample_id}", FlowState.RUNNING, ex=3600
+            f"mxcube_scan_state:{sample_id}", FlowState.RUNNING, ex=3600
         )
 
         response: FlowRunResponse = (
@@ -131,11 +131,12 @@ class MX3PrefectClient:
             )
         )
         self.flow_run_id = response.id
+        await self.async_redis_connection.set(f"mxcube_scan_flow_run_id:{sample_id}", str(self.flow_run_id))
 
-        flow_status = await self.async_redis_connection.get(f"state:{sample_id}")
+        flow_status = await self.async_redis_connection.get(f"mxcube_scan_state:{sample_id}")
         while flow_status not in [FlowState.FAILED, FlowState.READY_TO_UNMOUNT]:
             await asyncio.sleep(poll_interval)
-            flow_status = await self.async_redis_connection.get(f"state:{sample_id}")
+            flow_status = await self.async_redis_connection.get(f"mxcube_scan_state:{sample_id}")
 
     async def get_tasks(self, flow_run_id: UUID = None) -> None:
         """

@@ -16,6 +16,10 @@ from .schemas.data_layer import PinRead
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
+HDF5_OUTPUT_DIRECTORY = getenv(
+    "DATA_LAYER_API", 
+    "/mnt/disk/dev_share/HDF5_from_ZMQ_stream/"
+)
 EPN_STRING = getenv(
     "EPN_STRING", "my_epn"
 )  # TODO: could be obtained from somewhere else
