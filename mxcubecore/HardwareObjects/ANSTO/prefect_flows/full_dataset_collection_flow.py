@@ -78,7 +78,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
 
         try:
-            loop = asyncio.get_event_loop()
+            loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(
                 full_dataset_flow.trigger_data_collection(sample_id)

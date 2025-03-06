@@ -1,8 +1,11 @@
+import asyncio
 import logging
 import os
 import pprint
 import time
+from time import perf_counter
 
+import gevent
 import redis
 from gevent.event import Event
 
@@ -10,9 +13,6 @@ from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-import asyncio
-from time import perf_counter, sleep
-import gevent
 
 from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
@@ -322,7 +322,9 @@ class PrefectWorkflow(HardwareObject):
         if loop.is_running():
             # TODO: MXcube takes some significant time to cancel workflows (investigate why)
             timeout = 30
-            logging.getLogger("HWR").warning(f"Loop is still running, waiting for {timeout} s to complete")
+            logging.getLogger("HWR").warning(
+                f"Loop is still running, waiting for {timeout} s to complete"
+            )
             t = perf_counter()
             while loop.is_running():
                 gevent.sleep(1)
@@ -339,7 +341,6 @@ class PrefectWorkflow(HardwareObject):
             self.raster_flow.mxcubecore_workflow_aborted = True
 
         self.state.value = "ON"
-
 
     def start(self, list_arguments: list[str]) -> None:
         """

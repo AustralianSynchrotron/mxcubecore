@@ -77,7 +77,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
         try:
-            loop = asyncio.get_event_loop()
+            loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(screening_flow.trigger_data_collection(sample_id))
             logging.getLogger("HWR").info(
