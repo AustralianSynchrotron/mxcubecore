@@ -1,10 +1,13 @@
 import asyncio
 import logging
+from enum import StrEnum
 from os import (
     environ,
     path,
 )
 from uuid import UUID
+
+import redis
 
 try:
     # NOTE: State must be imported first,
@@ -25,6 +28,13 @@ except ImportError:
 PREFECT_URI = environ.get("PREFECT_URI", "http://localhost:4200")
 
 
+class FlowState(StrEnum):
+    RUNNING = "running"
+    FAILED = "failed"
+    READY_TO_UNMOUNT = "ready_to_unmount"  # This does not mean the flow is completed
+    COMPLETED = "completed"
+
+
 class MX3PrefectClient:
     """
     Class used to launch prefect flows
@@ -42,8 +52,24 @@ class MX3PrefectClient:
         self.parameters = parameters
         self.name = name
         self.flow_run_id = None
+
         self.deployment_id = None
         self.prefect_client = PrefectClient(api=path.join(PREFECT_URI, "api"))
+
+        REDIS_HOST = environ.get("MXCUBE_REDIS_HOST", "localhost")
+        REDIS_PORT = int(environ.get("MXCUBE_REDIS_PORT", "6379"))
+        REDIS_USERNAME = environ.get("MXCUBE_REDIS_USERNAME", None)
+        REDIS_PASSWORD = environ.get("MXCUBE_REDIS_PASSWORD", None)
+        REDIS_DB = int(environ.get("MXCUBE_REDIS_DB", "0"))
+
+        self.async_redis_connection = redis.asyncio.StrictRedis(
+            host=REDIS_HOST,
+            port=REDIS_PORT,
+            username=REDIS_USERNAME,
+            password=REDIS_PASSWORD,
+            db=REDIS_DB,
+            decode_responses=True,
+        )
 
     async def trigger_flow(self, wait=False) -> FlowRunResponse:
         """
@@ -78,7 +104,9 @@ class MX3PrefectClient:
         if wait:
             await self.wait()
 
-    async def trigger_data_collection(self, poll_interval: float = 3.0) -> None:
+    async def trigger_data_collection(
+        self, sample_id: str, poll_interval: float = 3.0
+    ) -> None:
         """
         Triggers a prefect flow but only waits until data collection is finished
         so that data processing happens in the background
@@ -93,6 +121,9 @@ class MX3PrefectClient:
         None
         """
         self.deployment_id = await self.get_deployment_id_from_name(self.name)
+        await self.async_redis_connection.set(
+            f"state:{sample_id}", FlowState.RUNNING, ex=3600
+        )
 
         response: FlowRunResponse = (
             await self.prefect_client.create_flow_run_from_deployment(
@@ -101,18 +132,10 @@ class MX3PrefectClient:
         )
         self.flow_run_id = response.id
 
-        task_len = 0
-        while task_len == 0:
+        flow_status = await self.async_redis_connection.get(f"state:{sample_id}")
+        while flow_status not in [FlowState.FAILED, FlowState.READY_TO_UNMOUNT]:
             await asyncio.sleep(poll_interval)
-            tasks = await self.get_tasks()
-            task_len = len(tasks)
-
-        state = "RUNNING"
-        while state == "RUNNING":
-            await asyncio.sleep(poll_interval)
-            tasks = await self.get_tasks()
-            data_collection_task = tasks[0]
-            state = data_collection_task.state.type
+            flow_status = await self.async_redis_connection.get(f"state:{sample_id}")
 
     async def get_tasks(self, flow_run_id: UUID = None) -> None:
         """
