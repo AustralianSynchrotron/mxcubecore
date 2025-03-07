@@ -2,6 +2,9 @@ import asyncio
 import logging
 from os import environ
 
+from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.motors import actual_sample_detector_distance
+
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from .abstract_flow import AbstractPrefectWorkflow
@@ -39,13 +42,12 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             number_of_passes=1,
             count_time=None,
             number_of_frames=dialog_box_model.number_of_frames,
-            detector_distance=dialog_box_model.detector_distance,
+            detector_distance=dialog_box_model.detector_distance / 1000,  # meters
             photon_energy=dialog_box_model.photon_energy,
             beam_size=(80, 80),  # TODO: get beam size
         )
 
         if not ADD_DUMMY_PIN_TO_DB:
-            logging.getLogger("HWR").info("Getting pin from the data layer...")
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
             sample_id = pin.id
@@ -75,10 +77,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
         try:
-            loop = asyncio.get_event_loop()
+            loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(screening_flow.trigger_data_collection())
-            logging.getLogger("user_level_log").info(
+            loop.run_until_complete(screening_flow.trigger_data_collection(sample_id))
+            logging.getLogger("HWR").info(
                 "Screening complete. Data processing results will be displayed "
                 "in MX-PRISM shortly"
             )
@@ -97,71 +99,81 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
-        dialog = {
-            "properties": {
-                "exposure_time": {
-                    "title": "Total Exposure Time [s]",
-                    "type": "number",
-                    "minimum": 0,
-                    "default": 1,
-                    "widget": "textarea",
-                },
-                "omega_range": {
-                    "title": "Omega Range [degrees]",
-                    "type": "number",
-                    "minimum": 0,
-                    "exclusiveMaximum": 361,
-                    "default": 10,
-                    "widget": "textarea",
-                },
-                "number_of_frames": {
-                    "title": "Number of Frames",
-                    "type": "number",
-                    "minimum": 1,
-                    "default": 100,
-                    "widget": "textarea",
-                },
-                "detector_distance": {
-                    "title": "Detector Distance [m]",
-                    "type": "number",
-                    "default": 0.396,
-                    "widget": "textarea",
-                },
-                "photon_energy": {
-                    "title": "Photon Energy [keV]",
-                    "type": "number",
-                    "minimum": 0,
-                    "default": 13,
-                    "widget": "textarea",
-                },
-                "processing_pipeline": {
-                    "title": "Data Processing Pipeline",
-                    "type": "string",
-                    "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
-                    "default": "fast_dp",
-                },
-                "crystal_counter": {
-                    "title": "Crystal ID",
-                    "type": "number",
-                    "minimum": 0,
-                    "default": 0,
-                    "widget": "textarea",
-                },
-                "hardware_trigger": {
-                    "title": "Hardware trigger (dev only)",
-                    "type": "boolean",
-                    "default": True,
-                    "widget": "textarea",
-                },
-                "sample_id": {
-                    "title": "Sample id (dev only)",
-                    "type": "string",
-                    "default": "my_sample",
-                    "widget": "textarea",
-                },
+        properties = {
+            "exposure_time": {
+                "title": "Total Exposure Time [s]",
+                "type": "number",
+                "minimum": 0,
+                "default": 1,
+                "widget": "textarea",
             },
-            "required": ["exposure_time"],
-            "dialogName": "Grid scan parameters",
+            "omega_range": {
+                "title": "Omega Range [degrees]",
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMaximum": 361,
+                "default": 10,
+                "widget": "textarea",
+            },
+            "number_of_frames": {
+                "title": "Number of Frames",
+                "type": "number",
+                "minimum": 1,
+                "default": 100,
+                "widget": "textarea",
+            },
+            "detector_distance": {
+                "title": "Detector Distance [mm]",
+                "type": "number",
+                "minimum": 0,  # TODO: get limits from distance PV
+                "maximum": 3000,  # TODO: get limits from distance PV
+                "default": round(actual_sample_detector_distance.get(), 2),
+                "widget": "textarea",
+            },
+            "photon_energy": {
+                "title": "Photon Energy [keV]",
+                "type": "number",
+                "minimum": 5,  # TODO: get limits from PV?
+                "maximum": 25,
+                "default": round(energy_master.get(), 2),
+                "widget": "textarea",
+            },
+            "processing_pipeline": {
+                "title": "Data Processing Pipeline",
+                "type": "string",
+                "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
+                "default": "fast_dp",
+            },
+            "crystal_counter": {
+                "title": "Crystal ID",
+                "type": "number",
+                "minimum": 0,
+                "default": 0,
+                "widget": "textarea",
+            },
+        }
+
+        if ADD_DUMMY_PIN_TO_DB:
+            # Dev only
+            properties["sample_id"] = {
+                "title": "Sample id (dev only)",
+                "type": "string",
+                "default": "my_sample",
+                "widget": "textarea",
+            }
+
+        dialog = {
+            "properties": properties,
+            "required": [
+                "exposure_time",
+                "omega_range",
+                "number_of_frames",
+                "detector_distance",
+                "photon_energy",
+                "processing_pipeline",
+                "crystal_counter",
+            ],
+            "dialogName": "Screening Parameters",
         }
 
         return dialog

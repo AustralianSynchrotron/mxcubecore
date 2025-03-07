@@ -1,0 +1,6 @@
+<object class="MotorMockup">
+  <username>PhiY</username>
+  <actuator_name>AlignmentY</actuator_name>
+  <GUIstep>0.1</GUIstep>
+  <unit>1e-3</unit>
+</object>

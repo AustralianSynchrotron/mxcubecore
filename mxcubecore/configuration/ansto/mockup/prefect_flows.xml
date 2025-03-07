@@ -1,0 +1,18 @@
+<object class="ANSTO.PrefectWorkflow" role="workflow">
+  <object href="/session" role="session"/>
+  <workflow>
+    <title>Screen Sample</title>
+    <path>Screen Sample</path>
+    <requires>samplegrid</requires>
+  </workflow>
+  <workflow>
+    <title>Collect Dataset</title>
+    <path>Collect Dataset</path>
+    <requires>samplegrid</requires>
+  </workflow>
+  <workflow>
+    <title>Grid Scan</title>
+    <path>Grid Scan</path>
+    <requires>grid</requires>
+  </workflow>
+</object>

@@ -1,0 +1,9 @@
+<object class = "ANSTO.Detector">
+  <username>detector</username>
+  <object hwrid="/dtox" role="detector_distance"/>
+  <type>Eiger2</type>
+  <model>16M</model>
+  <manufacturer>DECTRIS</manufacturer>
+  <roi_mode_list>["4M", "16M"]</roi_mode_list>
+  <exports>["restart"]</exports>
+</object>

@@ -8,13 +8,16 @@ from pydantic.v1 import (
     Field,
 )
 
-
+# NOTE: The detector_distance and energy units used in 
+# the ScreeningDialogBox and Prefect ScreeningParams are different
+# on purpose
 class ScreeningDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
     number_of_frames: int
-    detector_distance: float
-    photon_energy: float
+    detector_distance: float = Field(description="Detector distance in millimeters")
+    photon_energy: float = Field(description="Detector distance in keV")
+    transmission: float = 0.1
     hardware_trigger: bool = True
     sample_id: Optional[str] = None
     processing_pipeline: str = "dials"
@@ -34,17 +37,14 @@ class ScreeningParams(BaseModel):
         default=10, description="Global default. Measured in degrees."
     )
     exposure_time: float = Field(
-        default=1, description="Global default. Measured in seconds."
+        description="Measured in seconds."
     )
     number_of_passes: int = 1
     count_time: float = None
-    number_of_frames: int = Field(
-        default=100,
-        description="Global default. Determined by the detector frame rate and exposure time.",
-    )
-    detector_distance: float = Field(default=-0.298, description="Output from Dozor")
+    number_of_frames: int
+    detector_distance: float = Field(description="Detector distance in meters")
     photon_energy: float = Field(
-        default=12700, description="Global default. Measured in eV."
+        description="Measured in keV."
     )
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),

@@ -1,6 +1,9 @@
 import time
 
-from mx3_beamline_library.devices.beam import transmission
+from mx3_beamline_library.devices.beam import (
+    filter_wheel_is_moving,
+    transmission,
+)
 
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
@@ -62,13 +65,14 @@ class Transmission(AbstractMotor, EPICSActuator):
         """
         self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
-        while round(self.get_value(), 2) != round(value, 2):
-            time.sleep(0.2)
+        while filter_wheel_is_moving.get():
+            time.sleep(0.1)
             self.update_state(self.STATES.BUSY)
             current_value = self.get_value()
             self.update_value(current_value)
 
         self.update_state(self.STATES.READY)
+        self.update_value(self.get_value())
         return value
 
     def get_limits(self) -> tuple:
@@ -79,7 +83,7 @@ class Transmission(AbstractMotor, EPICSActuator):
         tuple
             Low and High limits of a motor.
         """
-        self._nominal_limits = (0, 100)  # TODO: verify
+        self._nominal_limits = (0, 100)
         return self._nominal_limits
 
     def get_value(self) -> float:

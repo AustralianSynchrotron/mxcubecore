@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import redis
+from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.HardwareObjects.SampleView import (
     Grid,
@@ -31,6 +33,8 @@ if _number_of_processes is not None:
     GRID_SCAN_NUMBER_OF_PROCESSES = int(_number_of_processes)
 else:
     GRID_SCAN_NUMBER_OF_PROCESSES = None
+
+ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "true"
 
 
 class GridScanFlow(AbstractPrefectWorkflow):
@@ -80,9 +84,21 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         dialog_box_model = GridScanDialogBox.model_validate(dialog_box_parameters)
 
-        # TODO: sample_id should be obtained from the database!
+        if not ADD_DUMMY_PIN_TO_DB:
+            logging.getLogger("HWR").info("Getting pin from the data layer...")
+            pin = self.get_pin_model_of_mounted_sample_from_db()
+            logging.getLogger("HWR").info(f"Mounted pin: {pin}")
+            sample_id = str(pin.id)  # Could also be sample name
+        else:
+            logging.getLogger("HWR").warning(
+                "The sample id will not be obtained from the data layer. "
+                "Setting sample id to `test_sample`. "
+                "This should only be used for development"
+            )
+            sample_id = "test_sample"
+
         redis_grid_scan_id = self.redis_connection.get(
-            f"mxcube_grid_scan_id:{dialog_box_model.sample_id}"
+            f"mxcube_grid_scan_id:{sample_id}"
         )
         if redis_grid_scan_id is None:
             grid_scan_id = 0
@@ -90,7 +106,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             grid_scan_id = int(redis_grid_scan_id) + 1
 
         prefect_parameters = GridScanParams(
-            sample_id=dialog_box_model.sample_id,
+            sample_id=sample_id,
             grid_scan_id=grid_scan_id,
             grid_top_left_coordinate=screen_coordinate,
             grid_height=height,
@@ -98,7 +114,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             beam_position=beam_position,
             number_of_columns=num_cols,
             number_of_rows=num_rows,
-            detector_distance=dialog_box_model.detector_distance,
+            detector_distance=dialog_box_model.detector_distance / 1000,
             photon_energy=dialog_box_model.photon_energy,
             omega_range=dialog_box_model.omega_range,
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
@@ -107,7 +123,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         )
 
         self.redis_connection.set(
-            f"mxcube_grid_scan_id:{dialog_box_model.sample_id}", grid_scan_id, ex=86400
+            f"mxcube_grid_scan_id:{sample_id}", grid_scan_id, ex=86400
         )
         logging.getLogger("HWR").info(
             f"Parameters sent to prefect flow: {prefect_parameters}"
@@ -118,7 +134,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         )
 
         try:
-            loop = asyncio.get_event_loop()
+            loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
             success = True
@@ -313,36 +329,29 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "widget": "textarea",
                 },
                 "detector_distance": {
-                    "title": "Detector Distance [m]",
+                    "title": "Detector Distance [mm]",
                     "type": "number",
-                    "minimum": 0,
-                    "maximum": 3,
-                    "default": 0.396,
+                    "minimum": 0,  # TODO: get limits from distance PV
+                    "maximum": 3000,  # TODO: get limits from distance PV
+                    "default": round(actual_sample_detector_distance.get(), 2),
                     "widget": "textarea",
                 },
                 "photon_energy": {
                     "title": "Photon Energy [keV]",
                     "type": "number",
-                    "minimum": 5,
+                    "minimum": 5,  # TODO: get limits from PV?
                     "maximum": 25,
-                    "default": 13,
-                    "widget": "textarea",
-                },
-                "hardware_trigger": {
-                    "title": "Hardware Trigger (dev only)",
-                    "type": "boolean",
-                    "default": True,
-                    "widget": "textarea",
-                },
-                "sample_id": {
-                    "title": "Sample id (dev only)",
-                    "type": "string",
-                    "default": "my_sample",
+                    "default": round(energy_master.get(), 2),
                     "widget": "textarea",
                 },
             },
-            "required": ["detector_distance", "photon_energy"],
-            "dialogName": "Grid scan parameters",
+            "required": [
+                "md3_alignment_y_speed",
+                "omega_range",
+                "detector_distance",
+                "photon_energy",
+            ],
+            "dialogName": "Grid Scan Parameters",
         }
 
         return dialog

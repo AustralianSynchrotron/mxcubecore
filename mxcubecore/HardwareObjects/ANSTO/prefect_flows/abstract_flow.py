@@ -1,11 +1,15 @@
+import asyncio
+import logging
 from abc import (
     ABC,
     abstractmethod,
 )
 from http import HTTPStatus
 from os import getenv
+from time import perf_counter
 from urllib.parse import urljoin
 
+import gevent
 import httpx
 from mx_robot_library.client import Client
 
@@ -176,7 +180,15 @@ class AbstractPrefectWorkflow(ABC):
         QueueExecutionException
             An exception if Pin cannot be read from the data layer
         """
+        logging.getLogger("HWR").info(
+            "Getting barcode from mounted pin using the mx-robot-api"
+        )
         port, barcode = self._get_barcode_and_port_of_mounted_pin()
+
+        logging.getLogger("HWR").info(
+            f"Getting pin id from the mx-data-layer-api for port {port}, "
+            f"barcode {barcode}, and epn_string {EPN_STRING}"
+        )
 
         with httpx.Client() as client:
             r = client.get(
@@ -219,3 +231,31 @@ class AbstractPrefectWorkflow(ABC):
 
         else:
             raise QueueExecutionException("No pin mounted on the goni", self)
+
+    def _get_asyncio_event_loop(self, timeout: float = 30):
+        """
+        Gets the asyncio event loop. If a loop is still running,
+        waits until the loop is complete.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            The timeout in seconds, by default 30
+
+        Raises
+        ------
+        QueueExecutionException
+            Raises an exception if the timeout is exceeded
+        """
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            logging.getLogger("HWR").warning(
+                f"Loop is still running, waiting for {timeout} s to complete"
+            )
+            t = perf_counter()
+            while loop.is_running():
+                gevent.sleep(1)
+                logging.getLogger("HWR").warning(f"Loop is still running")
+                if perf_counter() > t + timeout:
+                    raise QueueExecutionException("Asyncio Loop is still running", self)
+        return loop

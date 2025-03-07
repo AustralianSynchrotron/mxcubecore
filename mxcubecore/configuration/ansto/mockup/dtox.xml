@@ -1,0 +1,6 @@
+<device class="ANSTO.DetectorDistance">
+    <username>Detector distance</username>
+    <GUIstep>0.1</GUIstep>
+    <unit>1e-1</unit>
+</device>
+

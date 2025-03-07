@@ -1,0 +1,6 @@
+<object class="MotorMockup">
+  <username>Omega</username>
+  <actuator_name>Omega</actuator_name>
+  <GUIstep>90</GUIstep>
+  <unit>1e-3</unit>
+</object>

@@ -1,0 +1,6 @@
+<device class="ShutterMockup">
+  <username>Fast Shutter</username>
+  <value_channel_name>FastShutterIsOpen</value_channel_name>
+  <state_channel_name>HardwareState</state_channel_name>
+  <values>{"OPEN": True, "CLOSED": False}</values>
+</device>

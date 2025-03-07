@@ -593,6 +593,8 @@ class Diffractometer(GenericDiffractometer):
         Descript. :
         """
         try:
+            # TODO: `move_to_centred_position`` is called by the move to point
+            # button when running grid scans, check if this works
             return self.move_to_centred_position(centred_position)
         except Exception:
             logging.exception("Could not move to centred position")

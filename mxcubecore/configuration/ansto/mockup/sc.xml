@@ -1,0 +1,5 @@
+<object class = "SampleChangerMockup">
+  <mount_deployment_name>plans/mount-pin-plan</mount_deployment_name>
+  <unmount_deployment_name>plans/unmount-pin-plan</unmount_deployment_name>
+  <robot_host>10.244.100.5</robot_host>
+</object>

@@ -2677,7 +2677,7 @@ resolved_reference = "a4de88d5f1ec0ff11fa73c4fafd54b2b51ac0bd6"
 
 [[package]]
 name = "mx3-beamline-library"
-version = "1.3.0"
+version = "1.4.0"
 description = "Ophyd devices and bluesky plans."
 optional = false
 python-versions = ">=3.10,<3.13"
@@ -2716,8 +2716,8 @@ as-redis-signal = ["as-redis-signal @ git+https://bitbucket.synchrotron.org.au/s
 [package.source]
 type = "git"
 url = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git"
-reference = "v1.3.0"
-resolved_reference = "736d811f8bad6d25a4e309c1f802315e5c6e5db2"
+reference = "v1.4.0"
+resolved_reference = "c6373e01e36d49539ea2134f5583fa8d0009a63b"
 
 [[package]]
 name = "myst-parser"
@@ -5710,4 +5710,4 @@ tango = ["PyTango"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8,<3.12"
-content-hash = "f91174d25a1ad2bca903fc3316b32aadcb2a660ec0494c029cce075fd39b53e8"
+content-hash = "964225a79803b86a331553fe36c65fd5cf17613e082191401ec5defccf6e976f"
