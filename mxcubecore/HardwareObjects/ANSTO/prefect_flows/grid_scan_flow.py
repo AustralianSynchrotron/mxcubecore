@@ -97,7 +97,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             )
             sample_id = "test_sample"
 
-        # TODO: sample_id should be obtained from the database!
         redis_grid_scan_id = self.redis_connection.get(
             f"mxcube_grid_scan_id:{sample_id}"
         )
@@ -135,7 +134,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         )
 
         try:
-            loop = asyncio.get_event_loop()
+            loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
             success = True

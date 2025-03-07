@@ -21,7 +21,6 @@
   <object role="beamstop_distance" hwrid="./beamstop_alignment_x"></object>
 
   <object role="beamstop" href="/beamstop"/>
-  <object role="aperture" href="/aperture"/>
   <object role="capillary" href="/capillary"/>
 
   <object role="camera" hwrid="./md3/camera"></object>

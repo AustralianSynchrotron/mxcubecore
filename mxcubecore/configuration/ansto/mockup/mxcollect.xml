@@ -1,6 +1,5 @@
 <object class="ANSTO.MultiCollectMockup">
   <object href="/md3" role="diffractometer"/>
-  <object href="/mxlocal" role="beamline_configuration"/>
   <object href="/sc" role="sample_changer"/>
   <object href="/energy" role="energy"/>
   <object href="/transmission" role="transmission"/>
