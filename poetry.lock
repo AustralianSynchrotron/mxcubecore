@@ -2716,8 +2716,8 @@ as-redis-signal = ["as-redis-signal @ git+https://bitbucket.synchrotron.org.au/s
 [package.source]
 type = "git"
 url = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git"
-reference = "add_transmission"
-resolved_reference = "06d6c80d772314be693bdbfa00b10651150ea7c5"
+reference = "v1.4.0"
+resolved_reference = "c6373e01e36d49539ea2134f5583fa8d0009a63b"
 
 [[package]]
 name = "myst-parser"
@@ -5710,4 +5710,4 @@ tango = ["PyTango"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8,<3.12"
-content-hash = "8327dfd22b7d0520ba635d12cfe6765622b456b44b805052ee5f3aee410b01e3"
+content-hash = "964225a79803b86a331553fe36c65fd5cf17613e082191401ec5defccf6e976f"
