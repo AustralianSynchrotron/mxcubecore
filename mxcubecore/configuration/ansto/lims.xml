@@ -10,5 +10,5 @@
   <ws_password></ws_password>
   <loginType>proposal</loginType>
   <object role="session" href="/session"/>
-  <object role="ldapServer" href="/ldapconnection"/>
+  <!-- <object role="ldapServer" href="/ldapconnection"/> -->
 </object>
