@@ -32,9 +32,9 @@ class Detector(AbstractDetector):
         """
         AbstractDetector.init(self)
 
-        self._temperature = 25
-        self._humidity = 60
-        self._actual_frame_rate = 50
+        self._temperature = None
+        self._humidity = None
+        self._actual_frame_rate = None
         self._roi_modes_list = eval(self.get_property("roi_mode_list", '["4M", "16M"]'))
         self._roi_mode = self._get_detector_config("roi_mode")
         self._exposure_time_limits = eval(
