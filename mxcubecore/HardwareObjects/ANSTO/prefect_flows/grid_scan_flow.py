@@ -11,6 +11,7 @@ import numpy.typing as npt
 import redis
 from mx3_beamline_library.devices.beam import energy_master
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
+import redis.asyncio
 
 from mxcubecore.HardwareObjects.SampleView import (
     Grid,
@@ -128,42 +129,60 @@ class GridScanFlow(AbstractPrefectWorkflow):
         logging.getLogger("HWR").info(
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
-        grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_DEPLOYMENT_NAME,
-            parameters=prefect_parameters.model_dump(exclude_none=True),
-        )
+
 
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(grid_scan_flow.trigger_grid_scan())
-            success = True
+            loop.run_until_complete(
+                self.start_prefect_flow_and_get_results_from_redis(
+                    prefect_parameters=prefect_parameters,
+                    num_cols=num_cols,
+                    num_rows=num_rows,
+                    grid_id=sid,
+                )
+                )
         except Exception as ex:
             logging.getLogger("HWR").info(f"Failed to execute raster flow: {ex}")
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
-            success = False
             logging.getLogger("user_level_log").warning(
                 "Grid scan flow was not successful"
             )
             raise QueueExecutionException(str(ex), self) from ex
 
-        if success:
-            logging.getLogger("HWR").info("Getting spotfinder results from redis...")
-            logging.getLogger("HWR").info(
-                f"Expected number of columns and rows: {num_cols}, {num_rows}"
-            )
 
-            if not self.mxcubecore_workflow_aborted:
-                number_of_spots_list = []
-                last_id = 0
-                grid_size = num_cols * num_rows
-                number_of_spots_array = np.zeros((num_rows, num_cols))
-                resolution_array = np.zeros((num_rows, num_cols))
+    async def start_prefect_flow_and_get_results_from_redis(
+            self, prefect_parameters: GridScanParams,num_cols:int, num_rows: int, grid_id: int):
+        grid_scan_flow = MX3PrefectClient(
+            name=GRID_SCAN_DEPLOYMENT_NAME,
+            parameters=prefect_parameters.model_dump(exclude_none=True),
+        )
+        await grid_scan_flow.trigger_grid_scan()
+
+
+        logging.getLogger("HWR").info("Getting spotfinder results from redis...")
+        logging.getLogger("HWR").info(
+            f"Expected number of columns and rows: {num_cols}, {num_rows}"
+        )
+
+        if not self.mxcubecore_workflow_aborted:
+            number_of_spots_list = []
+            last_id = 0
+            grid_size = num_cols * num_rows
+            number_of_spots_array = np.zeros((num_rows, num_cols))
+            resolution_array = np.zeros((num_rows, num_cols))
+            async with redis.asyncio.StrictRedis(
+                host=self.REDIS_HOST,
+                port=self.REDIS_PORT,
+                username=self.REDIS_USERNAME,
+                password=self.REDIS_PASSWORD,
+                db=self.REDIS_DB,
+            ) as async_redis_client:
                 for _ in range(grid_size):
-                    data, last_id = self.read_message_from_redis_streams(
+                    data, last_id = await self.read_message_from_redis_streams(
                         topic=f"number_of_spots_{prefect_parameters.grid_scan_id}:{prefect_parameters.sample_id}",
-                        id=last_id,
+                        id=last_id, redis_client=async_redis_client
                     )
                     number_of_spots = float(data[b"number_of_spots"])
                     resolution = float(data[b"resolution"])
@@ -175,33 +194,37 @@ class GridScanFlow(AbstractPrefectWorkflow):
                         resolution
                     )
 
-                logging.getLogger("HWR").debug(
-                    f"number_of_spots_list {number_of_spots_list}"
-                )
+            logging.getLogger("HWR").debug(
+                f"number_of_spots_list {number_of_spots_list}"
+            )
 
-                heatmap_array = self.create_heatmap(
-                    num_cols=num_cols,
-                    num_rows=num_rows,
-                    number_of_spots_array=number_of_spots_array,
-                )
+            heatmap_array = self.create_heatmap(
+                num_cols=num_cols,
+                num_rows=num_rows,
+                number_of_spots_array=number_of_spots_array,
+            )
 
 
-                heatmap = {}
+            heatmap = {}
 
-                if grid:
-                    for i in range(1, num_rows * num_cols + 1):
-                        heatmap[i] = [i, list(heatmap_array[i - 1])]
+            #heatmap = {i: [i, [heatmap_array[i - 1]]] for i in range(1, num_rows * num_cols + 1)}
+            for i in range(1, num_rows * num_cols + 1):
+                heatmap[i] = [i, list(heatmap_array[i - 1])]
 
-                heat_and_crystal_map = {"heatmap": heatmap}
-                self.sample_view.set_grid_data(
-                    sid, heat_and_crystal_map, data_file_path="this_is_not_used"
-                )
+            heat_and_crystal_map = {"heatmap": heatmap}
+            self.sample_view.set_grid_data(
+                grid_id, heat_and_crystal_map, data_file_path="this_is_not_used"
+            )
 
-            self._state.value = "ON"
-            self.mxcubecore_workflow_aborted = False
+        self._state.value = "ON"
+        self.mxcubecore_workflow_aborted = False
 
-    def read_message_from_redis_streams(
-        self, topic: str, id: Union[bytes, int]
+
+
+
+
+    async def read_message_from_redis_streams(
+        self, topic: str, id: Union[bytes, int], redis_client: redis.asyncio.StrictRedis
     ) -> tuple[dict, bytes]:
         """
         Reads pickled messages from a redis stream
@@ -221,7 +244,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             b'type', b'number_of_spots', b'image_id', and b'sequence_id'
         """
 
-        response = self.redis_connection.xread({topic: id}, count=1, block=30000) # Wait 30 seconds
+        response = await redis_client.xread({topic: id}, count=1, block=30000) # Wait 30 seconds
         if not response:
             raise QueueExecutionException(message=f"Results not found for id {id} after 30 seconds", origin=self)
 
@@ -254,8 +277,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
         result : npt.NDArray
             An array containing a heatmap with rbga values
         """
-        logging.getLogger("HWR").debug(f"number of spots array: \n {number_of_spots_array}")
-
         z = number_of_spots_array
 
         z_min = np.min(z)
