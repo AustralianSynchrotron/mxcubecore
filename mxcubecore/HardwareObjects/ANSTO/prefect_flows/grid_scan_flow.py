@@ -184,21 +184,16 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     num_rows=num_rows,
                     number_of_spots_array=number_of_spots_array,
                 )
-                crystalmap_array = self.create_heatmap(
-                    num_cols=num_cols,
-                    num_rows=num_rows,
-                    number_of_spots_array=resolution_array,
-                )
+
 
                 heatmap = {}
-                crystalmap = {}
 
                 if grid:
                     for i in range(1, num_rows * num_cols + 1):
                         heatmap[i] = [i, list(heatmap_array[i - 1])]
-                        crystalmap[i] = [i, list(crystalmap_array[i - 1])]
+                        #crystalmap[i] = [i, list(crystalmap_array[i - 1])]
 
-                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
+                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": heatmap}
                 self.sample_view.set_grid_data(
                     sid, heat_and_crystal_map, data_file_path="this_is_not_used"
                 )
@@ -239,10 +234,10 @@ class GridScanFlow(AbstractPrefectWorkflow):
         last_id, data = messages[0]
 
         return data, last_id
-
+    
     def create_heatmap(
-        self, num_cols: int, num_rows: int, number_of_spots_array: npt.NDArray
-    ) -> npt.NDArray:
+            self, num_cols: int, num_rows: int, number_of_spots_array: npt.NDArray
+        ) -> npt.NDArray:
         """
         Creates a heatmap from the number of spots, number of columns
         and number of rows of a grid.
@@ -261,29 +256,21 @@ class GridScanFlow(AbstractPrefectWorkflow):
         result : npt.NDArray
             An array containing a heatmap with rbga values
         """
+        logging.getLogger("HWR").debug(f"number of spots array \n {number_of_spots_array}")
 
-        x = np.arange(num_cols)
-        y = np.arange(num_rows)
-
-        y, x = np.meshgrid(x, y)
         z = number_of_spots_array
 
         z_min = np.min(z)
         z_max = np.max(z)
 
-        _, ax = plt.subplots()
+        # Normalize the array to the range [0, 1]
+        norm_z = (z - z_min) / (z_max - z_min)
 
-        heatmap = ax.pcolormesh(x, y, z, cmap="seismic", vmin=z_min, vmax=z_max)
-        heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
+        cmap = plt.get_cmap("seismic")
+        heatmap = cmap(norm_z) * 255
 
-        # The following could probably be done more efficiently without using for loops
-        result = np.ones(heatmap.shape)
-        for i in range(num_rows * num_cols):
-            for j in range(4):
-                if heatmap[i][j] != 1.0:
-                    result[i][j] = int(heatmap[i][j] * 255)
+        return heatmap.reshape(num_rows * num_cols, 4)
 
-        return result
 
     def dialog_box(self) -> dict:
         """
