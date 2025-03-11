@@ -104,6 +104,41 @@ class MX3PrefectClient:
         if wait:
             await self.wait()
 
+    async def trigger_grid_scan(self) -> FlowRunResponse:
+        """
+        Triggers a grid scans and waits until the flow state has
+        changed from scheduled or pending to running
+
+        Returns
+        -------
+        FlowRunResponse
+            The flow response
+
+        Raises
+        ------
+        ValueError
+            If the flow has not finished successfully
+        Exception
+            If there has been any other issue during the run
+        """
+        self.deployment_id = await self.get_deployment_id_from_name(self.name)
+
+        response: FlowRunResponse = (
+            await self.prefect_client.create_flow_run_from_deployment(
+                self.deployment_id, parameters=self.parameters
+            )
+        )
+        self.flow_run_id = response.id
+
+        state = await self.get_flow_run_state()
+        while (
+            state.type == StateType.SCHEDULED  # noqa
+            or state.type == StateType.PENDING  # noqa
+        ):
+            state = await self.get_flow_run_state()
+            await asyncio.sleep(1)
+
+
     async def trigger_data_collection(
         self, sample_id: str, poll_interval: float = 3.0
     ) -> None:

@@ -136,7 +136,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
+            loop.run_until_complete(grid_scan_flow.trigger_grid_scan())
             success = True
         except Exception as ex:
             logging.getLogger("HWR").info(f"Failed to execute raster flow: {ex}")
@@ -149,16 +149,15 @@ class GridScanFlow(AbstractPrefectWorkflow):
             raise QueueExecutionException(str(ex), self) from ex
 
         if success:
-            logging.getLogger("HWR").info(f"grid id: {sid}")
+            logging.getLogger("HWR").info("Getting spotfinder results from redis...")
             logging.getLogger("HWR").info(
-                f"number of columns and rows: {num_cols}, {num_rows}"
+                f"Expected number of columns and rows: {num_cols}, {num_rows}"
             )
 
             if not self.mxcubecore_workflow_aborted:
                 number_of_spots_list = []
                 last_id = 0
                 grid_size = num_cols * num_rows
-                logging.getLogger("user_level_log").warning("Processing data...")
                 number_of_spots_array = np.zeros((num_rows, num_cols))
                 resolution_array = np.zeros((num_rows, num_cols))
                 for _ in range(grid_size):
@@ -169,19 +168,12 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     number_of_spots = float(data[b"number_of_spots"])
                     resolution = float(data[b"resolution"])
                     heatmap_coordinate = pickle.loads(data[b"heatmap_coordinate"])
-                    logging.getLogger("HWR").info(
-                        f"heatmap coordinate: {heatmap_coordinate}, "
-                        f"resolution: {resolution}, "
-                        f"number of spots {number_of_spots}"
-                    )
                     number_of_spots_array[
                         heatmap_coordinate[1], heatmap_coordinate[0]
                     ] = number_of_spots
                     resolution_array[heatmap_coordinate[1], heatmap_coordinate[0]] = (
                         resolution
                     )
-
-                logging.getLogger("user_level_log").warning("Data processing finished")
 
                 logging.getLogger("HWR").debug(
                     f"number_of_spots_list {number_of_spots_list}"
@@ -234,17 +226,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
             The diction ary has the following keys:
             b'type', b'number_of_spots', b'image_id', and b'sequence_id'
         """
-        response_length = 0
-        timeout = time.perf_counter() + 30  # wait for 30 seconds
-        while response_length == 0:
-            response = self.redis_connection.xread({topic: id}, count=1)
-            response_length = len(response)
-            if time.perf_counter() > timeout:
-                raise ValueError(
-                    f"Frames not found for id: {topic}. "
-                    "Check that frames are being buffered by the ZMQ stream consumer"
-                )
-            time.sleep(0.01)
+
+        response = self.redis_connection.xread({topic: id}, count=1, block=30000) # Wait 30 seconds
+        if not response:
+            raise QueueExecutionException(message=f"Results not found for id {id} after 30 seconds", origin=self)
+
 
         # Extract key and messages from the response
         _, messages = response[0]
@@ -252,8 +238,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
         # Update last_id and store messages data
         last_id, data = messages[0]
 
-        # Remove dataset from redis
-        # self.redis_connection.xdel(topic, last_id)
         return data, last_id
 
     def create_heatmap(
