@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from abc import (
     ABC,
     abstractmethod,
@@ -12,7 +13,6 @@ from urllib.parse import urljoin
 import gevent
 import httpx
 from mx_robot_library.client import Client
-import os
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 

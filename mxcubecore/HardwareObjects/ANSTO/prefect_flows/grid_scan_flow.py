@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import pickle
-import time
 from os import environ
 from typing import Union
 
@@ -9,9 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import redis
+import redis.asyncio
 from mx3_beamline_library.devices.beam import energy_master
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
-import redis.asyncio
 
 from mxcubecore.HardwareObjects.SampleView import (
     Grid,
@@ -130,7 +129,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
 
-
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
@@ -141,7 +139,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     num_rows=num_rows,
                     grid_id=sid,
                 )
-                )
+            )
         except Exception as ex:
             logging.getLogger("HWR").info(f"Failed to execute raster flow: {ex}")
             self._state.value = "ON"
@@ -151,15 +149,39 @@ class GridScanFlow(AbstractPrefectWorkflow):
             )
             raise QueueExecutionException(str(ex), self) from ex
 
-
     async def start_prefect_flow_and_get_results_from_redis(
-            self, prefect_parameters: GridScanParams,num_cols:int, num_rows: int, grid_id: int):
+        self,
+        prefect_parameters: GridScanParams,
+        num_cols: int,
+        num_rows: int,
+        grid_id: int,
+    ) -> None:
+        """
+        Starts a grid scan  prefect flow using the prefect client and gets spotfinder results
+        from redis as soon as the prefect flow changes its state from `SCHEDULED` to
+        `RUNNING`
+
+        Parameters
+        ----------
+        prefect_parameters : GridScanParams
+            The prefect grid scan parameters
+        num_cols : int)
+            The number of columns of the grid
+        num_rows : int
+            The number of rows of the grid
+        grid_id : int
+            The MXCuBE grid id
+
+        Returns
+        -------
+        None
+        """
+
         grid_scan_flow = MX3PrefectClient(
             name=GRID_SCAN_DEPLOYMENT_NAME,
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
         await grid_scan_flow.trigger_grid_scan()
-
 
         logging.getLogger("HWR").info("Getting spotfinder results from redis...")
         logging.getLogger("HWR").info(
@@ -167,7 +189,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
         )
 
         if not self.mxcubecore_workflow_aborted:
-            number_of_spots_list = []
             last_id = 0
             grid_size = num_cols * num_rows
             number_of_spots_array = np.zeros((num_rows, num_cols))
@@ -182,7 +203,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 for _ in range(grid_size):
                     data, last_id = await self.read_message_from_redis_streams(
                         topic=f"number_of_spots_{prefect_parameters.grid_scan_id}:{prefect_parameters.sample_id}",
-                        id=last_id, redis_client=async_redis_client
+                        id=last_id,
+                        redis_client=async_redis_client,
                     )
                     number_of_spots = float(data[b"number_of_spots"])
                     resolution = float(data[b"resolution"])
@@ -195,7 +217,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     )
 
             logging.getLogger("HWR").debug(
-                f"number_of_spots_list {number_of_spots_list}"
+                f"number_of_spots_list {number_of_spots_array}"
             )
 
             heatmap_array = self.create_heatmap(
@@ -204,12 +226,10 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 number_of_spots_array=number_of_spots_array,
             )
 
-
-            heatmap = {}
-
-            #heatmap = {i: [i, [heatmap_array[i - 1]]] for i in range(1, num_rows * num_cols + 1)}
-            for i in range(1, num_rows * num_cols + 1):
-                heatmap[i] = [i, list(heatmap_array[i - 1])]
+            heatmap = {
+                i: [i, list(heatmap_array[i - 1])]
+                for i in range(1, num_rows * num_cols + 1)
+            }
 
             heat_and_crystal_map = {"heatmap": heatmap}
             self.sample_view.set_grid_data(
@@ -218,10 +238,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
-
-
-
-
 
     async def read_message_from_redis_streams(
         self, topic: str, id: Union[bytes, int], redis_client: redis.asyncio.StrictRedis
@@ -235,6 +251,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
             Name of the topic of the redis stream, aka, the sample_id
         id : Union[bytes, int]
             id of the topic in bytes or int format
+        redis_client : redis.asyncio.StrictRedis
+            An async redis client
 
         Returns
         -------
@@ -244,9 +262,13 @@ class GridScanFlow(AbstractPrefectWorkflow):
             b'type', b'number_of_spots', b'image_id', and b'sequence_id'
         """
 
-        response = await redis_client.xread({topic: id}, count=1, block=30000) # Wait 30 seconds
+        response = await redis_client.xread(
+            {topic: id}, count=1, block=30000
+        )  # Wait 30 seconds
         if not response:
-            raise QueueExecutionException(message=f"Results not found for id {id} after 30 seconds", origin=self)
+            raise QueueExecutionException(
+                message=f"Results not found for id {id} after 30 seconds", origin=self
+            )
 
         # Extract key and messages from the response
         _, messages = response[0]
@@ -255,10 +277,10 @@ class GridScanFlow(AbstractPrefectWorkflow):
         last_id, data = messages[0]
 
         return data, last_id
-    
+
     def create_heatmap(
-            self, num_cols: int, num_rows: int, number_of_spots_array: npt.NDArray
-        ) -> npt.NDArray:
+        self, num_cols: int, num_rows: int, number_of_spots_array: npt.NDArray
+    ) -> npt.NDArray:
         """
         Creates a heatmap from the number of spots, number of columns
         and number of rows of a grid.
@@ -289,7 +311,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
         heatmap = cmap(norm_z) * 255
 
         return heatmap.reshape(num_rows * num_cols, 4)
-
 
     def dialog_box(self) -> dict:
         """

@@ -138,7 +138,6 @@ class MX3PrefectClient:
             state = await self.get_flow_run_state()
             await asyncio.sleep(1)
 
-
     async def trigger_data_collection(
         self, sample_id: str, poll_interval: float = 3.0
     ) -> None:
