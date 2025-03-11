@@ -191,9 +191,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 if grid:
                     for i in range(1, num_rows * num_cols + 1):
                         heatmap[i] = [i, list(heatmap_array[i - 1])]
-                        #crystalmap[i] = [i, list(crystalmap_array[i - 1])]
 
-                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": heatmap}
+                heat_and_crystal_map = {"heatmap": heatmap}
                 self.sample_view.set_grid_data(
                     sid, heat_and_crystal_map, data_file_path="this_is_not_used"
                 )
@@ -226,7 +225,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
         if not response:
             raise QueueExecutionException(message=f"Results not found for id {id} after 30 seconds", origin=self)
 
-
         # Extract key and messages from the response
         _, messages = response[0]
 
@@ -256,14 +254,14 @@ class GridScanFlow(AbstractPrefectWorkflow):
         result : npt.NDArray
             An array containing a heatmap with rbga values
         """
-        logging.getLogger("HWR").debug(f"number of spots array \n {number_of_spots_array}")
+        logging.getLogger("HWR").debug(f"number of spots array: \n {number_of_spots_array}")
 
         z = number_of_spots_array
 
         z_min = np.min(z)
         z_max = np.max(z)
 
-        # Normalize the array to the range [0, 1]
+        # Normalise the array
         norm_z = (z - z_min) / (z_max - z_min)
 
         cmap = plt.get_cmap("seismic")
