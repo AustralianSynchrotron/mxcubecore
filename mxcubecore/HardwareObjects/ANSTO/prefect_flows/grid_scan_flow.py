@@ -219,6 +219,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             logging.getLogger("HWR").debug(
                 f"number_of_spots_list {number_of_spots_array}"
             )
+            logging.getLogger("HWR").info(f"Creating heatmap...")
 
             heatmap_array = self.create_heatmap(
                 num_cols=num_cols,
@@ -231,10 +232,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 for i in range(1, num_rows * num_cols + 1)
             }
 
-            heat_and_crystal_map = {"heatmap": heatmap}
-            self.sample_view.set_grid_data(
-                grid_id, heat_and_crystal_map, data_file_path="this_is_not_used"
-            )
+            heatmap_dict = {"heatmap": heatmap}
+
+            self.sample_view.set_grid_data(grid_id, heatmap_dict, data_file_path=None)
 
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
