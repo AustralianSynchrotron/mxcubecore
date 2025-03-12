@@ -151,7 +151,6 @@ class PrefectWorkflow(HardwareObject):
 
         self.raster_flow = None
 
-
     @property
     def state(self) -> State:
         """
