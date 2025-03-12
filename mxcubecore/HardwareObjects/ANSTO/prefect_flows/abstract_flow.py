@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from abc import (
     ABC,
     abstractmethod,
@@ -57,6 +58,12 @@ class AbstractPrefectWorkflow(ABC):
         self.mxcubecore_workflow_aborted = False
 
         self.robot_client = Client(host=ROBOT_HOST, readonly=False)
+
+        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
+        self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
+        self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
+        self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
+        self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
 
     @abstractmethod
     def run(self) -> None:

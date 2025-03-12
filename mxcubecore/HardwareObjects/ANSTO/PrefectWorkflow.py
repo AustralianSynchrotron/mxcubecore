@@ -141,8 +141,6 @@ class PrefectWorkflow(HardwareObject):
         hwr = HWR.get_hardware_repository()
         self.sample_view: SampleView = hwr.get_hardware_object("/sample_view")
 
-        # self.beamline = HWR.beamline
-
         self.redis_connection = redis.StrictRedis(
             host=self.REDIS_HOST,
             port=self.REDIS_PORT,
@@ -152,11 +150,6 @@ class PrefectWorkflow(HardwareObject):
         )
 
         self.raster_flow = None
-
-        # self.collect_workflow = Collect(
-        #     motor_dict={"motor_z": self.motor_z, "motor_x": self.motor_x},
-        #     state=self._state,
-        # )
 
     @property
     def state(self) -> State:

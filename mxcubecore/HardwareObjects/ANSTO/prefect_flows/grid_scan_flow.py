@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import pickle
-import time
 from os import environ
 from typing import Union
 
@@ -9,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import redis
+import redis.asyncio
 from mx3_beamline_library.devices.beam import energy_master
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
@@ -128,52 +128,87 @@ class GridScanFlow(AbstractPrefectWorkflow):
         logging.getLogger("HWR").info(
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
-        grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_DEPLOYMENT_NAME,
-            parameters=prefect_parameters.model_dump(exclude_none=True),
-        )
 
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(grid_scan_flow.trigger_flow(wait=True))
-            success = True
+            loop.run_until_complete(
+                self.start_prefect_flow_and_get_results_from_redis(
+                    prefect_parameters=prefect_parameters,
+                    num_cols=num_cols,
+                    num_rows=num_rows,
+                    grid_id=sid,
+                )
+            )
         except Exception as ex:
             logging.getLogger("HWR").info(f"Failed to execute raster flow: {ex}")
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
-            success = False
             logging.getLogger("user_level_log").warning(
                 "Grid scan flow was not successful"
             )
             raise QueueExecutionException(str(ex), self) from ex
 
-        if success:
-            logging.getLogger("HWR").info(f"grid id: {sid}")
-            logging.getLogger("HWR").info(
-                f"number of columns and rows: {num_cols}, {num_rows}"
-            )
+    async def start_prefect_flow_and_get_results_from_redis(
+        self,
+        prefect_parameters: GridScanParams,
+        num_cols: int,
+        num_rows: int,
+        grid_id: int,
+    ) -> None:
+        """
+        Starts a grid scan  prefect flow using the prefect client and gets spotfinder results
+        from redis as soon as the prefect flow changes its state from `SCHEDULED` to
+        `RUNNING`
 
-            if not self.mxcubecore_workflow_aborted:
-                number_of_spots_list = []
-                last_id = 0
-                grid_size = num_cols * num_rows
-                logging.getLogger("user_level_log").warning("Processing data...")
-                number_of_spots_array = np.zeros((num_rows, num_cols))
-                resolution_array = np.zeros((num_rows, num_cols))
+        Parameters
+        ----------
+        prefect_parameters : GridScanParams
+            The prefect grid scan parameters
+        num_cols : int)
+            The number of columns of the grid
+        num_rows : int
+            The number of rows of the grid
+        grid_id : int
+            The MXCuBE grid id
+
+        Returns
+        -------
+        None
+        """
+
+        grid_scan_flow = MX3PrefectClient(
+            name=GRID_SCAN_DEPLOYMENT_NAME,
+            parameters=prefect_parameters.model_dump(exclude_none=True),
+        )
+        await grid_scan_flow.trigger_grid_scan()
+
+        logging.getLogger("HWR").info("Getting spotfinder results from redis...")
+        logging.getLogger("HWR").info(
+            f"Expected number of columns and rows: {num_cols}, {num_rows}"
+        )
+
+        if not self.mxcubecore_workflow_aborted:
+            last_id = 0
+            grid_size = num_cols * num_rows
+            number_of_spots_array = np.zeros((num_rows, num_cols))
+            resolution_array = np.zeros((num_rows, num_cols))
+            async with redis.asyncio.StrictRedis(
+                host=self.REDIS_HOST,
+                port=self.REDIS_PORT,
+                username=self.REDIS_USERNAME,
+                password=self.REDIS_PASSWORD,
+                db=self.REDIS_DB,
+            ) as async_redis_client:
                 for _ in range(grid_size):
-                    data, last_id = self.read_message_from_redis_streams(
+                    data, last_id = await self.read_message_from_redis_streams(
                         topic=f"number_of_spots_{prefect_parameters.grid_scan_id}:{prefect_parameters.sample_id}",
                         id=last_id,
+                        redis_client=async_redis_client,
                     )
                     number_of_spots = float(data[b"number_of_spots"])
                     resolution = float(data[b"resolution"])
                     heatmap_coordinate = pickle.loads(data[b"heatmap_coordinate"])
-                    logging.getLogger("HWR").info(
-                        f"heatmap coordinate: {heatmap_coordinate}, "
-                        f"resolution: {resolution}, "
-                        f"number of spots {number_of_spots}"
-                    )
                     number_of_spots_array[
                         heatmap_coordinate[1], heatmap_coordinate[0]
                     ] = number_of_spots
@@ -181,41 +216,31 @@ class GridScanFlow(AbstractPrefectWorkflow):
                         resolution
                     )
 
-                logging.getLogger("user_level_log").warning("Data processing finished")
+            logging.getLogger("HWR").debug(
+                f"number_of_spots_list {number_of_spots_array}"
+            )
+            logging.getLogger("HWR").info(f"Creating heatmap...")
 
-                logging.getLogger("HWR").debug(
-                    f"number_of_spots_list {number_of_spots_list}"
-                )
+            heatmap_array = self.create_heatmap(
+                num_cols=num_cols,
+                num_rows=num_rows,
+                number_of_spots_array=number_of_spots_array,
+            )
 
-                heatmap_array = self.create_heatmap(
-                    num_cols=num_cols,
-                    num_rows=num_rows,
-                    number_of_spots_array=number_of_spots_array,
-                )
-                crystalmap_array = self.create_heatmap(
-                    num_cols=num_cols,
-                    num_rows=num_rows,
-                    number_of_spots_array=resolution_array,
-                )
+            heatmap = {
+                i: [i, list(heatmap_array[i - 1])]
+                for i in range(1, num_rows * num_cols + 1)
+            }
 
-                heatmap = {}
-                crystalmap = {}
+            heatmap_dict = {"heatmap": heatmap}
 
-                if grid:
-                    for i in range(1, num_rows * num_cols + 1):
-                        heatmap[i] = [i, list(heatmap_array[i - 1])]
-                        crystalmap[i] = [i, list(crystalmap_array[i - 1])]
+            self.sample_view.set_grid_data(grid_id, heatmap_dict, data_file_path=None)
 
-                heat_and_crystal_map = {"heatmap": heatmap, "crystalmap": crystalmap}
-                self.sample_view.set_grid_data(
-                    sid, heat_and_crystal_map, data_file_path="this_is_not_used"
-                )
+        self._state.value = "ON"
+        self.mxcubecore_workflow_aborted = False
 
-            self._state.value = "ON"
-            self.mxcubecore_workflow_aborted = False
-
-    def read_message_from_redis_streams(
-        self, topic: str, id: Union[bytes, int]
+    async def read_message_from_redis_streams(
+        self, topic: str, id: Union[bytes, int], redis_client: redis.asyncio.StrictRedis
     ) -> tuple[dict, bytes]:
         """
         Reads pickled messages from a redis stream
@@ -226,6 +251,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
             Name of the topic of the redis stream, aka, the sample_id
         id : Union[bytes, int]
             id of the topic in bytes or int format
+        redis_client : redis.asyncio.StrictRedis
+            An async redis client
 
         Returns
         -------
@@ -234,17 +261,14 @@ class GridScanFlow(AbstractPrefectWorkflow):
             The diction ary has the following keys:
             b'type', b'number_of_spots', b'image_id', and b'sequence_id'
         """
-        response_length = 0
-        timeout = time.perf_counter() + 30  # wait for 30 seconds
-        while response_length == 0:
-            response = self.redis_connection.xread({topic: id}, count=1)
-            response_length = len(response)
-            if time.perf_counter() > timeout:
-                raise ValueError(
-                    f"Frames not found for id: {topic}. "
-                    "Check that frames are being buffered by the ZMQ stream consumer"
-                )
-            time.sleep(0.01)
+
+        response = await redis_client.xread(
+            {topic: id}, count=1, block=30000
+        )  # Wait 30 seconds
+        if not response:
+            raise QueueExecutionException(
+                message=f"Results not found for id {id} after 30 seconds", origin=self
+            )
 
         # Extract key and messages from the response
         _, messages = response[0]
@@ -252,8 +276,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
         # Update last_id and store messages data
         last_id, data = messages[0]
 
-        # Remove dataset from redis
-        # self.redis_connection.xdel(topic, last_id)
         return data, last_id
 
     def create_heatmap(
@@ -277,29 +299,18 @@ class GridScanFlow(AbstractPrefectWorkflow):
         result : npt.NDArray
             An array containing a heatmap with rbga values
         """
-
-        x = np.arange(num_cols)
-        y = np.arange(num_rows)
-
-        y, x = np.meshgrid(x, y)
         z = number_of_spots_array
 
         z_min = np.min(z)
         z_max = np.max(z)
 
-        _, ax = plt.subplots()
+        # Normalise the array
+        norm_z = (z - z_min) / (z_max - z_min)
 
-        heatmap = ax.pcolormesh(x, y, z, cmap="seismic", vmin=z_min, vmax=z_max)
-        heatmap = heatmap.to_rgba(z, norm=True).reshape(num_cols * num_rows, 4)
+        cmap = plt.get_cmap("seismic")
+        heatmap = cmap(norm_z) * 255
 
-        # The following could probably be done more efficiently without using for loops
-        result = np.ones(heatmap.shape)
-        for i in range(num_rows * num_cols):
-            for j in range(4):
-                if heatmap[i][j] != 1.0:
-                    result[i][j] = int(heatmap[i][j] * 255)
-
-        return result
+        return heatmap.reshape(num_rows * num_cols, 4)
 
     def dialog_box(self) -> dict:
         """

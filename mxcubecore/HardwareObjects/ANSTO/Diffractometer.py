@@ -92,14 +92,16 @@ class Diffractometer(GenericDiffractometer):
         self.connect(
             self.motor_hwobj_dict["phiz"], "valueChanged", self.phiz_motor_moved
         )
-        self.connect(
-            self.motor_hwobj_dict["kappa"], "valueChanged", self.kappa_motor_moved
-        )
-        self.connect(
-            self.motor_hwobj_dict["kappa_phi"],
-            "valueChanged",
-            self.kappa_phi_motor_moved,
-        )
+        if "kappa" in self.motor_hwobj_dict:
+            self.connect(
+                self.motor_hwobj_dict["kappa"], "valueChanged", self.kappa_motor_moved
+            )
+        if "kappa_phi" in self.motor_hwobj_dict:
+            self.connect(
+                self.motor_hwobj_dict["kappa_phi"],
+                "valueChanged",
+                self.kappa_phi_motor_moved,
+            )
         self.connect(
             self.motor_hwobj_dict["sampx"], "valueChanged", self.sampx_motor_moved
         )

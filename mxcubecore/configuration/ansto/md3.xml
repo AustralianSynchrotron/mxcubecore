@@ -9,8 +9,8 @@
   <object role="phiz" hwrid="./md3/motor_z"></object>
   <object role="sampx" hwrid="./md3/sample_x"></object>
   <object role="sampy" hwrid="./md3/sample_y"></object>
-  <object role="kappa" hwrid="./md3/kappa"></object>
-  <object role="kappa_phi" hwrid="./md3/kappa_phi"></object>
+  <!-- <object role="kappa" hwrid="./md3/kappa"></object>
+  <object role="kappa_phi" hwrid="./md3/kappa_phi"></object> -->
   <object role="beam" hwrid="./beam"></object>
 
   <object role="backlight" href="./md3/backlight"/>
