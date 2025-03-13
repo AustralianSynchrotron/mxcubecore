@@ -2,7 +2,10 @@ import asyncio
 import logging
 from os import environ
 
-from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.beam import (
+    energy_master,
+    transmission,
+)
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
@@ -44,6 +47,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             number_of_frames=dialog_box_model.number_of_frames,
             detector_distance=dialog_box_model.detector_distance / 1000,  # meters
             photon_energy=dialog_box_model.photon_energy,
+            transmission=transmission.get(),
             beam_size=(80, 80),  # TODO: get beam size
         )
 
