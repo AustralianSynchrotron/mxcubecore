@@ -8,7 +8,8 @@ from pydantic.v1 import (
     Field,
 )
 
-# NOTE: The detector_distance and energy units used in 
+
+# NOTE: The detector_distance and energy units used in
 # the ScreeningDialogBox and Prefect ScreeningParams are different
 # on purpose
 class ScreeningDialogBox(BaseModel):
@@ -36,16 +37,13 @@ class ScreeningParams(BaseModel):
     omega_range: float = Field(
         default=10, description="Global default. Measured in degrees."
     )
-    exposure_time: float = Field(
-        description="Measured in seconds."
-    )
+    exposure_time: float = Field(description="Measured in seconds.")
     number_of_passes: int = 1
     count_time: float = None
     number_of_frames: int
     detector_distance: float = Field(description="Detector distance in meters")
-    photon_energy: float = Field(
-        description="Measured in keV."
-    )
+    photon_energy: float = Field(description="Measured in keV.")
+    transmission: float
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),
         description="Determined by the crystal finder. Not currently used. "
@@ -54,4 +52,3 @@ class ScreeningParams(BaseModel):
 
     class Config:
         extra = "forbid"
-

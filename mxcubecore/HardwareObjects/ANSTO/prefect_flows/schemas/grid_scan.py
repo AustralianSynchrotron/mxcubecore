@@ -3,7 +3,10 @@ from typing import (
     Union,
 )
 
-from pydantic import BaseModel, Field
+from pydantic import (
+    BaseModel,
+    Field,
+)
 
 
 class GridScanDialogBox(BaseModel):
@@ -31,4 +34,4 @@ class GridScanParams(BaseModel):
     hardware_trigger: bool = True
     crystal_finder_threshold: int = 1
     number_of_processes: Optional[float] = None
-    transmission: float = 0.1
+    transmission: float
