@@ -1,5 +1,10 @@
-from pydantic import BaseModel, Field
 from datetime import datetime
+
+from pydantic import (
+    BaseModel,
+    Field,
+)
+
 
 class TimeStampMixin(BaseModel):
     """Timestamp Mixin"""
@@ -13,8 +18,10 @@ class TimeStampMixin(BaseModel):
         description="Date entry updated.",
     )
 
+
 class PinRead(TimeStampMixin, BaseModel):
     """Abstract Pin Schema"""
+
     id: int = Field(title="Pin ID", examples=[1])
     puckId: int = Field(title="Puck ID", examples=[1])
     port: int = Field(title="Pin ID", examples=[3])

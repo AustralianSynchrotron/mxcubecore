@@ -151,6 +151,9 @@ class SampleChanger(AbstractSampleChanger):
         self._mount_deployment_name = self.get_property("mount_deployment_name")
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
+        client = self.get_client()
+        self.loaded_pucks = client.status.get_loaded_pucks()
+
     @dtask
     def __update_timer_task(self, *args):
         while True:
@@ -286,7 +289,7 @@ class SampleChanger(AbstractSampleChanger):
 
             _state_res = _client.status.state
             _loaded_pucks: dict[int, RobotPuck] = {}
-            for _puck in _client.status.get_loaded_pucks():
+            for _puck in self.loaded_pucks:
                 _loaded_pucks[_puck.id] = _puck
 
             _components: list[Puck] = self.get_components()
