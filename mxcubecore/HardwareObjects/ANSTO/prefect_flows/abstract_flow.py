@@ -7,7 +7,7 @@ from abc import (
 )
 from http import HTTPStatus
 from os import getenv
-from time import perf_counter
+from time import perf_counter, sleep
 from urllib.parse import urljoin
 
 import gevent
@@ -59,7 +59,14 @@ class AbstractPrefectWorkflow(ABC):
 
         self.robot_client = Client(host=ROBOT_HOST, readonly=False)
 
-        self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
+        try:
+            self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
+        except Exception as e:
+            logging.getLogger("HWR").warning(
+                f"Failed to load pucks using the robot library: {e}. Retrying in 0.5 seconds."
+            )
+            sleep(0.5)
+            self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
 
         self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
         self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
