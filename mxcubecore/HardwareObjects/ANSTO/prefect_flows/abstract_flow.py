@@ -59,6 +59,8 @@ class AbstractPrefectWorkflow(ABC):
 
         self.robot_client = Client(host=ROBOT_HOST, readonly=False)
 
+        self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
+
         self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
         self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
         self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
@@ -226,11 +228,10 @@ class AbstractPrefectWorkflow(ABC):
         QueueExecutionException
             Raises an exception is no pin is currently mounted
         """
-        pucks = self.robot_client.status.get_loaded_pucks()
 
         mounted_sample = self.robot_client.status.state.goni_pin
         if mounted_sample is not None:
-            for puck in pucks:
+            for puck in self.loaded_pucks:
                 if puck.id == mounted_sample.puck.id:
                     # NOTE: The robot returns the barcode as e.g ASP-3018,
                     # but the data layer expects the format ASP3018
