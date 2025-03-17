@@ -98,7 +98,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "Setting sample id to `test_sample`. "
                 "This should only be used for development"
             )
-            sample_id = "test_sample"
+            sample_id = "1"
 
         redis_grid_scan_id = self.redis_connection.get(
             f"mxcube_grid_scan_id:{sample_id}"

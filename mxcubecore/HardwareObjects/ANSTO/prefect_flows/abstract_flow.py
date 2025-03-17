@@ -7,7 +7,10 @@ from abc import (
 )
 from http import HTTPStatus
 from os import getenv
-from time import perf_counter, sleep
+from time import (
+    perf_counter,
+    sleep,
+)
 from urllib.parse import urljoin
 
 import gevent
