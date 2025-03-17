@@ -7,7 +7,10 @@ from abc import (
 )
 from http import HTTPStatus
 from os import getenv
-from time import perf_counter
+from time import (
+    perf_counter,
+    sleep,
+)
 from urllib.parse import urljoin
 
 import gevent
@@ -58,6 +61,15 @@ class AbstractPrefectWorkflow(ABC):
         self.mxcubecore_workflow_aborted = False
 
         self.robot_client = Client(host=ROBOT_HOST, readonly=False)
+
+        try:
+            self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
+        except Exception as e:
+            logging.getLogger("HWR").warning(
+                f"Failed to load pucks using the robot library: {e}. Retrying in 0.5 seconds."
+            )
+            sleep(0.5)
+            self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
 
         self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
         self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
@@ -226,11 +238,10 @@ class AbstractPrefectWorkflow(ABC):
         QueueExecutionException
             Raises an exception is no pin is currently mounted
         """
-        pucks = self.robot_client.status.get_loaded_pucks()
 
         mounted_sample = self.robot_client.status.state.goni_pin
         if mounted_sample is not None:
-            for puck in pucks:
+            for puck in self.loaded_pucks:
                 if puck.id == mounted_sample.puck.id:
                     # NOTE: The robot returns the barcode as e.g ASP-3018,
                     # but the data layer expects the format ASP3018

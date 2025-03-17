@@ -9,7 +9,10 @@ import numpy as np
 import numpy.typing as npt
 import redis
 import redis.asyncio
-from mx3_beamline_library.devices.beam import energy_master
+from mx3_beamline_library.devices.beam import (
+    energy_master,
+    transmission,
+)
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.HardwareObjects.SampleView import (
@@ -95,7 +98,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "Setting sample id to `test_sample`. "
                 "This should only be used for development"
             )
-            sample_id = "test_sample"
+            sample_id = "1"
 
         redis_grid_scan_id = self.redis_connection.get(
             f"mxcube_grid_scan_id:{sample_id}"
@@ -120,6 +123,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
             hardware_trigger=dialog_box_model.hardware_trigger,
             number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
+            transmission=transmission.get(),
         )
 
         self.redis_connection.set(

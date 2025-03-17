@@ -8,7 +8,8 @@ from pydantic.v1 import (
     Field,
 )
 
-# NOTE: The detector_distance and energy units used in 
+
+# NOTE: The detector_distance and energy units used in
 # the FullDatasetDialogBox and Prefect FullDatasetParams are different
 # on purpose
 class FullDatasetDialogBox(BaseModel):
@@ -41,13 +42,9 @@ class FullDatasetParams(BaseModel):
         default=100,
         description="Global default. Determined by the detector frame rate and exposure time.",
     )
-    detector_distance: float = Field(
-        description="Output from XPLAN. Measured in m."
-    )
-    photon_energy: float = Field(
-        description="Global default. Measured in keV."
-    )
-    transmission: float = 0.1
+    detector_distance: float = Field(description="Output from XPLAN. Measured in m.")
+    photon_energy: float = Field(description="Global default. Measured in keV.")
+    transmission: float
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),
         description="Determined by the crystal finder. Not currently used. "
