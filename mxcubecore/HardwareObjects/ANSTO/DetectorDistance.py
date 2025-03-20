@@ -157,7 +157,9 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
             fast_stage_setpoint = current_fast_stage_val + diff
             detector_fast_stage.move(fast_stage_setpoint, wait=False)
         except Exception:
-            logging.getLogger("user_level_log").error(f"Setpoint {value} not allowed")
+            logging.getLogger("user_level_log").error(
+                f"Failed to change detector distance"
+            )
             self.update_specific_state(self.STATES.READY)
             return
 

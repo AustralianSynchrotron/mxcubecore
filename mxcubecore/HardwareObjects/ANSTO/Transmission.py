@@ -112,9 +112,7 @@ class Transmission(AbstractMotor, EPICSActuator):
         try:
             transmission.set(value / 100)
         except Exception:
-            logging.getLogger("user_level_log").error(
-                "Failed to change transmission. Please check the device status or input value."
-            )
+            logging.getLogger("user_level_log").error("Failed to change transmission")
             self.update_specific_state(self.STATES.READY)
             return
 
