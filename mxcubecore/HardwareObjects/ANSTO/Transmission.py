@@ -111,12 +111,10 @@ class Transmission(AbstractMotor, EPICSActuator):
         self.update_state(self.STATES.BUSY)
         try:
             transmission.set(value / 100)
+            self.update_specific_state(self.SPECIFIC_STATES.MOVING)
+
         except Exception:
             logging.getLogger("user_level_log").error("Failed to change transmission")
-            self.update_specific_state(self.STATES.READY)
-            return
-
-        self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
     def abort(self) -> None:
         """Stop the motor and update the new position of the motor.
