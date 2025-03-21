@@ -54,8 +54,8 @@ class Detector(AbstractDetector):
         self._roi_modes_list = ast.literal_eval(self.get_property("roiModes", "()"))
 
         self._pixel_size = (
-            self._get_detector_config("x_pixel_size"),
-            self._get_detector_config("y_pixel_size"),
+            self._get_detector_config("x_pixel_size") * 1000,  # mm
+            self._get_detector_config("y_pixel_size") * 1000,  # mm
         )
         self._width = self._get_detector_config("x_pixels_in_detector")
         self._height = self._get_detector_config("y_pixels_in_detector")

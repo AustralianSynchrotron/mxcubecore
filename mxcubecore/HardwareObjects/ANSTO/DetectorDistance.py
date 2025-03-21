@@ -1,3 +1,4 @@
+import logging
 import time
 
 from mx3_beamline_library.devices.motors import (
@@ -66,15 +67,15 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         float
             New position of the motor.
         """
+        self.update_state(self.STATES.BUSY)
         self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
         while detector_fast_stage.moving:
             time.sleep(0.2)
-            self.update_state(self.STATES.BUSY)
-            current_value = self.get_value()
-            self.update_value(current_value)
+            self.update_value(self.get_value())
 
         self.update_state(self.STATES.READY)
+        self.update_value(self.get_value())
         return value
 
     def abort(self) -> None:
@@ -85,8 +86,6 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         None
         """
         detector_fast_stage.stop(success=True)
-        self._set_value(self.get_value())
-        self.update_state(self.STATES.READY)
 
     def get_limits(self) -> tuple:
         """Get the limits of a motor.
@@ -148,13 +147,18 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        actual_distance = actual_sample_detector_distance.get()
-        actual_detector_distance_setpoint = value
-        diff = actual_detector_distance_setpoint - actual_distance
-        current_fast_stage_val = detector_fast_stage.position
+        self.update_state(self.STATES.BUSY)
+        try:
+            actual_distance = actual_sample_detector_distance.get()
+            actual_detector_distance_setpoint = value
+            diff = actual_detector_distance_setpoint - actual_distance
+            current_fast_stage_val = detector_fast_stage.position
 
-        fast_stage_setpoint = current_fast_stage_val + diff
-        detector_fast_stage.move(fast_stage_setpoint, wait=False)
+            fast_stage_setpoint = current_fast_stage_val + diff
+            detector_fast_stage.move(fast_stage_setpoint, wait=False)
+            self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
-        self.update_value(value)
-        self.update_state(self.STATES.READY)
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                f"Failed to change detector distance"
+            )

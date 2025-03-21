@@ -1,3 +1,4 @@
+import logging
 import time
 
 from mx3_beamline_library.devices.beam import (
@@ -63,13 +64,12 @@ class Transmission(AbstractMotor, EPICSActuator):
         float
             New position of the motor.
         """
+        # TODO: Verify with real data
+        self.update_state(self.STATES.BUSY)
         self.update_specific_state(self.SPECIFIC_STATES.MOVING)
-
         while filter_wheel_is_moving.get():
             time.sleep(0.1)
-            self.update_state(self.STATES.BUSY)
-            current_value = self.get_value()
-            self.update_value(current_value)
+            self.update_value(self.get_value())
 
         self.update_state(self.STATES.READY)
         self.update_value(self.get_value())
@@ -108,7 +108,19 @@ class Transmission(AbstractMotor, EPICSActuator):
         -------
         None
         """
-        transmission.set(value / 100)
+        self.update_state(self.STATES.BUSY)
+        try:
+            transmission.set(value / 100)
+            self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
-        self.update_value(value)
-        self.update_state(self.STATES.READY)
+        except Exception:
+            logging.getLogger("user_level_log").error("Failed to change transmission")
+
+    def abort(self) -> None:
+        """Stop the motor and update the new position of the motor.
+
+        Returns
+        -------
+        None
+        """
+        pass
