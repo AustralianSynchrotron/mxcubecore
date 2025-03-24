@@ -16,7 +16,10 @@ class FullDatasetDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
     number_of_frames: int
-    detector_distance: float = Field(description="Measured in millimeters")
+    resolution: float = Field(
+        description="Measured in Angstrom. This value is converted to "
+        "distance in meters internally, which is the parameter "
+        "prefect expects")
     photon_energy: float
     sample_id: Optional[str] = None
     processing_pipeline: str = "dials"

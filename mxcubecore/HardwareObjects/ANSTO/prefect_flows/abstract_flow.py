@@ -25,6 +25,9 @@ from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
 from .schemas.screening import ScreeningDialogBox
+from ..Resolution import Resolution
+from scipy.constants import Planck, electron_volt, speed_of_light
+
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
@@ -46,13 +49,16 @@ class AbstractPrefectWorkflow(ABC):
         True if a mxcubecore workflow is aborted, False otherwise. False, by default.
     """
 
-    def __init__(self, state) -> None:
+    def __init__(self, state, resolution: Resolution) -> None:
         """
         Parameters
         ----------
         state : State
             The state of the PrefectWorkflow class. See the State class in
             BlueskyWorkflow for details
+        resolution : Resolution
+            The resolution hardware object used to map resolution to
+            detector distance
 
         Returns
         -------
@@ -61,6 +67,7 @@ class AbstractPrefectWorkflow(ABC):
 
         super().__init__()
         self._state = state
+        self.resolution = resolution
 
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
@@ -326,7 +333,7 @@ class AbstractPrefectWorkflow(ABC):
             "processing_pipeline",
             "crystal_counter",
             "photon_energy",
-            "detector_distance",
+            "resolution",
             "md3_alignment_y_speed",
         ],
     ) -> str | int | float:
@@ -354,3 +361,41 @@ class AbstractPrefectWorkflow(ABC):
         """
         with self._get_redis_connection() as redis_connection:
             return redis_connection.get(f"{self._collection_type}:{parameter}")
+
+    def _resolution_to_distance(self, resolution: float, energy: float)-> float:
+        """
+        Converts resolution 
+
+        Parameters
+        ----------
+        resolution : float
+            Resolution in Angstrom
+        energy : float
+            Energy in keV
+
+        Returns
+        -------
+        float
+            The distance in meters
+        """
+        wavelength = self._keV_to_angstrom(energy)
+        return self.resolution.resolution_to_distance(resolution=resolution, wavelength=wavelength) / 1000
+
+    def _keV_to_angstrom(self, energy_keV: float) -> float:
+        """
+        Converts energy in keV to wavelength in Angstrom
+
+        Parameters
+        ----------
+        energy_keV : float
+            Energy in keV
+
+        Returns
+        -------
+        float
+            Wavelength in Angstrom
+        """
+        energy_joules = energy_keV * 1000 * electron_volt
+        wavelength_SI = Planck * speed_of_light / (energy_joules)
+        wavelength_angstrom = wavelength_SI * 1e10
+        return wavelength_angstrom

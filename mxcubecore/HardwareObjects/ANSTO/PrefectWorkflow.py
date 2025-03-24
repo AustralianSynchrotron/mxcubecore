@@ -20,6 +20,7 @@ from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
+from .Resolution import Resolution
 
 
 class State(object):
@@ -142,6 +143,7 @@ class PrefectWorkflow(HardwareObject):
 
         hwr = HWR.get_hardware_repository()
         self.sample_view: SampleView = hwr.get_hardware_object("/sample_view")
+        self.resolution: Resolution = hwr.get_hardware_object("/resolution")
 
         self.redis_connection = redis.StrictRedis(
             host=self.REDIS_HOST,
@@ -414,7 +416,9 @@ class PrefectWorkflow(HardwareObject):
 
         if self.workflow_name == PrefectFlows.screen_sample:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.screening_flow = ScreeningFlow(state=self._state)
+            self.screening_flow = ScreeningFlow(
+                state=self._state,  resolution=self.resolution
+                )
             dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
@@ -428,7 +432,9 @@ class PrefectWorkflow(HardwareObject):
 
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.full_dataset_flow = FullDatasetFlow(state=self._state)
+            self.full_dataset_flow = FullDatasetFlow(
+                state=self._state,  resolution=self.resolution
+                )
             dialog_box_parameters = self.open_dialog(
                 self.full_dataset_flow.dialog_box()
             )
@@ -447,6 +453,7 @@ class PrefectWorkflow(HardwareObject):
                 sample_view=self.sample_view,
                 state=self._state,
                 redis_connection=self.redis_connection,
+                resolution=self.resolution,
             )
             dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
             if dialog_box_parameters:
