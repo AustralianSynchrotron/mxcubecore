@@ -11,20 +11,20 @@ from time import (
     perf_counter,
     sleep,
 )
+from typing import Literal
 from urllib.parse import urljoin
 
 import gevent
 import httpx
-from mx_robot_library.client import Client
 import redis
-from typing import Literal
+from mx_robot_library.client import Client
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
-from .schemas.screening import ScreeningDialogBox
 from .schemas.grid_scan import GridScanDialogBox
+from .schemas.screening import ScreeningDialogBox
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
@@ -82,8 +82,7 @@ class AbstractPrefectWorkflow(ABC):
         self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
         self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
 
-        self._collection_type = None # To be overridden by inheriting classes
-
+        self._collection_type = None  # To be overridden by inheriting classes
 
     @abstractmethod
     def run(self) -> None:
@@ -288,7 +287,7 @@ class AbstractPrefectWorkflow(ABC):
 
     def _get_redis_connection(self) -> redis.StrictRedis:
         """Create and return a Redis connection.
-        
+
         Returns
         -------
         redis.StrictRedis
@@ -308,7 +307,7 @@ class AbstractPrefectWorkflow(ABC):
     ) -> None:
         """
         Save the last set parameters from the dialog box to Redis.
-        
+
         Parameters
         ----------
         dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox
@@ -328,7 +327,7 @@ class AbstractPrefectWorkflow(ABC):
             "crystal_counter",
             "photon_energy",
             "detector_distance",
-            "md3_alignment_y_speed"
+            "md3_alignment_y_speed",
         ],
     ) -> str | int | float:
         """
@@ -347,7 +346,7 @@ class AbstractPrefectWorkflow(ABC):
             "md3_alignment_y_speed"
         ]
             A parameter saved in redis
-        
+
         Returns
         -------
         str | int | float

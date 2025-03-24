@@ -133,7 +133,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         logging.getLogger("HWR").info(
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
-    
+
         # Remember the collection params for the next collection
         self._save_dialog_box_params_to_redis(dialog_box_model)
 
@@ -337,7 +337,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "maximum": 14.8,
-                    "default": float(self._get_dialog_box_param("md3_alignment_y_speed")),
+                    "default": float(
+                        self._get_dialog_box_param("md3_alignment_y_speed")
+                    ),
                     "widget": "textarea",
                 },
                 "omega_range": {

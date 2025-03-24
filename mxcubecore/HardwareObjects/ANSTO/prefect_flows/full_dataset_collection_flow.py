@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from os import environ
-from typing import Literal
 
 import redis
 from mx3_beamline_library.devices.beam import (
@@ -134,7 +133,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             },
             "number_of_frames": {
                 "title": "Number of Frames",
-                "type": "number",
+                "type": "integer",
                 "minimum": 1,
                 "default": int(self._get_dialog_box_param("number_of_frames")),
                 "widget": "textarea",
@@ -163,7 +162,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             },
             "crystal_counter": {
                 "title": "Crystal ID",
-                "type": "number",
+                "type": "integer",
                 "minimum": 0,
                 "default": int(self._get_dialog_box_param("crystal_counter")),
                 "widget": "textarea",

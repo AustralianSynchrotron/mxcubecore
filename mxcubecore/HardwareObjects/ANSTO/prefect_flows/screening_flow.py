@@ -9,7 +9,6 @@ from mx3_beamline_library.devices.beam import (
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-from typing import Literal
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -132,7 +131,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             },
             "number_of_frames": {
                 "title": "Number of Frames",
-                "type": "number",
+                "type": "integer",
                 "minimum": 1,
                 "default": int(self._get_dialog_box_param("number_of_frames")),
                 "widget": "textarea",
@@ -161,7 +160,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             },
             "crystal_counter": {
                 "title": "Crystal ID",
-                "type": "number",
+                "type": "integer",
                 "minimum": 0,
                 "default": int(self._get_dialog_box_param("crystal_counter")),
                 "widget": "textarea",

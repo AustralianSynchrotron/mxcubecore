@@ -3,14 +3,13 @@ import logging
 import os
 import pprint
 import time
+from os import path
 from time import perf_counter
 
 import gevent
 import redis
-from gevent.event import Event
 import yaml
-from os import path
-
+from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -121,8 +120,6 @@ class PrefectWorkflow(HardwareObject):
 
         self.mxcubecore_workflow_aborted = False
 
-
-
     def _init(self) -> None:
         """
         Object initialisation - executed *before* loading contents
@@ -155,7 +152,6 @@ class PrefectWorkflow(HardwareObject):
         )
 
         self._save_default_collection_params_to_redis()
-
 
         self.raster_flow = None
 
@@ -473,12 +469,14 @@ class PrefectWorkflow(HardwareObject):
         """
         Save default full_dataset, screening, and grid_scan parameters to Redis.
         The default values are read from the default_params.yml config file
-        
+
         Returns
         -------
         None
         """
-        default_params_path =  path.join(path.dirname(__file__), "prefect_flows", "default_params.yml")
+        default_params_path = path.join(
+            path.dirname(__file__), "prefect_flows", "default_params.yml"
+        )
         with open(default_params_path) as config:
             default_params = yaml.safe_load(config)
 
@@ -486,11 +484,9 @@ class PrefectWorkflow(HardwareObject):
         for key, value in default_params[collection_type].items():
             self.redis_connection.set(f"{collection_type}:{key}", value)
 
-
         collection_type = "screening"
         for key, value in default_params[collection_type].items():
             self.redis_connection.set(f"{collection_type}:{key}", value)
-
 
         collection_type = "grid_scan"
         for key, value in default_params[collection_type].items():
