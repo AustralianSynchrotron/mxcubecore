@@ -124,3 +124,9 @@ class Detector(AbstractDetector):
         """
 
         return self._beam_centre
+
+    def get_width(self):
+        return self._get_detector_config("x_pixels_in_detector")
+
+    def get_height(self):
+        return self._get_detector_config("x_pixels_in_detector")

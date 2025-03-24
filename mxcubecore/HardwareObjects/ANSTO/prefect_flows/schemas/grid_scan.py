@@ -15,10 +15,10 @@ class GridScanDialogBox(BaseModel):
     resolution: float = Field(
         description="Measured in Angstrom. This value is converted to "
         "distance in meters internally, which is the parameter "
-        "prefect expects")    
+        "prefect expects"
+    )
     photon_energy: float
     transmission: float = Field(description="Measured in percentage")
-
 
 
 class GridScanParams(BaseModel):

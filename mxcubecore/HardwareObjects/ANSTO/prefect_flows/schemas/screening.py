@@ -19,7 +19,8 @@ class ScreeningDialogBox(BaseModel):
     resolution: float = Field(
         description="Measured in Angstrom. This value is converted to "
         "distance in meters internally, which is the parameter "
-        "prefect expects")
+        "prefect expects"
+    )
     photon_energy: float = Field(description="Detector distance in keV")
     transmission: float = Field(description="Measured in percentage")
     sample_id: Optional[str] = None

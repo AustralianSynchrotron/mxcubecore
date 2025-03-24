@@ -10,13 +10,13 @@ from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
 from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
 )
-from ..Resolution import Resolution
 
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
@@ -46,7 +46,11 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         # This is the payload we get from the UI"
         dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
 
-        detector_distance = self._resolution_to_distance(dialog_box_model.resolution, energy=dialog_box_model.photon_energy)
+        detector_distance = self._resolution_to_distance(
+            dialog_box_model.resolution,
+            energy=dialog_box_model.photon_energy,
+            roi_mode="disabled",
+        )
 
         screening_params = ScreeningParams(
             omega_range=dialog_box_model.omega_range,
@@ -198,7 +202,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "photon_energy",
                 "processing_pipeline",
                 "crystal_counter",
-                "transmission"
+                "transmission",
             ],
             "dialogName": "Screening Parameters",
         }

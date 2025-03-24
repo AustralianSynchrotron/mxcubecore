@@ -21,13 +21,13 @@ from mxcubecore.HardwareObjects.SampleView import (
 )
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
 from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
-from ..Resolution import Resolution
 
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
@@ -111,7 +111,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
         else:
             grid_scan_id = int(redis_grid_scan_id) + 1
 
-        detector_distance = self._resolution_to_distance(dialog_box_model.resolution, energy=dialog_box_model.photon_energy)
+        detector_distance = self._resolution_to_distance(
+            dialog_box_model.resolution,
+            energy=dialog_box_model.photon_energy,
+            roi_mode="4M",
+        )
 
         prefect_parameters = GridScanParams(
             sample_id=sample_id,
@@ -129,7 +133,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             hardware_trigger=True,
             number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
             # Convert transmission percentage to a value between 0 and 1
-            transmission=dialog_box_model.transmission / 100
+            transmission=dialog_box_model.transmission / 100,
         )
 
         self.redis_connection.set(
@@ -385,7 +389,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "omega_range",
                 "resolution",
                 "photon_energy",
-                "transmission"
+                "transmission",
             ],
             "dialogName": "Grid Scan Parameters",
         }

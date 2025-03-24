@@ -11,13 +11,13 @@ from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
 from .schemas.full_dataset import (
     FullDatasetDialogBox,
     FullDatasetParams,
 )
-from ..Resolution import Resolution
 
 FULL_DATASET_DEPLOYMENT_NAME = environ.get(
     "FULL_DATASET_DEPLOYMENT_NAME", "mxcube-full-data-collection/plans"
@@ -46,7 +46,11 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         # This is the payload we get from the UI
         dialog_box_model = FullDatasetDialogBox.parse_obj(dialog_box_parameters)
 
-        detector_distance = self._resolution_to_distance(dialog_box_model.resolution, energy=dialog_box_model.photon_energy)
+        detector_distance = self._resolution_to_distance(
+            dialog_box_model.resolution,
+            energy=dialog_box_model.photon_energy,
+            roi_mode="disabled",
+        )
 
         full_dataset_params = FullDatasetParams(
             omega_range=dialog_box_model.omega_range,
@@ -199,7 +203,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                 "photon_energy",
                 "processing_pipeline",
                 "crystal_counter",
-                "transmission"
+                "transmission",
             ],
             "dialogName": "Dataset Parameters",
         }

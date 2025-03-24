@@ -18,22 +18,26 @@ import gevent
 import httpx
 import redis
 from mx_robot_library.client import Client
+from scipy.constants import (
+    Planck,
+    electron_volt,
+    speed_of_light,
+)
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..Resolution import Resolution
 from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
 from .schemas.screening import ScreeningDialogBox
-from ..Resolution import Resolution
-from scipy.constants import Planck, electron_volt, speed_of_light
-
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
 EPN_STRING = getenv(
     "EPN_STRING", "my_epn"
 )  # TODO: could be obtained from somewhere else
+SIMPLON_API = getenv("SIMPLON_API", "http://0.0.0.0:8088")
 
 
 class AbstractPrefectWorkflow(ABC):
@@ -335,7 +339,7 @@ class AbstractPrefectWorkflow(ABC):
             "photon_energy",
             "resolution",
             "md3_alignment_y_speed",
-            "transmission"
+            "transmission",
         ],
     ) -> str | int | float:
         """
@@ -364,9 +368,11 @@ class AbstractPrefectWorkflow(ABC):
         with self._get_redis_connection() as redis_connection:
             return redis_connection.get(f"{self._collection_type}:{parameter}")
 
-    def _resolution_to_distance(self, resolution: float, energy: float)-> float:
+    def _resolution_to_distance(
+        self, resolution: float, energy: float, roi_mode: Literal["4M", "disabled"]
+    ) -> float:
         """
-        Converts resolution 
+        Converts resolution to distance
 
         Parameters
         ----------
@@ -374,14 +380,22 @@ class AbstractPrefectWorkflow(ABC):
             Resolution in Angstrom
         energy : float
             Energy in keV
+        roi_mode : Literal["4M", "disabled"]
+            The detector roi mode
 
         Returns
         -------
         float
             The distance in meters
         """
+        self._set_detector_roi_mode(roi_mode)
         wavelength = self._keV_to_angstrom(energy)
-        return self.resolution.resolution_to_distance(resolution=resolution, wavelength=wavelength) / 1000
+        return (
+            self.resolution.resolution_to_distance(
+                resolution=resolution, wavelength=wavelength
+            )
+            / 1000
+        )
 
     def _keV_to_angstrom(self, energy_keV: float) -> float:
         """
@@ -401,3 +415,38 @@ class AbstractPrefectWorkflow(ABC):
         wavelength_SI = Planck * speed_of_light / (energy_joules)
         wavelength_angstrom = wavelength_SI * 1e10
         return wavelength_angstrom
+
+    def _set_detector_roi_mode(self, roi_mode: Literal["4M", "disabled"]) -> None:
+        """
+        Sets the detector roi mode
+
+        Parameters
+        ----------
+        roi_mode : Literal["4M", "disabled"]
+            The roi mode
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        QueueExecutionException
+            Raises an exception if the response is different from HTTPStatus.OK
+        """
+        with httpx.Client() as client:
+            r = client.get(urljoin(SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"))
+
+            if r.status_code != HTTPStatus.OK:
+                raise QueueExecutionException(
+                    message="Failed to communicate with the SIMPLON API", origin=self
+                )
+
+            if r.json()["value"] != roi_mode:
+                logging.getLogger("HWR").info(
+                    f"Changing detector roi mode to {roi_mode}"
+                )
+                client.put(
+                    urljoin(SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"),
+                    json={"value": roi_mode},
+                )

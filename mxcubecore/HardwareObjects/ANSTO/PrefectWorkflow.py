@@ -417,8 +417,8 @@ class PrefectWorkflow(HardwareObject):
         if self.workflow_name == PrefectFlows.screen_sample:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.screening_flow = ScreeningFlow(
-                state=self._state,  resolution=self.resolution
-                )
+                state=self._state, resolution=self.resolution
+            )
             dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
@@ -433,8 +433,8 @@ class PrefectWorkflow(HardwareObject):
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.full_dataset_flow = FullDatasetFlow(
-                state=self._state,  resolution=self.resolution
-                )
+                state=self._state, resolution=self.resolution
+            )
             dialog_box_parameters = self.open_dialog(
                 self.full_dataset_flow.dialog_box()
             )
