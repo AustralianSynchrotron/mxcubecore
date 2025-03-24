@@ -16,6 +16,7 @@ from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
 )
+from ..Resolution import Resolution
 
 SCREENING_DEPLOYMENT_NAME = environ.get(
     "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
@@ -25,8 +26,8 @@ ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "tr
 
 class ScreeningFlow(AbstractPrefectWorkflow):
 
-    def __init__(self, state):
-        super().__init__(state)
+    def __init__(self, state, resolution: Resolution):
+        super().__init__(state, resolution)
 
         self._collection_type = "screening"
 
@@ -45,15 +46,18 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         # This is the payload we get from the UI"
         dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
 
+        detector_distance = self._resolution_to_distance(dialog_box_model.resolution, energy=dialog_box_model.photon_energy)
+
         screening_params = ScreeningParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
             number_of_frames=dialog_box_model.number_of_frames,
-            detector_distance=dialog_box_model.detector_distance / 1000,  # meters
+            detector_distance=detector_distance,
             photon_energy=dialog_box_model.photon_energy,
-            transmission=transmission.get(),
+            # Convert transmission percentage to a value between 0 and 1
+            transmission=dialog_box_model.transmission / 100,
             beam_size=(80, 80),  # TODO: get beam size
         )
 
@@ -136,12 +140,12 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "default": int(self._get_dialog_box_param("number_of_frames")),
                 "widget": "textarea",
             },
-            "detector_distance": {
-                "title": "Detector Distance [mm]",
+            "resolution": {
+                "title": "Resolution [A]",
                 "type": "number",
                 "minimum": 0,  # TODO: get limits from distance PV
                 "maximum": 3000,  # TODO: get limits from distance PV
-                "default": float(self._get_dialog_box_param("detector_distance")),
+                "default": float(self._get_dialog_box_param("resolution")),
                 "widget": "textarea",
             },
             "photon_energy": {
@@ -150,6 +154,14 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "minimum": 5,  # TODO: get limits from PV?
                 "maximum": 25,
                 "default": float(self._get_dialog_box_param("photon_energy")),
+                "widget": "textarea",
+            },
+            "transmission": {
+                "title": "Transmission [%]",
+                "type": "number",
+                "minimum": 0,  # TODO: get limits from PV?
+                "maximum": 100,
+                "default": float(self._get_dialog_box_param("transmission")),
                 "widget": "textarea",
             },
             "processing_pipeline": {
@@ -182,10 +194,11 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "exposure_time",
                 "omega_range",
                 "number_of_frames",
-                "detector_distance",
+                "resolution",
                 "photon_energy",
                 "processing_pipeline",
                 "crystal_counter",
+                "transmission"
             ],
             "dialogName": "Screening Parameters",
         }

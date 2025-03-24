@@ -47,6 +47,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         dialog_box_model = FullDatasetDialogBox.parse_obj(dialog_box_parameters)
 
         detector_distance = self._resolution_to_distance(dialog_box_model.resolution, energy=dialog_box_model.photon_energy)
+
         full_dataset_params = FullDatasetParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
@@ -56,7 +57,8 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             detector_distance=detector_distance,
             photon_energy=dialog_box_model.photon_energy,
             beam_size=(80, 80),  # TODO: get beam size,
-            transmission=transmission.get(),
+            # Convert transmission percentage to a value between 0 and 1
+            transmission=dialog_box_model.transmission / 100,
         )
 
         if not ADD_DUMMY_PIN_TO_DB:
@@ -156,6 +158,14 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                 "default": float(self._get_dialog_box_param("photon_energy")),
                 "widget": "textarea",
             },
+            "transmission": {
+                "title": "Transmission [%]",
+                "type": "number",
+                "minimum": 0,  # TODO: get limits from PV?
+                "maximum": 100,
+                "default": float(self._get_dialog_box_param("transmission")),
+                "widget": "textarea",
+            },
             "processing_pipeline": {
                 "title": "Data Processing Pipeline",
                 "type": "string",
@@ -189,6 +199,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                 "photon_energy",
                 "processing_pipeline",
                 "crystal_counter",
+                "transmission"
             ],
             "dialogName": "Dataset Parameters",
         }

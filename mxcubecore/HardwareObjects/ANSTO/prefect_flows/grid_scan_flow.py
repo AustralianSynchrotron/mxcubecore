@@ -27,6 +27,7 @@ from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
+from ..Resolution import Resolution
 
 GRID_SCAN_DEPLOYMENT_NAME = environ.get(
     "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
@@ -46,10 +47,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
     def __init__(
         self,
         state,
+        resolution: Resolution,
         redis_connection: redis.StrictRedis,
         sample_view: SampleView,
     ) -> None:
-        super().__init__(state)
+        super().__init__(state, resolution)
 
         self.redis_connection = redis_connection
         self.sample_view = sample_view
@@ -109,6 +111,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
         else:
             grid_scan_id = int(redis_grid_scan_id) + 1
 
+        detector_distance = self._resolution_to_distance(dialog_box_model.resolution, energy=dialog_box_model.photon_energy)
+
         prefect_parameters = GridScanParams(
             sample_id=sample_id,
             grid_scan_id=grid_scan_id,
@@ -118,13 +122,14 @@ class GridScanFlow(AbstractPrefectWorkflow):
             beam_position=beam_position,
             number_of_columns=num_cols,
             number_of_rows=num_rows,
-            detector_distance=dialog_box_model.detector_distance / 1000,
+            detector_distance=detector_distance,
             photon_energy=dialog_box_model.photon_energy,
             omega_range=dialog_box_model.omega_range,
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
             hardware_trigger=True,
             number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
-            transmission=transmission.get(),
+            # Convert transmission percentage to a value between 0 and 1
+            transmission=dialog_box_model.transmission / 100
         )
 
         self.redis_connection.set(
@@ -350,12 +355,12 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "default": float(self._get_dialog_box_param("omega_range")),
                     "widget": "textarea",
                 },
-                "detector_distance": {
-                    "title": "Detector Distance [mm]",
+                "resolution": {
+                    "title": "Resolution [A]",
                     "type": "number",
                     "minimum": 0,  # TODO: get limits from distance PV
                     "maximum": 3000,  # TODO: get limits from distance PV
-                    "default": float(self._get_dialog_box_param("detector_distance")),
+                    "default": float(self._get_dialog_box_param("resolution")),
                     "widget": "textarea",
                 },
                 "photon_energy": {
@@ -366,12 +371,21 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "default": float(self._get_dialog_box_param("photon_energy")),
                     "widget": "textarea",
                 },
+                "transmission": {
+                    "title": "Transmission [%]",
+                    "type": "number",
+                    "minimum": 0,  # TODO: get limits from PV?
+                    "maximum": 100,
+                    "default": float(self._get_dialog_box_param("transmission")),
+                    "widget": "textarea",
+                },
             },
             "required": [
                 "md3_alignment_y_speed",
                 "omega_range",
-                "detector_distance",
+                "resolution",
                 "photon_energy",
+                "transmission"
             ],
             "dialogName": "Grid Scan Parameters",
         }

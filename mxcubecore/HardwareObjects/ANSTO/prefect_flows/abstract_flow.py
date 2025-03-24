@@ -335,6 +335,7 @@ class AbstractPrefectWorkflow(ABC):
             "photon_energy",
             "resolution",
             "md3_alignment_y_speed",
+            "transmission"
         ],
     ) -> str | int | float:
         """
@@ -349,8 +350,9 @@ class AbstractPrefectWorkflow(ABC):
             "processing_pipeline",
             "crystal_counter",
             "photon_energy",
-            "detector_distance",
+            "resolution",
             "md3_alignment_y_speed"
+            "transmission"
         ]
             A parameter saved in redis
 
