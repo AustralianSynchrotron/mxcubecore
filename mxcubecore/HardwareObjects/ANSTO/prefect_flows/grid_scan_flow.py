@@ -53,6 +53,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         self.redis_connection = redis_connection
         self.sample_view = sample_view
+        self._collection_type = "grid_scan"
 
     def run(self, dialog_box_parameters: dict) -> None:
         """
@@ -121,7 +122,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             photon_energy=dialog_box_model.photon_energy,
             omega_range=dialog_box_model.omega_range,
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
-            hardware_trigger=dialog_box_model.hardware_trigger,
+            hardware_trigger=True,
             number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
             transmission=transmission.get(),
         )
@@ -132,6 +133,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
         logging.getLogger("HWR").info(
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
+    
+        # Remember the collection params for the next collection
+        self._save_dialog_box_params_to_redis(dialog_box_model)
 
         try:
             loop = self._get_asyncio_event_loop()
@@ -185,6 +189,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             name=GRID_SCAN_DEPLOYMENT_NAME,
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
+
         await grid_scan_flow.trigger_grid_scan()
 
         logging.getLogger("HWR").info("Getting spotfinder results from redis...")
@@ -332,7 +337,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "maximum": 14.8,
-                    "default": 1,
+                    "default": float(self._get_dialog_box_param("md3_alignment_y_speed")),
                     "widget": "textarea",
                 },
                 "omega_range": {
@@ -340,7 +345,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,
                     "maximum": 360,
-                    "default": 0,
+                    "default": float(self._get_dialog_box_param("omega_range")),
                     "widget": "textarea",
                 },
                 "detector_distance": {
@@ -348,7 +353,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 0,  # TODO: get limits from distance PV
                     "maximum": 3000,  # TODO: get limits from distance PV
-                    "default": round(actual_sample_detector_distance.get(), 2),
+                    "default": float(self._get_dialog_box_param("detector_distance")),
                     "widget": "textarea",
                 },
                 "photon_energy": {
@@ -356,7 +361,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "type": "number",
                     "minimum": 5,  # TODO: get limits from PV?
                     "maximum": 25,
-                    "default": round(energy_master.get(), 2),
+                    "default": float(self._get_dialog_box_param("photon_energy")),
                     "widget": "textarea",
                 },
             },

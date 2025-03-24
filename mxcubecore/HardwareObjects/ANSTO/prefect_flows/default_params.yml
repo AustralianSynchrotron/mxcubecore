@@ -1,0 +1,23 @@
+full_dataset:
+  exposure_time: 18.0 # Total exposure time, seconds
+  omega_range: 180.0 # Degrees
+  number_of_frames: 180
+  processing_pipeline: "fast_dp" # can be fast_dp, dials, or dials_and_fast_dp
+  crystal_counter: 0 # a.k.a. crystal id
+  photon_energy: 13.0 # keV
+  detector_distance: 340.0 # mm
+
+screening:
+  exposure_time: 18.0 # Total exposure time, seconds
+  omega_range: 180.0 # Degrees
+  number_of_frames: 1800
+  processing_pipeline: "fast_dp" # can be fast_dp, dials, or dials_and_fast_dp
+  crystal_counter: 0 # a.k.a. crystal id
+  photon_energy: 13.0 # keV
+  detector_distance: 340.0 # mm
+
+grid_scan:
+  md3_alignment_y_speed: 1 # mm/s
+  omega_range: 0.0 # Degrees
+  detector_distance: 340.0 # mm
+  photon_energy: 13.0 # keV

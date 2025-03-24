@@ -8,6 +8,9 @@ from time import perf_counter
 import gevent
 import redis
 from gevent.event import Event
+import yaml
+from os import path
+
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -110,13 +113,15 @@ class PrefectWorkflow(HardwareObject):
         self.gevent_event = None
         self.workflow_name = None
 
-        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
+        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "localhost")
         self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
         self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
         self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
         self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
 
         self.mxcubecore_workflow_aborted = False
+
+
 
     def _init(self) -> None:
         """
@@ -148,6 +153,9 @@ class PrefectWorkflow(HardwareObject):
             password=self.REDIS_PASSWORD,
             db=self.REDIS_DB,
         )
+
+        self._save_default_collection_params_to_redis()
+
 
         self.raster_flow = None
 
@@ -460,3 +468,30 @@ class PrefectWorkflow(HardwareObject):
                 f"Workflow {self.workflow_name} not supported"
             )
             self.state.value = "ON"
+
+    def _save_default_collection_params_to_redis(self) -> None:
+        """
+        Save default full_dataset, screening, and grid_scan parameters to Redis.
+        The default values are read from the default_params.yml config file
+        
+        Returns
+        -------
+        None
+        """
+        default_params_path =  path.join(path.dirname(__file__), "prefect_flows", "default_params.yml")
+        with open(default_params_path) as config:
+            default_params = yaml.safe_load(config)
+
+        collection_type = "full_dataset"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)
+
+
+        collection_type = "screening"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)
+
+
+        collection_type = "grid_scan"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)

@@ -18,7 +18,6 @@ class FullDatasetDialogBox(BaseModel):
     number_of_frames: int
     detector_distance: float = Field(description="Measured in millimeters")
     photon_energy: float
-    hardware_trigger: bool = True
     sample_id: Optional[str] = None
     processing_pipeline: str = "dials"
     crystal_counter: int = 0

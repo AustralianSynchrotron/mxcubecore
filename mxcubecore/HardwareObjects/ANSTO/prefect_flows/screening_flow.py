@@ -9,6 +9,7 @@ from mx3_beamline_library.devices.beam import (
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+from typing import Literal
 
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
@@ -24,6 +25,12 @@ ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "tr
 
 
 class ScreeningFlow(AbstractPrefectWorkflow):
+
+    def __init__(self, state):
+        super().__init__(state)
+
+        self._collection_type = "screening"
+
     def run(self, dialog_box_parameters: dict) -> None:
         """Runs the screening flow
 
@@ -67,7 +74,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "crystal_counter": dialog_box_model.crystal_counter,
             "screening_params": screening_params.dict(),
             "run_data_processing_pipeline": True,
-            "hardware_trigger": dialog_box_model.hardware_trigger,
+            "hardware_trigger": True,
             "add_dummy_pin": ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
@@ -80,6 +87,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         screening_flow = MX3PrefectClient(
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
+
+        # Remember the collection params for the next collection
+        self._save_dialog_box_params_to_redis(dialog_box_model)
+
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
@@ -108,7 +119,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "title": "Total Exposure Time [s]",
                 "type": "number",
                 "minimum": 0,
-                "default": 1,
+                "default": float(self._get_dialog_box_param("exposure_time")),
                 "widget": "textarea",
             },
             "omega_range": {
@@ -116,14 +127,14 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 0,
                 "exclusiveMaximum": 361,
-                "default": 10,
+                "default": float(self._get_dialog_box_param("omega_range")),
                 "widget": "textarea",
             },
             "number_of_frames": {
                 "title": "Number of Frames",
                 "type": "number",
                 "minimum": 1,
-                "default": 100,
+                "default": int(self._get_dialog_box_param("number_of_frames")),
                 "widget": "textarea",
             },
             "detector_distance": {
@@ -131,7 +142,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 0,  # TODO: get limits from distance PV
                 "maximum": 3000,  # TODO: get limits from distance PV
-                "default": round(actual_sample_detector_distance.get(), 2),
+                "default": float(self._get_dialog_box_param("detector_distance")),
                 "widget": "textarea",
             },
             "photon_energy": {
@@ -139,20 +150,20 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 5,  # TODO: get limits from PV?
                 "maximum": 25,
-                "default": round(energy_master.get(), 2),
+                "default": float(self._get_dialog_box_param("photon_energy")),
                 "widget": "textarea",
             },
             "processing_pipeline": {
                 "title": "Data Processing Pipeline",
                 "type": "string",
                 "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
-                "default": "fast_dp",
+                "default": self._get_dialog_box_param("processing_pipeline"),
             },
             "crystal_counter": {
                 "title": "Crystal ID",
                 "type": "number",
                 "minimum": 0,
-                "default": 0,
+                "default": int(self._get_dialog_box_param("crystal_counter")),
                 "widget": "textarea",
             },
         }
