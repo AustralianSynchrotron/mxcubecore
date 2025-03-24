@@ -37,7 +37,7 @@ DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
 EPN_STRING = getenv(
     "EPN_STRING", "my_epn"
 )  # TODO: could be obtained from somewhere else
-SIMPLON_API = getenv("SIMPLON_API", "http://0.0.0.0:8088")
+SIMPLON_API = getenv("SIMPLON_API", "http://0.0.0.0:8000")
 
 
 class AbstractPrefectWorkflow(ABC):

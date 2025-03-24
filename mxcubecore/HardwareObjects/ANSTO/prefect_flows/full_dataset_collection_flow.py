@@ -147,7 +147,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             },
             "resolution": {
-                "title": "Resolution [A]",
+                "title": "Resolution [Å]",
                 "type": "number",
                 "minimum": 0,  # TODO: get limits from distance PV
                 "maximum": 3000,  # TODO: get limits from distance PV

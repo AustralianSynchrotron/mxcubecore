@@ -23,6 +23,6 @@ screening:
 grid_scan:
   md3_alignment_y_speed: 1  # mm/s
   omega_range: 0.0  # Degrees
-  detector_distance: 340.0  # mm
+  photon_energy: 13.0  # keV
   resolution: 4.0  # Ångström
   transmission: 2  # Percentage
