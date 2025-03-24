@@ -10,6 +10,7 @@ from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
 from .prefect_client import MX3PrefectClient
 from .schemas.screening import (
@@ -24,6 +25,12 @@ ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "tr
 
 
 class ScreeningFlow(AbstractPrefectWorkflow):
+
+    def __init__(self, state, resolution: Resolution):
+        super().__init__(state, resolution)
+
+        self._collection_type = "screening"
+
     def run(self, dialog_box_parameters: dict) -> None:
         """Runs the screening flow
 
@@ -39,15 +46,22 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         # This is the payload we get from the UI"
         dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
 
+        detector_distance = self._resolution_to_distance(
+            dialog_box_model.resolution,
+            energy=dialog_box_model.photon_energy,
+            roi_mode="disabled",
+        )
+
         screening_params = ScreeningParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
             number_of_frames=dialog_box_model.number_of_frames,
-            detector_distance=dialog_box_model.detector_distance / 1000,  # meters
+            detector_distance=detector_distance,
             photon_energy=dialog_box_model.photon_energy,
-            transmission=transmission.get(),
+            # Convert transmission percentage to a value between 0 and 1
+            transmission=dialog_box_model.transmission / 100,
             beam_size=(80, 80),  # TODO: get beam size
         )
 
@@ -67,7 +81,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "crystal_counter": dialog_box_model.crystal_counter,
             "screening_params": screening_params.dict(),
             "run_data_processing_pipeline": True,
-            "hardware_trigger": dialog_box_model.hardware_trigger,
+            "hardware_trigger": True,
             "add_dummy_pin": ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
@@ -80,6 +94,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         screening_flow = MX3PrefectClient(
             name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
+
+        # Remember the collection params for the next collection
+        self._save_dialog_box_params_to_redis(dialog_box_model)
+
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
@@ -108,7 +126,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "title": "Total Exposure Time [s]",
                 "type": "number",
                 "minimum": 0,
-                "default": 1,
+                "default": float(self._get_dialog_box_param("exposure_time")),
                 "widget": "textarea",
             },
             "omega_range": {
@@ -116,22 +134,22 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 0,
                 "exclusiveMaximum": 361,
-                "default": 10,
+                "default": float(self._get_dialog_box_param("omega_range")),
                 "widget": "textarea",
             },
             "number_of_frames": {
                 "title": "Number of Frames",
-                "type": "number",
+                "type": "integer",
                 "minimum": 1,
-                "default": 100,
+                "default": int(self._get_dialog_box_param("number_of_frames")),
                 "widget": "textarea",
             },
-            "detector_distance": {
-                "title": "Detector Distance [mm]",
+            "resolution": {
+                "title": "Resolution [Å]",
                 "type": "number",
                 "minimum": 0,  # TODO: get limits from distance PV
                 "maximum": 3000,  # TODO: get limits from distance PV
-                "default": round(actual_sample_detector_distance.get(), 2),
+                "default": float(self._get_dialog_box_param("resolution")),
                 "widget": "textarea",
             },
             "photon_energy": {
@@ -139,20 +157,28 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 5,  # TODO: get limits from PV?
                 "maximum": 25,
-                "default": round(energy_master.get(), 2),
+                "default": float(self._get_dialog_box_param("photon_energy")),
+                "widget": "textarea",
+            },
+            "transmission": {
+                "title": "Transmission [%]",
+                "type": "number",
+                "minimum": 0,  # TODO: get limits from PV?
+                "maximum": 100,
+                "default": float(self._get_dialog_box_param("transmission")),
                 "widget": "textarea",
             },
             "processing_pipeline": {
                 "title": "Data Processing Pipeline",
                 "type": "string",
                 "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
-                "default": "fast_dp",
+                "default": self._get_dialog_box_param("processing_pipeline"),
             },
             "crystal_counter": {
                 "title": "Crystal ID",
-                "type": "number",
+                "type": "integer",
                 "minimum": 0,
-                "default": 0,
+                "default": int(self._get_dialog_box_param("crystal_counter")),
                 "widget": "textarea",
             },
         }
@@ -172,10 +198,11 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "exposure_time",
                 "omega_range",
                 "number_of_frames",
-                "detector_distance",
+                "resolution",
                 "photon_energy",
                 "processing_pipeline",
                 "crystal_counter",
+                "transmission",
             ],
             "dialogName": "Screening Parameters",
         }

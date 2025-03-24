@@ -12,9 +12,13 @@ from pydantic import (
 class GridScanDialogBox(BaseModel):
     md3_alignment_y_speed: float
     omega_range: float
-    detector_distance: float = Field(description="Distance measured in millimeters")
+    resolution: float = Field(
+        description="Measured in Angstrom. This value is converted to "
+        "distance in meters internally, which is the parameter "
+        "prefect expects"
+    )
     photon_energy: float
-    hardware_trigger: bool = True
+    transmission: float = Field(description="Measured in percentage")
 
 
 class GridScanParams(BaseModel):
@@ -34,4 +38,4 @@ class GridScanParams(BaseModel):
     hardware_trigger: bool = True
     crystal_finder_threshold: int = 1
     number_of_processes: Optional[float] = None
-    transmission: float
+    transmission: float = Field(strict=True, ge=0, le=1)

@@ -16,10 +16,13 @@ class ScreeningDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
     number_of_frames: int
-    detector_distance: float = Field(description="Detector distance in millimeters")
+    resolution: float = Field(
+        description="Measured in Angstrom. This value is converted to "
+        "distance in meters internally, which is the parameter "
+        "prefect expects"
+    )
     photon_energy: float = Field(description="Detector distance in keV")
-    transmission: float = 0.1
-    hardware_trigger: bool = True
+    transmission: float = Field(description="Measured in percentage")
     sample_id: Optional[str] = None
     processing_pipeline: str = "dials"
     crystal_counter: int = 0
@@ -43,7 +46,7 @@ class ScreeningParams(BaseModel):
     number_of_frames: int
     detector_distance: float = Field(description="Detector distance in meters")
     photon_energy: float = Field(description="Measured in keV.")
-    transmission: float
+    transmission: float = Field(strict=True, ge=0, le=1)
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),
         description="Determined by the crystal finder. Not currently used. "

@@ -3,10 +3,12 @@ import logging
 import os
 import pprint
 import time
+from os import path
 from time import perf_counter
 
 import gevent
 import redis
+import yaml
 from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
@@ -18,6 +20,7 @@ from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
+from .Resolution import Resolution
 
 
 class State(object):
@@ -110,7 +113,7 @@ class PrefectWorkflow(HardwareObject):
         self.gevent_event = None
         self.workflow_name = None
 
-        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
+        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "localhost")
         self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
         self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
         self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
@@ -140,6 +143,7 @@ class PrefectWorkflow(HardwareObject):
 
         hwr = HWR.get_hardware_repository()
         self.sample_view: SampleView = hwr.get_hardware_object("/sample_view")
+        self.resolution: Resolution = hwr.get_hardware_object("/resolution")
 
         self.redis_connection = redis.StrictRedis(
             host=self.REDIS_HOST,
@@ -148,6 +152,8 @@ class PrefectWorkflow(HardwareObject):
             password=self.REDIS_PASSWORD,
             db=self.REDIS_DB,
         )
+
+        self._save_default_collection_params_to_redis()
 
         self.raster_flow = None
 
@@ -410,7 +416,9 @@ class PrefectWorkflow(HardwareObject):
 
         if self.workflow_name == PrefectFlows.screen_sample:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.screening_flow = ScreeningFlow(state=self._state)
+            self.screening_flow = ScreeningFlow(
+                state=self._state, resolution=self.resolution
+            )
             dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
@@ -424,7 +432,9 @@ class PrefectWorkflow(HardwareObject):
 
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.full_dataset_flow = FullDatasetFlow(state=self._state)
+            self.full_dataset_flow = FullDatasetFlow(
+                state=self._state, resolution=self.resolution
+            )
             dialog_box_parameters = self.open_dialog(
                 self.full_dataset_flow.dialog_box()
             )
@@ -443,6 +453,7 @@ class PrefectWorkflow(HardwareObject):
                 sample_view=self.sample_view,
                 state=self._state,
                 redis_connection=self.redis_connection,
+                resolution=self.resolution,
             )
             dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
             if dialog_box_parameters:
@@ -460,3 +471,30 @@ class PrefectWorkflow(HardwareObject):
                 f"Workflow {self.workflow_name} not supported"
             )
             self.state.value = "ON"
+
+    def _save_default_collection_params_to_redis(self) -> None:
+        """
+        Save default full_dataset, screening, and grid_scan parameters to Redis.
+        The default values are read from the default_params.yml config file
+
+        Returns
+        -------
+        None
+        """
+        default_params_path = path.join(
+            path.dirname(__file__), "prefect_flows", "default_params.yml"
+        )
+        with open(default_params_path) as config:
+            default_params = yaml.safe_load(config)
+
+        collection_type = "full_dataset"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)
+
+        collection_type = "screening"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)
+
+        collection_type = "grid_scan"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)

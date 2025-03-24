@@ -16,12 +16,16 @@ class FullDatasetDialogBox(BaseModel):
     exposure_time: float
     omega_range: float
     number_of_frames: int
-    detector_distance: float = Field(description="Measured in millimeters")
+    resolution: float = Field(
+        description="Measured in Angstrom. This value is converted to "
+        "distance in meters internally, which is the parameter "
+        "prefect expects"
+    )
     photon_energy: float
-    hardware_trigger: bool = True
     sample_id: Optional[str] = None
-    processing_pipeline: str = "dials"
-    crystal_counter: int = 0
+    processing_pipeline: str
+    crystal_counter: int
+    transmission: float = Field(description="Measured in percentage")
 
 
 class FullDatasetParams(BaseModel):
@@ -44,7 +48,7 @@ class FullDatasetParams(BaseModel):
     )
     detector_distance: float = Field(description="Output from XPLAN. Measured in m.")
     photon_energy: float = Field(description="Global default. Measured in keV.")
-    transmission: float
+    transmission: float = Field(strict=True, ge=0, le=1)
     beam_size: Union[tuple[int, int], list[int]] = Field(
         default=(80, 80),
         description="Determined by the crystal finder. Not currently used. "

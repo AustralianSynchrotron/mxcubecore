@@ -11,21 +11,33 @@ from time import (
     perf_counter,
     sleep,
 )
+from typing import Literal
 from urllib.parse import urljoin
 
 import gevent
 import httpx
+import redis
 from mx_robot_library.client import Client
+from scipy.constants import (
+    Planck,
+    electron_volt,
+    speed_of_light,
+)
 
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..Resolution import Resolution
 from .schemas.data_layer import PinRead
+from .schemas.full_dataset import FullDatasetDialogBox
+from .schemas.grid_scan import GridScanDialogBox
+from .schemas.screening import ScreeningDialogBox
 
 ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
 EPN_STRING = getenv(
     "EPN_STRING", "my_epn"
 )  # TODO: could be obtained from somewhere else
+SIMPLON_API = getenv("SIMPLON_API", "http://0.0.0.0:8000")
 
 
 class AbstractPrefectWorkflow(ABC):
@@ -41,13 +53,16 @@ class AbstractPrefectWorkflow(ABC):
         True if a mxcubecore workflow is aborted, False otherwise. False, by default.
     """
 
-    def __init__(self, state) -> None:
+    def __init__(self, state, resolution: Resolution) -> None:
         """
         Parameters
         ----------
         state : State
             The state of the PrefectWorkflow class. See the State class in
             BlueskyWorkflow for details
+        resolution : Resolution
+            The resolution hardware object used to map resolution to
+            detector distance
 
         Returns
         -------
@@ -56,6 +71,7 @@ class AbstractPrefectWorkflow(ABC):
 
         super().__init__()
         self._state = state
+        self.resolution = resolution
 
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
@@ -76,6 +92,8 @@ class AbstractPrefectWorkflow(ABC):
         self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
         self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
         self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
+
+        self._collection_type = None  # To be overridden by inheriting classes
 
     @abstractmethod
     def run(self) -> None:
@@ -277,3 +295,158 @@ class AbstractPrefectWorkflow(ABC):
                 if perf_counter() > t + timeout:
                     raise QueueExecutionException("Asyncio Loop is still running", self)
         return loop
+
+    def _get_redis_connection(self) -> redis.StrictRedis:
+        """Create and return a Redis connection.
+
+        Returns
+        -------
+        redis.StrictRedis
+            A redis connection
+        """
+        return redis.StrictRedis(
+            host=self.REDIS_HOST,
+            port=self.REDIS_PORT,
+            username=self.REDIS_USERNAME,
+            password=self.REDIS_PASSWORD,
+            db=self.REDIS_DB,
+            decode_responses=True,
+        )
+
+    def _save_dialog_box_params_to_redis(
+        self, dialog_box: ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox
+    ) -> None:
+        """
+        Save the last set parameters from the dialog box to Redis.
+
+        Parameters
+        ----------
+        dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox
+            A dialog box pydantic model
+        """
+        with self._get_redis_connection() as redis_connection:
+            for key, value in dialog_box.dict(exclude_none=True).items():
+                redis_connection.set(f"{self._collection_type}:{key}", value)
+
+    def _get_dialog_box_param(
+        self,
+        parameter: Literal[
+            "exposure_time",
+            "omega_range",
+            "number_of_frames",
+            "processing_pipeline",
+            "crystal_counter",
+            "photon_energy",
+            "resolution",
+            "md3_alignment_y_speed",
+            "transmission",
+        ],
+    ) -> str | int | float:
+        """
+        Retrieve a parameter value from Redis.
+
+        Parameters
+        ----------
+        Literal[
+            "exposure_time",
+            "omega_range",
+            "number_of_frames",
+            "processing_pipeline",
+            "crystal_counter",
+            "photon_energy",
+            "resolution",
+            "md3_alignment_y_speed"
+            "transmission"
+        ]
+            A parameter saved in redis
+
+        Returns
+        -------
+        str | int | float
+            The last value set in redis for a given parameter
+        """
+        with self._get_redis_connection() as redis_connection:
+            return redis_connection.get(f"{self._collection_type}:{parameter}")
+
+    def _resolution_to_distance(
+        self, resolution: float, energy: float, roi_mode: Literal["4M", "disabled"]
+    ) -> float:
+        """
+        Converts resolution to distance
+
+        Parameters
+        ----------
+        resolution : float
+            Resolution in Angstrom
+        energy : float
+            Energy in keV
+        roi_mode : Literal["4M", "disabled"]
+            The detector roi mode
+
+        Returns
+        -------
+        float
+            The distance in meters
+        """
+        self._set_detector_roi_mode(roi_mode)
+        wavelength = self._keV_to_angstrom(energy)
+        return (
+            self.resolution.resolution_to_distance(
+                resolution=resolution, wavelength=wavelength
+            )
+            / 1000
+        )
+
+    def _keV_to_angstrom(self, energy_keV: float) -> float:
+        """
+        Converts energy in keV to wavelength in Angstrom
+
+        Parameters
+        ----------
+        energy_keV : float
+            Energy in keV
+
+        Returns
+        -------
+        float
+            Wavelength in Angstrom
+        """
+        energy_joules = energy_keV * 1000 * electron_volt
+        wavelength_SI = Planck * speed_of_light / (energy_joules)
+        wavelength_angstrom = wavelength_SI * 1e10
+        return wavelength_angstrom
+
+    def _set_detector_roi_mode(self, roi_mode: Literal["4M", "disabled"]) -> None:
+        """
+        Sets the detector roi mode
+
+        Parameters
+        ----------
+        roi_mode : Literal["4M", "disabled"]
+            The roi mode
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        QueueExecutionException
+            Raises an exception if the response is different from HTTPStatus.OK
+        """
+        with httpx.Client() as client:
+            r = client.get(urljoin(SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"))
+
+            if r.status_code != HTTPStatus.OK:
+                raise QueueExecutionException(
+                    message="Failed to communicate with the SIMPLON API", origin=self
+                )
+
+            if r.json()["value"] != roi_mode:
+                logging.getLogger("HWR").info(
+                    f"Changing detector roi mode to {roi_mode}"
+                )
+                client.put(
+                    urljoin(SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"),
+                    json={"value": roi_mode},
+                )
