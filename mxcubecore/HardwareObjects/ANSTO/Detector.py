@@ -1,5 +1,4 @@
 import ast
-import logging
 from os import getenv
 from typing import Literal
 from urllib.parse import urljoin
@@ -61,7 +60,7 @@ class Detector(AbstractDetector):
             self._get_detector_config("beam_center_y"),
         )
 
-        if self._beam_centre == (0,0):
+        if self._beam_centre == (0, 0):
             raise ValueError(
                 "The beam centre has not been set via the SIMPLON API. "
                 "Ensure 'beam_center_x' and 'beam_center_y' are different from zero"
