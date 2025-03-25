@@ -1,5 +1,7 @@
 import ast
+import logging
 from os import getenv
+from typing import Literal
 from urllib.parse import urljoin
 
 from httpx import Client
@@ -25,6 +27,16 @@ class Detector(AbstractDetector):
         AbstractDetector.__init__(self, name)
         self.simplon_api = SIMPLON_API
         self._state = HardwareObjectState.READY
+        self.simplon_state_to_hw_obj_state = {
+            "error": HardwareObjectState.FAULT,
+            "ready": HardwareObjectState.READY,
+            "idle": HardwareObjectState.READY,
+            "initialize": HardwareObjectState.BUSY,
+            "na": HardwareObjectState.BUSY,
+            "configure": HardwareObjectState.BUSY,
+            "acquire": HardwareObjectState.BUSY,
+            "test": HardwareObjectState.BUSY,
+        }
 
     def init(self):
         """
@@ -49,6 +61,11 @@ class Detector(AbstractDetector):
             self._get_detector_config("beam_center_y"),
         )
 
+        if self._beam_centre == (0,0):
+            raise ValueError(
+                "The beam centre has not been set via the SIMPLON API. "
+                "Ensure 'beam_center_x' and 'beam_center_y' are different from zero"
+            )
         self._distance_motor_hwobj = self.get_object_by_role("detector_distance")
 
         self._roi_modes_list = ast.literal_eval(self.get_property("roiModes", "()"))
@@ -60,6 +77,38 @@ class Detector(AbstractDetector):
         self._width = self._get_detector_config("x_pixels_in_detector")
         self._height = self._get_detector_config("y_pixels_in_detector")
 
+        # Polls the detector's state from the SIMPLON API every 2 seconds
+        self.state = self.add_channel(
+            {
+                "type": "rest_api",
+                "name": "state",
+                "polling": 2000,
+            },
+            urljoin(SIMPLON_API, "/detector/api/1.8.0/status/state"),
+        )
+        self.state.connect_signal("update", self._update_state)
+
+    def _update_state(
+        self,
+        value: Literal[
+            "error", "ready", "idle", "initialize", "na", "configure", "acquire", "test"
+        ],
+    ) -> None:
+        """
+        Updates the detector state. Used by the self.state poller and is only called
+        if the state of the detector has changed
+
+        Parameters
+        ----------
+        value : Literal["error", "ready", "idle", "initialize", "na", "configure", "acquire", "test"]
+            The detector state
+
+        Returns
+        -------
+        None
+        """
+        self.update_state(self.simplon_state_to_hw_obj_state.get(value))
+
     def _get_detector_config(self, parameter):
         with Client() as client:
             response = client.get(
@@ -69,7 +118,7 @@ class Detector(AbstractDetector):
 
         return response.json()["value"]
 
-    def get_state(self):
+    def get_state(self) -> HardwareObjectState:
         try:
             with Client() as client:
                 response = client.get(

@@ -538,6 +538,24 @@ class CommandContainer:
                     channel_name,
                 )
 
+        elif channel_type.lower() == "rest_api":
+            if "default_value" not in attributes_dict:
+                try:
+                    attributes_dict["default_value"] = float(self.default_value)
+                except AttributeError:
+                    pass
+
+            try:
+                from mxcubecore.Command.RestApi import RestApiChannel
+
+                new_channel = RestApiChannel(channel_name, channel, **attributes_dict)
+            except Exception:
+                logging.getLogger("HWR").exception(
+                    "%s: cannot add rest_api channel %s (hint: check attributes)",
+                    self.name(),
+                    channel_name,
+                )
+
         if new_channel is not None:
             if channel_on_change is not None:
                 new_channel._on_change = (channel_on_change, weakref.ref(self))
@@ -902,6 +920,18 @@ class CommandContainer:
             except Exception:
                 logging.getLogger().exception(
                     '%s: could not add command "%s" (hint: check command attributes)',
+                    self.name(),
+                    cmd_name,
+                )
+
+        elif cmd_type.lower() == "rest_api":
+            try:
+                from mxcubecore.Command.RestApi import RestApiCommand
+
+                new_command = RestApiCommand(cmd_name, cmd, **attributes_dict)
+            except Exception:
+                logging.getLogger().exception(
+                    '%s: could not add rest_api command "%s" (hint: check command attributes)',
                     self.name(),
                     cmd_name,
                 )
