@@ -6,6 +6,7 @@ from mx3_beamline_library.devices.motors import (
     detector_fast_stage,
 )
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
@@ -54,30 +55,31 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         self.get_velocity()
         self.update_state(self.STATES.READY)
 
-        self.distance_channel = self.add_channel(
-            {
-                "type": "epics",
-                "name": "distance",
-                "polling": 1000, # milliseconds
-            },
-            #transmission.pvname,
-            "my_pv:distance" # TODO
-        )
-        self.distance_channel.connect_signal("update", self._value_changed)
+        if settings.BL_ACTIVE:
+            self.distance_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": "distance",
+                    "polling": 1000,  # milliseconds
+                },
+                actual_sample_detector_distance.pvname,
+            )
+            self.distance_channel.connect_signal("update", self._value_changed)
 
-        self.distance_is_moving_channel = self.add_channel(
-            {
-                "type": "epics",
-                "name": "distance_is_moving",
-                "polling": 1000, # milliseconds
-            },
-            #transmission.pvname,
-            "my_pv:distance_is_moving" # TODO
-        )
-        self.distance_is_moving_channel.connect_signal("update", self._state_changed)
+            self.distance_is_moving_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": "distance_is_moving",
+                    "polling": 1000,  # milliseconds
+                },
+                detector_fast_stage.motor_is_moving.pvname,
+            )
+            self.distance_is_moving_channel.connect_signal(
+                "update", self._state_changed
+            )
 
     def _value_changed(self, value: float | None) -> None:
-        """Emits a valueChanged signal. Used by self.transmission_channel
+        """Emits a valueChanged signal. Used by self.distance_channel
 
         Parameters
         ----------
@@ -85,16 +87,14 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
             The transmission value
         """
         self._value = value
-        #if value is not None:
         self.emit("valueChanged", self._value)
-
 
     def _state_changed(
         self,
         value: bool,
     ) -> None:
         """Updates the state of the transmission hardware object. Used by
-        self.filter_wheel_is_moving_channel
+        self.distance_is_moving_channel
 
         Parameters
         ----------
@@ -106,7 +106,6 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
             self.update_specific_state(self.SPECIFIC_STATES.MOVING)
         else:
             self.update_state(self.STATES.READY)
-
 
     def _move(self, value: float) -> float:
         """Move the motor to a given value.
@@ -187,9 +186,8 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         float
             Position of the motor.
         """
-        #return actual_sample_detector_distance.get()
-        from epics import caget
-        return caget("my_pv:distance")
+        return actual_sample_detector_distance.get()
+
     def _set_value(self, value: float) -> None:
         """Sets the detector distance
 
