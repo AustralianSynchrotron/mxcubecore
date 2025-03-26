@@ -1,17 +1,14 @@
 import logging
 import time
-from os import environ
 
 from mx3_beamline_library.devices.beam import (
     filter_wheel_is_moving,
     transmission,
 )
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
-import epics
-
-BL_ACTIVE = environ.get("BL_ACTIVE", "false").lower() == "true"
 
 
 class Transmission(AbstractMotor, EPICSActuator):
@@ -55,41 +52,30 @@ class Transmission(AbstractMotor, EPICSActuator):
         self.get_velocity()
         self.update_state(self.STATES.READY)
 
-        #if BL_ACTIVE:
-        # The following channels are used to poll the transmission PV and the 
-        # filter_wheel_is_moving PV
-        self.transmission_channel = self.add_channel(
-            {
-                "type": "epics",
-                "name": "transmission",
-                "polling": 1000, # milliseconds
-            },
-            #transmission.pvname,
-            "my_pv:transmission" # TODO
-        )
-        self.transmission_channel.connect_signal("update", self._value_changed)
+        if settings.BL_ACTIVE:
+            # The following channels are used to poll the transmission PV and the
+            # filter_wheel_is_moving PV
+            self.transmission_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": "transmission",
+                    "polling": 1000,  # milliseconds
+                },
+                transmission.pvname,
+            )
+            self.transmission_channel.connect_signal("update", self._value_changed)
 
-        self.filter_wheel_is_moving_channel = self.add_channel(
-            {
-                "type": "epics",
-                "name": "is_moving",
-                "polling": 1000, # milliseconds
-            },
-            #transmission.pvname,
-            "my_pv:moving" # TODO
-        )
-        self.filter_wheel_is_moving_channel.connect_signal("update", self._state_changed)
-
-        # maybe this will work too
-        # self.transmission_command = self.add_command(
-        #     {
-        #         "type": "epics",
-        #         "name": "transmission",
-        #         "polling": 1000,
-        #     },
-        #     #transmission.pvname,
-        #     "my_pv:transmission"
-        # )
+            self.filter_wheel_is_moving_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": "is_moving",
+                    "polling": 1000,  # milliseconds
+                },
+                filter_wheel_is_moving.pvname,
+            )
+            self.filter_wheel_is_moving_channel.connect_signal(
+                "update", self._state_changed
+            )
 
     def _value_changed(self, value: float | None) -> None:
         """Emits a valueChanged signal. Used by self.transmission_channel
@@ -101,7 +87,7 @@ class Transmission(AbstractMotor, EPICSActuator):
         """
         self._value = value
         if value is not None:
-            self.emit("valueChanged", self._value * 100) # percentage
+            self.emit("valueChanged", self._value * 100)  # percentage
         else:
             self.emit("valueChanged", self._value)
 
@@ -122,7 +108,6 @@ class Transmission(AbstractMotor, EPICSActuator):
             self.update_specific_state(self.SPECIFIC_STATES.MOVING)
         else:
             self.update_state(self.STATES.READY)
-
 
     def _move(self, value: float) -> float:
         """Move the motor to a given value.
