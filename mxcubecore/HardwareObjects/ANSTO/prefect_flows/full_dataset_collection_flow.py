@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from os import environ
 
 import redis
 from mx3_beamline_library.devices.beam import (
@@ -9,6 +8,7 @@ from mx3_beamline_library.devices.beam import (
 )
 from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
@@ -18,11 +18,6 @@ from .schemas.full_dataset import (
     FullDatasetDialogBox,
     FullDatasetParams,
 )
-
-FULL_DATASET_DEPLOYMENT_NAME = environ.get(
-    "FULL_DATASET_DEPLOYMENT_NAME", "mxcube-full-data-collection/plans"
-)
-ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "true"
 
 
 class FullDatasetFlow(AbstractPrefectWorkflow):
@@ -65,7 +60,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             transmission=dialog_box_model.transmission / 100,
         )
 
-        if not ADD_DUMMY_PIN_TO_DB:
+        if not settings.ADD_DUMMY_PIN_TO_DB:
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
             sample_id = pin.id
@@ -82,7 +77,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "collection_params": full_dataset_params.dict(),
             "run_data_processing_pipeline": True,
             "hardware_trigger": True,
-            "add_dummy_pin": ADD_DUMMY_PIN_TO_DB,
+            "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
         }
@@ -92,7 +87,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
 
         full_dataset_flow = MX3PrefectClient(
-            name=FULL_DATASET_DEPLOYMENT_NAME, parameters=prefect_parameters
+            name=settings.FULL_DATASET_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
         # Remember the collection params for the next collection
@@ -185,7 +180,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             },
         }
 
-        if ADD_DUMMY_PIN_TO_DB:
+        if settings.ADD_DUMMY_PIN_TO_DB:
             properties["sample_id"] = {
                 "title": "Sample id (dev only)",
                 "type": "string",

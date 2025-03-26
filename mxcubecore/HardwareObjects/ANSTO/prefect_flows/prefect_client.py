@@ -9,6 +9,8 @@ from uuid import UUID
 
 import redis
 
+from mxcubecore.configuration.ansto.config import settings
+
 try:
     # NOTE: State must be imported first,
     # otherwise the prefect client does not work properly
@@ -56,18 +58,12 @@ class MX3PrefectClient:
         self.deployment_id = None
         self.prefect_client = PrefectClient(api=path.join(PREFECT_URI, "api"))
 
-        REDIS_HOST = environ.get("MXCUBE_REDIS_HOST", "localhost")
-        REDIS_PORT = int(environ.get("MXCUBE_REDIS_PORT", "6379"))
-        REDIS_USERNAME = environ.get("MXCUBE_REDIS_USERNAME", None)
-        REDIS_PASSWORD = environ.get("MXCUBE_REDIS_PASSWORD", None)
-        REDIS_DB = int(environ.get("MXCUBE_REDIS_DB", "0"))
-
         self.async_redis_connection = redis.asyncio.StrictRedis(
-            host=REDIS_HOST,
-            port=REDIS_PORT,
-            username=REDIS_USERNAME,
-            password=REDIS_PASSWORD,
-            db=REDIS_DB,
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            username=settings.REDIS_USERNAME,
+            password=settings.REDIS_PASSWORD,
+            db=settings.REDIS_DB,
             decode_responses=True,
         )
 

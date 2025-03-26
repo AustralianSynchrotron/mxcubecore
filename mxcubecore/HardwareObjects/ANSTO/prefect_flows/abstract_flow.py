@@ -1,12 +1,10 @@
 import asyncio
 import logging
-import os
 from abc import (
     ABC,
     abstractmethod,
 )
 from http import HTTPStatus
-from os import getenv
 from time import (
     perf_counter,
     sleep,
@@ -24,6 +22,7 @@ from scipy.constants import (
     speed_of_light,
 )
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
@@ -31,13 +30,6 @@ from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
 from .schemas.screening import ScreeningDialogBox
-
-ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
-DATA_LAYER_API = getenv("DATA_LAYER_API", "http://0.0.0.0:8088")
-EPN_STRING = getenv(
-    "EPN_STRING", "my_epn"
-)  # TODO: could be obtained from somewhere else
-SIMPLON_API = getenv("SIMPLON_API", "http://0.0.0.0:8000")
 
 
 class AbstractPrefectWorkflow(ABC):
@@ -76,7 +68,7 @@ class AbstractPrefectWorkflow(ABC):
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
 
-        self.robot_client = Client(host=ROBOT_HOST, readonly=False)
+        self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
 
         try:
             self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
@@ -86,12 +78,6 @@ class AbstractPrefectWorkflow(ABC):
             )
             sleep(0.5)
             self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
-
-        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "mx_redis")
-        self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
-        self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
-        self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
-        self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
 
         self._collection_type = None  # To be overridden by inheriting classes
 
@@ -224,14 +210,14 @@ class AbstractPrefectWorkflow(ABC):
 
         logging.getLogger("HWR").info(
             f"Getting pin id from the mx-data-layer-api for port {port}, "
-            f"barcode {barcode}, and epn_string {EPN_STRING}"
+            f"barcode {barcode}, and epn_string {settings.EPN_STRING}"
         )
 
         with httpx.Client() as client:
             r = client.get(
                 urljoin(
-                    DATA_LAYER_API,
-                    f"/pin/by_barcode_port_and_epn/{port}/{barcode}/{EPN_STRING}",
+                    settings.DATA_LAYER_API,
+                    f"/pin/by_barcode_port_and_epn/{port}/{barcode}/{settings.EPN_STRING}",
                 )
             )
             if r.status_code != HTTPStatus.OK:
@@ -305,11 +291,11 @@ class AbstractPrefectWorkflow(ABC):
             A redis connection
         """
         return redis.StrictRedis(
-            host=self.REDIS_HOST,
-            port=self.REDIS_PORT,
-            username=self.REDIS_USERNAME,
-            password=self.REDIS_PASSWORD,
-            db=self.REDIS_DB,
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            username=settings.REDIS_USERNAME,
+            password=settings.REDIS_PASSWORD,
+            db=settings.REDIS_DB,
             decode_responses=True,
         )
 
@@ -435,7 +421,9 @@ class AbstractPrefectWorkflow(ABC):
             Raises an exception if the response is different from HTTPStatus.OK
         """
         with httpx.Client() as client:
-            r = client.get(urljoin(SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"))
+            r = client.get(
+                urljoin(settings.SIMPLON_API, "/detector/api/1.8.0/config/roi_mode")
+            )
 
             if r.status_code != HTTPStatus.OK:
                 raise QueueExecutionException(
@@ -447,6 +435,8 @@ class AbstractPrefectWorkflow(ABC):
                     f"Changing detector roi mode to {roi_mode}"
                 )
                 client.put(
-                    urljoin(SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"),
+                    urljoin(
+                        settings.SIMPLON_API, "/detector/api/1.8.0/config/roi_mode"
+                    ),
                     json={"value": roi_mode},
                 )
