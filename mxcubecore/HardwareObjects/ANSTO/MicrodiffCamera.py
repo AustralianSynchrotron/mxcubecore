@@ -6,6 +6,7 @@ from threading import Thread
 import gevent
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.ANSTO.redis_client import RedisClient
 
 
@@ -72,11 +73,10 @@ class MicrodiffCamera(HardwareObject):
         -------
         None
         """
-        MD3_REDIS_HOST = os.environ.get("MD3_REDIS_HOST", "12.345.678.90")
-        MD3_REDIS_PORT = int(os.environ.get("MD3_REDIS_PORT", "6379"))
+
         default_args = {
-            "host": MD3_REDIS_HOST,
-            "port": MD3_REDIS_PORT,
+            "host": settings.MD3_REDIS_HOST,
+            "port": settings.MD3_REDIS_PORT,
             "hybrid": "bzoom",
             "first": "acA2500-x5",
             "second": "acA2440-x30",

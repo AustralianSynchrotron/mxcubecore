@@ -1,14 +1,12 @@
 import ast
-from os import getenv
 from typing import Literal
 from urllib.parse import urljoin
 
 from httpx import Client
 
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractDetector import AbstractDetector
-
-SIMPLON_API = getenv("SIMPLON_API", "http://localhost:8000")
 
 
 class Detector(AbstractDetector):
@@ -24,7 +22,6 @@ class Detector(AbstractDetector):
         Descript. :
         """
         AbstractDetector.__init__(self, name)
-        self.simplon_api = SIMPLON_API
         self._state = HardwareObjectState.READY
         self.simplon_state_to_hw_obj_state = {
             "error": HardwareObjectState.FAULT,
@@ -83,7 +80,7 @@ class Detector(AbstractDetector):
                 "name": "state",
                 "polling": 2000,
             },
-            urljoin(SIMPLON_API, "/detector/api/1.8.0/status/state"),
+            urljoin(settings.SIMPLON_API, "/detector/api/1.8.0/status/state"),
         )
         self.state.connect_signal("update", self._update_state)
 
@@ -111,7 +108,7 @@ class Detector(AbstractDetector):
     def _get_detector_config(self, parameter):
         with Client() as client:
             response = client.get(
-                urljoin(SIMPLON_API, f"/detector/api/1.8.0/config/{parameter}")
+                urljoin(settings.SIMPLON_API, f"/detector/api/1.8.0/config/{parameter}")
             )
             response.raise_for_status()
 
@@ -121,7 +118,7 @@ class Detector(AbstractDetector):
         try:
             with Client() as client:
                 response = client.get(
-                    urljoin(SIMPLON_API, "/detector/api/1.8.0/status/state")
+                    urljoin(settings.SIMPLON_API, "/detector/api/1.8.0/status/state")
                 )
             if response.status_code != 200:
                 return HardwareObjectState.FAULT

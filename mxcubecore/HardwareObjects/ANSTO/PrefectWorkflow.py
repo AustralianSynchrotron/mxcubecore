@@ -13,6 +13,7 @@ from gevent.event import Event
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
@@ -113,12 +114,6 @@ class PrefectWorkflow(HardwareObject):
         self.gevent_event = None
         self.workflow_name = None
 
-        self.REDIS_HOST = os.environ.get("MXCUBE_REDIS_HOST", "localhost")
-        self.REDIS_PORT = int(os.environ.get("MXCUBE_REDIS_PORT", "6379"))
-        self.REDIS_USERNAME = os.environ.get("MXCUBE_REDIS_USERNAME", None)
-        self.REDIS_PASSWORD = os.environ.get("MXCUBE_REDIS_PASSWORD", None)
-        self.REDIS_DB = int(os.environ.get("MXCUBE_REDIS_DB", "0"))
-
         self.mxcubecore_workflow_aborted = False
 
     def _init(self) -> None:
@@ -146,11 +141,11 @@ class PrefectWorkflow(HardwareObject):
         self.resolution: Resolution = hwr.get_hardware_object("/resolution")
 
         self.redis_connection = redis.StrictRedis(
-            host=self.REDIS_HOST,
-            port=self.REDIS_PORT,
-            username=self.REDIS_USERNAME,
-            password=self.REDIS_PASSWORD,
-            db=self.REDIS_DB,
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            username=settings.REDIS_USERNAME,
+            password=settings.REDIS_PASSWORD,
+            db=settings.REDIS_DB,
         )
 
         self._save_default_collection_params_to_redis()
