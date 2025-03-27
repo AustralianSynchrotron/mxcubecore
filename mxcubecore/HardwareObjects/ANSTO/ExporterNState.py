@@ -1,5 +1,4 @@
 from enum import Enum
-from os import getenv
 
 from gevent import (
     Timeout,
@@ -8,6 +7,7 @@ from gevent import (
 
 from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
 
@@ -39,7 +39,7 @@ class ExporterNState(AbstractNState):
         self.use_value_as_state = self.get_property("value_state")
         state_channel = self.get_property("state_channel_name", "State")
 
-        _exporter_address = getenv("EXPORTER_ADDRESS", "12.345.678.10:1234")
+        _exporter_address = settings.EXPORTER_ADDRESS
         _host, _port = _exporter_address.split(":")
         self._exporter = Exporter(_host, int(_port))
 

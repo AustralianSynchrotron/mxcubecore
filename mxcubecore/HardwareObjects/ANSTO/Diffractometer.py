@@ -16,6 +16,7 @@ from scipy import optimize
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
     PhaseEnum,
@@ -45,7 +46,7 @@ class Diffractometer(GenericDiffractometer):
 
     def __init__(self, *args) -> None:
         GenericDiffractometer.__init__(self, *args)
-        self.exporter_addr = getenv("EXPORTER_ADDRESS", "12.345.678.10:1234")
+        self.exporter_addr = settings.EXPORTER_ADDRESS
 
     def init(self) -> None:
         """
