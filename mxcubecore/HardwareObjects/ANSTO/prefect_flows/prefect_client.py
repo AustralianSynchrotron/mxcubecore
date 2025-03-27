@@ -1,10 +1,7 @@
 import asyncio
 import logging
 from enum import StrEnum
-from os import (
-    environ,
-    path,
-)
+from urllib.parse import urljoin
 from uuid import UUID
 
 import redis
@@ -26,8 +23,6 @@ except ImportError:
     )
     FlowRunResponse = None
     State = None
-
-PREFECT_URI = environ.get("PREFECT_URI", "http://localhost:4200")
 
 
 class FlowState(StrEnum):
@@ -56,7 +51,7 @@ class MX3PrefectClient:
         self.flow_run_id = None
 
         self.deployment_id = None
-        self.prefect_client = PrefectClient(api=path.join(PREFECT_URI, "api"))
+        self.prefect_client = PrefectClient(api=urljoin(settings.PREFECT_URI, "api"))
 
         self.async_redis_connection = redis.asyncio.StrictRedis(
             host=settings.REDIS_HOST,

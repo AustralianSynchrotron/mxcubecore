@@ -4,7 +4,6 @@ import logging  # noqa: E402
 from asyncio import new_event_loop as asyncio_new_event_loop
 from asyncio import set_event_loop as asyncio_set_event_loop  # noqa: E402
 from functools import lru_cache  # noqa: E402
-from os import getenv
 from time import time  # noqa: E402
 from typing import (  # noqa: E402
     Any,
@@ -27,6 +26,7 @@ from typing_extensions import (  # noqa: E402
     TypedDict,
 )
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (  # noqa: E402
     SampleChanger as AbstractSampleChanger,
 )
@@ -46,8 +46,6 @@ from .prefect_flows.prefect_client import MX3PrefectClient  # noqa: E402
 
 hwr_logger = logging.getLogger("HWR")
 robot_config = get_robot_settings()
-
-ROBOT_HOST = getenv("ROBOT_HOST", "127.0.0.0")
 
 
 class SampleChangerError(Exception):
@@ -121,8 +119,12 @@ class SampleChanger(AbstractSampleChanger):
         self._selected_basket = -1
         self._scIsCharging = None
 
-        self.no_of_baskets = robot_config.ASC_NUM_PUCKS
-        self.no_of_samples_in_basket = robot_config.ASC_NUM_PINS
+        self.no_of_baskets = (
+            robot_config.ASC_NUM_PUCKS
+        )  # TODO: no_of_baskets = number of projects
+        self.no_of_samples_in_basket = (
+            robot_config.ASC_NUM_PINS
+        )  # TODO: number of samples per project
 
         for _puck_id in range(1, self.no_of_baskets + 1):
             basket = Puck(
@@ -171,7 +173,7 @@ class SampleChanger(AbstractSampleChanger):
         """Cache the client, this allows the client to be used in dependencies and
         for overwriting in tests
         """
-        return Client(host=ROBOT_HOST, readonly=False)
+        return Client(host=settings.ROBOT_HOST, readonly=False)
 
     def get_log_filename(self):
         return self.log_filename
