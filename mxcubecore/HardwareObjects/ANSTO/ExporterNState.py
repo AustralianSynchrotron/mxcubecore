@@ -65,6 +65,11 @@ class ExporterNState(AbstractNState):
         self.state_channel.connect_signal("update", self._update_state)
         self.update_state()
 
+    def update_value(self, value=None):
+        if self._nominal_value != value:
+            self._nominal_value = value
+            self.emit("valueChanged", (self.value_to_enum(value),))
+
     def _wait_hardware(self, value, timeout=None):
         """Wait timeout seconds till hardware in place.
         Args:
