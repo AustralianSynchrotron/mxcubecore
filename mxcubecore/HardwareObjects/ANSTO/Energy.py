@@ -2,6 +2,7 @@ import time
 
 from mx3_beamline_library.devices.beam import energy_master
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractEnergy import AbstractEnergy
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
@@ -44,6 +45,29 @@ class Energy(EPICSActuator, AbstractEnergy):
 
         self.update_state(self.STATES.READY)
         self.detector = self.get_object_by_role("detector")  # Maybe this is not needed
+
+        if settings.BL_ACTIVE:
+            # The following channel is used to poll the energy PV value
+            self.energy_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": "energy",
+                    "polling": 1000,  # milliseconds
+                },
+                self.energy.pvname,
+            )
+            self.energy_channel.connect_signal("update", self._value_changed)
+
+    def _value_changed(self, value: float | None) -> None:
+        """Emits a valueChanged signal. Used by self.energy_channel
+
+        Parameters
+        ----------
+        value : float | None
+            The energy value
+        """
+        self._value = value
+        self.emit("valueChanged", self._value)
 
     def set_value(self, value: float) -> None:
         """
