@@ -8,11 +8,6 @@ import numpy as np
 import numpy.typing as npt
 import redis
 import redis.asyncio
-from mx3_beamline_library.devices.beam import (
-    energy_master,
-    transmission,
-)
-from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import (

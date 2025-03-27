@@ -1,13 +1,6 @@
 import asyncio
 import logging
 
-import redis
-from mx3_beamline_library.devices.beam import (
-    energy_master,
-    transmission,
-)
-from mx3_beamline_library.devices.motors import actual_sample_detector_distance
-
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
