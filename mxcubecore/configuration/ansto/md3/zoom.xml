@@ -4,6 +4,6 @@
   <state_channel_name>ZoomState</state_channel_name>
   <!-- if levels do not correspond to values -->
   <values>{"LEVEL1": 1, "LEVEL2": 2, "LEVEL3": 3, "LEVEL4": 4, "LEVEL5": 5, "LEVEL6": 6, "LEVEL7": 7}</values>
-  <pixels_per_mm_x>{"LEVEL1": 520.973, "LEVEL2": 622.790, "LEVEL3": 797.109, "LEVEL4": 1040.905, "LEVEL5": 5904.201, "LEVEL6": 5503.597, "LEVEL7": 8502.362}</pixels_per_mm_x>
-  <pixels_per_mm_y>{"LEVEL1": 520.973, "LEVEL2": 622.790, "LEVEL3": 797.109, "LEVEL4": 1040.905, "LEVEL5": 5904.201, "LEVEL6": 5503.597, "LEVEL7": 8502.362}</pixels_per_mm_y>
+  <pixels_per_mm_x>{"LEVEL1": 520.973, "LEVEL2": 622.790, "LEVEL3": 797.109, "LEVEL4": 1040.905, "LEVEL5": 4229.726, "LEVEL6": 5503.597, "LEVEL7": 8502.362}</pixels_per_mm_x>
+  <pixels_per_mm_y>{"LEVEL1": 520.973, "LEVEL2": 622.790, "LEVEL3": 797.109, "LEVEL4": 1040.905, "LEVEL5": 4229.726, "LEVEL6": 5503.597, "LEVEL7": 8502.362}</pixels_per_mm_y>
 </object>
