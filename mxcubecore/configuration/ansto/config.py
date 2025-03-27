@@ -7,11 +7,14 @@ from pydantic_settings import BaseSettings
 
 
 class PrefectSettings(BaseSettings):
+    PREFECT_URI: str = Field("http://localhost:4200", env="PREFECT_URI")
     GRID_SCAN_DEPLOYMENT_NAME: str = Field(
         "mxcube-grid-scan/plans", env="GRID_SCAN_DEPLOYMENT_NAME"
     )
     GRID_SCAN_NUMBER_OF_PROCESSES: int | None = Field(
-        None, env="GRID_SCAN_NUMBER_OF_PROCESSES"
+        None,
+        env="GRID_SCAN_NUMBER_OF_PROCESSES",
+        description="Number of processes used to process grid scan frames",
     )
 
     FULL_DATASET_DEPLOYMENT_NAME: str = Field(
@@ -21,11 +24,19 @@ class PrefectSettings(BaseSettings):
     SCREENING_DEPLOYMENT_NAME: str = Field(
         "mxcube-screening/plans", env="SCREENING_DEPLOYMENT_NAME"
     )
+    SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME: str = Field(
+        "mxcube-sample-centering/plans", env="SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME"
+    )
+    USE_TOP_CAMERA: bool = Field(
+        True, env="USE_TOP_CAMERA", description="False only for development"
+    )
+    CALIBRATED_ALIGNMENT_Z: float = Field(0.487, env="CALIBRATED_ALIGNMENT_Z")
 
 
 class MD3(BaseSettings):
     MD3_REDIS_HOST: str = Field("127.0.0.0", env="MD3_REDIS_HOST")
     MD3_REDIS_PORT: int = Field("6379", env="MD3_REDIS_PORT")
+    EXPORTER_ADDRESS: str = Field("127.0.0.0:1234", env="EXPORTER_ADDRESS")
 
 
 class RedisSettings(BaseSettings):
@@ -48,8 +59,11 @@ class APIs(BaseSettings):
 class ANSTOConfig(APIs, Robot, RedisSettings, MD3, PrefectSettings):
     BL_ACTIVE: bool = Field(default=False, env="BL_ACTIVE")
     EPN_STRING: str = Field(default="my_epn", env="EPN_STRING")
-    ADD_DUMMY_PIN_TO_DB: bool = Field(default=False, env="ADD_DUMMY_PIN_TO_DB")
+    ADD_DUMMY_PIN_TO_DB: bool = Field(
+        default=False,
+        env="ADD_DUMMY_PIN_TO_DB",
+        description="True only for development",
+    )
 
 
 settings = ANSTOConfig()
-print(settings)
