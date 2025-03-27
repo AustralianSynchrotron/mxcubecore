@@ -1,5 +1,6 @@
 from mx3_beamline_library.devices.cryo import cryo_temperature
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
@@ -43,6 +44,29 @@ class Cryo(AbstractMotor, EPICSActuator):
         EPICSActuator.init(self)
 
         self.update_state(self.STATES.READY)
+
+        if settings.BL_ACTIVE:
+            # The following channel is used to poll the cryo temperature PV value
+            self.cryo_temperature_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": "cryo_temperature",
+                    "polling": 1000,  # milliseconds
+                },
+                cryo_temperature.pvname,
+            )
+            self.cryo_temperature_channel.connect_signal("update", self._value_changed)
+
+    def _value_changed(self, value: float | None) -> None:
+        """Emits a valueChanged signal. Used by self.cryo_temperature_channel
+
+        Parameters
+        ----------
+        value : float | None
+            The energy value
+        """
+        self._value = value
+        self.emit("valueChanged", self._value)
 
     def get_value(self) -> float:
         """Get the current position of the motor.
