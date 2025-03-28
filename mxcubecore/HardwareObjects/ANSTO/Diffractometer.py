@@ -4,8 +4,6 @@ import logging
 import random
 import time
 import warnings
-from distutils.util import strtobool
-from os import getenv
 from typing import Tuple
 
 import gevent
@@ -16,6 +14,7 @@ from scipy import optimize
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
     PhaseEnum,
@@ -31,11 +30,6 @@ EXPORTER_TO_HWOBJ_STATE = {
     "Unknown": HardwareObjectState.BUSY,
     "Offline": HardwareObjectState.OFF,
 }
-USE_TOP_CAMERA = strtobool(getenv("USE_TOP_CAMERA", "true"))
-CALIBRATED_ALIGNMENT_Z = float(getenv("CALIBRATED_ALIGNMENT_Z", "0.487"))
-SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME = getenv(
-    "SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME", "mxcube-sample-centering/plans"
-)
 
 
 class Diffractometer(GenericDiffractometer):
@@ -45,7 +39,7 @@ class Diffractometer(GenericDiffractometer):
 
     def __init__(self, *args) -> None:
         GenericDiffractometer.__init__(self, *args)
-        self.exporter_addr = getenv("EXPORTER_ADDRESS", "12.345.678.10:1234")
+        self.exporter_addr = settings.EXPORTER_ADDRESS
 
     def init(self) -> None:
         """
@@ -310,12 +304,12 @@ class Diffractometer(GenericDiffractometer):
         # beam_size_micrometers = tuple([b * 1000 for b in self.beam.get_beam_size()])
         try:
             sample_centering = MX3PrefectClient(
-                name=SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
+                name=settings.SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
                 parameters={
                     "sample_id": "test",
                     "beam_position": [self.beam_position[0], self.beam_position[1]],
-                    "use_top_camera": USE_TOP_CAMERA,
-                    "calibrated_alignment_z": CALIBRATED_ALIGNMENT_Z,
+                    "use_top_camera": settings.USE_TOP_CAMERA,
+                    "calibrated_alignment_z": settings.CALIBRATED_ALIGNMENT_Z,
                 },
             )
             # NOTE: using asyncio.run() does not seem to work consistently

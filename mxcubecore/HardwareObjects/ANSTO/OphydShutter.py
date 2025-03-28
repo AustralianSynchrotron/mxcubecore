@@ -5,10 +5,12 @@ from enum import (
     IntEnum,
     unique,
 )
+from time import sleep
 
 from mx3_beamline_library.devices import shutters
 
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractShutter import AbstractShutter
 from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
@@ -43,6 +45,43 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         self.shutter = getattr(shutters, self.get_property("actuator_name"))
         self.update_value(self.get_value())
         self.update_state(self.STATES.READY)
+
+        if settings.BL_ACTIVE:
+            # The following channel is to poll the shutter value
+            self.shutter_value_channel = self.add_channel(
+                {
+                    "type": "epics",
+                    "name": f"shutter_{self.shutter.name}",
+                    "polling": 1000,  # milliseconds
+                },
+                self.shutter.open_close_status.pvname,
+            )
+            self.shutter_value_channel.connect_signal("update", self._update_value)
+
+    def _update_value(
+        self,
+        value: int,
+    ) -> None:
+        """
+        Updates the shutter value. Used by the self.shutter_value_channel poller
+        and is only called if the state of the shutter has changed
+
+        Parameters
+        ----------
+        value : int
+
+        Returns
+        -------
+        None
+        """
+        if value == OpenCloseStatus.CLOSED:
+            _value = self.VALUES.CLOSED
+        elif value == OpenCloseStatus.OPEN:
+            _value = self.VALUES.OPEN
+        else:
+            _value = self.VALUES.UNKNOWN
+
+        self.emit("valueChanged", _value)
 
     @property
     def is_open(self) -> bool:
@@ -124,11 +163,15 @@ class OphydShutter(AbstractShutter, EPICSActuator):
         if self.read_only:
             raise ValueError("Attempt to set value for read-only Actuator")
 
+        self.update_state(self.STATES.BUSY)
+        self.update_specific_state(self.SPECIFIC_STATES.MOVING)
         self._set_value(value)
+        sleep(0.01)
+        while self.shutter.open_close_cmd.get() == OpenCloseStatus.MOVING:
+            self.update_value(self.VALUES.UNKNOWN)
+            sleep(0.1)
+        self.update_state(self.STATES.READY)
         self.update_value()
-        if timeout == 0:
-            return
-        self.wait_ready(timeout)
 
     def _set_value(self, value: Enum):
         """Sets the shutter value

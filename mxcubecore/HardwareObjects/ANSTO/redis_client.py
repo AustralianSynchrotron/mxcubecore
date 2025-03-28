@@ -12,14 +12,11 @@ from PIL import (
     ImageOps,
 )
 
+from mxcubecore.configuration.ansto.config import settings
+
 INT, FLOAT, STRING = 0, 1, 2
 TYPE_IDX, IS_RANGE_IDX, IS_GLOBAL_IDX, TEST_VALUES_IDX = 0, 1, 2, 3
 parsers = {INT: int, FLOAT: float, STRING: None}
-
-# IP ADDRESS :
-MD_REDIS_HOST = os.environ.get("MD_REDIS_HOST", "12.345.678.90")
-MD_REDIS_PORT = int(os.environ.get("MD_REDIS_PORT", "6379"))
-IP = f"{MD_REDIS_HOST}:{MD_REDIS_PORT}"
 
 
 class RedisClient(redis.Redis):
@@ -92,15 +89,6 @@ class RedisClient(redis.Redis):
     pre_header = "# "
     post_header = " #"
     # ------------------
-    default_args = {
-        "host": IP,
-        "port": 6379,
-        "hybrid": "bzoom",
-        "first": "acA2500-x5",
-        "second": "acA2440-x30",
-        "capture": True,
-        "write_image": False,
-    }
 
     def __init__(self, args):
         redis.Redis.__init__(self, host=args["host"], port=args["port"], db=0)
@@ -541,8 +529,8 @@ class RedisClient(redis.Redis):
 
 if __name__ == "__main__":
     default_args = {
-        "host": "10.244.101.30",
-        "port": 6379,
+        "host": settings.MD3_REDIS_HOST,
+        "port": settings.MD3_REDIS_PORT,
         "hybrid": "bzoom",
         "first": "acA2500-x5",
         "second": "acA2440-x30",

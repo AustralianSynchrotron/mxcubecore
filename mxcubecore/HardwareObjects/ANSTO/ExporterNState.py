@@ -1,5 +1,4 @@
 from enum import Enum
-from os import getenv
 
 from gevent import (
     Timeout,
@@ -8,6 +7,7 @@ from gevent import (
 
 from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
 
@@ -39,7 +39,7 @@ class ExporterNState(AbstractNState):
         self.use_value_as_state = self.get_property("value_state")
         state_channel = self.get_property("state_channel_name", "State")
 
-        _exporter_address = getenv("EXPORTER_ADDRESS", "12.345.678.10:1234")
+        _exporter_address = settings.EXPORTER_ADDRESS
         _host, _port = _exporter_address.split(":")
         self._exporter = Exporter(_host, int(_port))
 
@@ -64,6 +64,13 @@ class ExporterNState(AbstractNState):
 
         self.state_channel.connect_signal("update", self._update_state)
         self.update_state()
+
+    def update_value(self, value: bool | None = None):
+        if value is not None:
+            if isinstance(value, bool):
+                self.emit("valueChanged", (self.value_to_enum(value),))
+            else:
+                self.emit("valueChanged", (value,))
 
     def _wait_hardware(self, value, timeout=None):
         """Wait timeout seconds till hardware in place.
@@ -142,6 +149,7 @@ class ExporterNState(AbstractNState):
             self._wait_hardware(value, 120)
         self._wait_ready(120)
         self.update_state(self.STATES.READY)
+        self.update_value(self.get_value())
 
     def get_value(self):
         """Get the device value

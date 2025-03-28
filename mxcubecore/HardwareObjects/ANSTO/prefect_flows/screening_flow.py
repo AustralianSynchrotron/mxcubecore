@@ -1,13 +1,7 @@
 import asyncio
 import logging
-from os import environ
 
-from mx3_beamline_library.devices.beam import (
-    energy_master,
-    transmission,
-)
-from mx3_beamline_library.devices.motors import actual_sample_detector_distance
-
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
@@ -17,11 +11,6 @@ from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
 )
-
-SCREENING_DEPLOYMENT_NAME = environ.get(
-    "SCREENING_DEPLOYMENT_NAME", "mxcube-screening/plans"
-)
-ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "true"
 
 
 class ScreeningFlow(AbstractPrefectWorkflow):
@@ -65,7 +54,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             beam_size=(80, 80),  # TODO: get beam size
         )
 
-        if not ADD_DUMMY_PIN_TO_DB:
+        if not settings.ADD_DUMMY_PIN_TO_DB:
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
             sample_id = pin.id
@@ -82,7 +71,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "screening_params": screening_params.dict(),
             "run_data_processing_pipeline": True,
             "hardware_trigger": True,
-            "add_dummy_pin": ADD_DUMMY_PIN_TO_DB,
+            "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
         }
@@ -92,7 +81,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         )
 
         screening_flow = MX3PrefectClient(
-            name=SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
+            name=settings.SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
         # Remember the collection params for the next collection
@@ -183,7 +172,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             },
         }
 
-        if ADD_DUMMY_PIN_TO_DB:
+        if settings.ADD_DUMMY_PIN_TO_DB:
             # Dev only
             properties["sample_id"] = {
                 "title": "Sample id (dev only)",

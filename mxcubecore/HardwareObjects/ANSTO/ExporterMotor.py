@@ -1,7 +1,6 @@
 import logging
 import math
 import sys
-from os import getenv
 
 from gevent import (
     Timeout,
@@ -10,6 +9,7 @@ from gevent import (
 
 from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
 
 
@@ -57,7 +57,7 @@ class ExporterMotor(AbstractMotor):
         self._motor_pos_suffix = self.get_property("position_suffix", "Position")
         self._motor_state_suffix = self.get_property("state_suffix", "State")
 
-        self._exporter_address = getenv("EXPORTER_ADDRESS", "12.345.678.91:1234")
+        self._exporter_address = settings.EXPORTER_ADDRESS
         _host, _port = self._exporter_address.split(":")
         self._exporter = Exporter(_host, int(_port))
 

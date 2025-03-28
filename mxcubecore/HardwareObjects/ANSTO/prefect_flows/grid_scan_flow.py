@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import pickle
-from os import environ
 from typing import Union
 
 import matplotlib.pyplot as plt
@@ -9,12 +8,8 @@ import numpy as np
 import numpy.typing as npt
 import redis
 import redis.asyncio
-from mx3_beamline_library.devices.beam import (
-    energy_master,
-    transmission,
-)
-from mx3_beamline_library.devices.motors import actual_sample_detector_distance
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import (
     Grid,
     SampleView,
@@ -28,17 +23,6 @@ from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
-
-GRID_SCAN_DEPLOYMENT_NAME = environ.get(
-    "GRID_SCAN_DEPLOYMENT_NAME", "mxcube-grid-scan/plans"
-)
-_number_of_processes = environ.get("GRID_SCAN_NUMBER_OF_PROCESSES", None)
-if _number_of_processes is not None:
-    GRID_SCAN_NUMBER_OF_PROCESSES = int(_number_of_processes)
-else:
-    GRID_SCAN_NUMBER_OF_PROCESSES = None
-
-ADD_DUMMY_PIN_TO_DB = environ.get("ADD_DUMMY_PIN_TO_DB", "false").lower() == "true"
 
 
 class GridScanFlow(AbstractPrefectWorkflow):
@@ -90,7 +74,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         dialog_box_model = GridScanDialogBox.model_validate(dialog_box_parameters)
 
-        if not ADD_DUMMY_PIN_TO_DB:
+        if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting pin from the data layer...")
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
@@ -131,7 +115,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             omega_range=dialog_box_model.omega_range,
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
             hardware_trigger=True,
-            number_of_processes=GRID_SCAN_NUMBER_OF_PROCESSES,
+            number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
         )
@@ -195,7 +179,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         """
 
         grid_scan_flow = MX3PrefectClient(
-            name=GRID_SCAN_DEPLOYMENT_NAME,
+            name=settings.GRID_SCAN_DEPLOYMENT_NAME,
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
 
@@ -212,11 +196,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
             number_of_spots_array = np.zeros((num_rows, num_cols))
             resolution_array = np.zeros((num_rows, num_cols))
             async with redis.asyncio.StrictRedis(
-                host=self.REDIS_HOST,
-                port=self.REDIS_PORT,
-                username=self.REDIS_USERNAME,
-                password=self.REDIS_PASSWORD,
-                db=self.REDIS_DB,
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                username=settings.REDIS_USERNAME,
+                password=settings.REDIS_PASSWORD,
+                db=settings.REDIS_DB,
             ) as async_redis_client:
                 for _ in range(grid_size):
                     data, last_id = await self.read_message_from_redis_streams(
