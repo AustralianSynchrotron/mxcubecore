@@ -11,15 +11,15 @@ from mxcubecore.HardwareObjects.abstract.AbstractDetector import AbstractDetecto
 
 class Detector(AbstractDetector):
     """
-    Descript. : Detector class. Contains all information about detector
-                the states are 'OK', and 'BAD'
-                the status is busy, exposing, ready, etc.
-                the physical property is RH for pilatus, P for rayonix
+    Detector class used to interact with the Dectris SIMPLON API
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         """
-        Descript. :
+        Parameters
+        ----------
+        name : str
+            The name of the hardware object
         """
         AbstractDetector.__init__(self, name)
         self._state = HardwareObjectState.READY
@@ -34,9 +34,14 @@ class Detector(AbstractDetector):
             "test": HardwareObjectState.BUSY,
         }
 
-    def init(self):
+    def init(self) -> None:
         """
-        Descript. :
+        Object initialisation - executed after loading contents.
+
+        Raises
+        ------
+        ValueError
+            Raises an error if the beam center is not set
         """
         AbstractDetector.init(self)
 
@@ -105,7 +110,19 @@ class Detector(AbstractDetector):
         """
         self.update_state(self.simplon_state_to_hw_obj_state.get(value))
 
-    def _get_detector_config(self, parameter):
+    def _get_detector_config(self, parameter: str) -> int | str | float:
+        """Gets the value of a given parameter from the SIMPLON API
+
+        Parameters
+        ----------
+        parameter : str
+            The parameter as defined in the simplon API
+
+        Returns
+        -------
+        int | str | float
+            The parameter value
+        """
         with Client() as client:
             response = client.get(
                 urljoin(settings.SIMPLON_API, f"/detector/api/1.8.0/config/{parameter}")
@@ -115,6 +132,13 @@ class Detector(AbstractDetector):
         return response.json()["value"]
 
     def get_state(self) -> HardwareObjectState:
+        """Gets the state of the detector
+
+        Returns
+        -------
+        HardwareObjectState
+            The state of the detector
+        """
         try:
             with Client() as client:
                 response = client.get(
@@ -159,19 +183,50 @@ class Detector(AbstractDetector):
     def restart(self) -> None:
         return
 
-    def get_beam_position(self, distance=None, wavelength=None):
-        """Calculate the beam position for a given distance.
-        Args:
-            distance (float): detector distance [mm]
-            wavelength (float): X-ray wavelength [Å]
-        Returns:
-            tuple(float, float): Beam position x,y coordinates [pixel].
+    def get_beam_position(
+        self, distance: float = None, wavelength: float = None
+    ) -> tuple[float, float]:
+        """
+        Calculate the beam position. Currently the beam position does not
+        depend on distance and wavelength. The beam position varies depending
+        on the ROI mode
+
+        Parameters
+        ----------
+        distance : float
+            Detector distance [mm]
+        wavelength : float
+            X-ray wavelength [Å]
+
+        Returns
+        -------
+            tuple(float, float) :
+            Beam position x,y coordinates [pixel].
         """
 
-        return self._beam_centre
+        return (
+            self._get_detector_config("beam_center_x"),
+            self._get_detector_config("beam_center_y"),
+        )
 
-    def get_width(self):
+    def get_width(self) -> int:
+        """
+        Gets x_pixels_in_detector. This varies based on the roi_mode
+
+        Returns
+        -------
+        int
+            x_pixels_in_detector
+        """
         return self._get_detector_config("x_pixels_in_detector")
 
-    def get_height(self):
+    def get_height(self) -> int:
+        """
+        Gets x_pixels_in_detector. This varies based on the roi_mode
+
+        Returns
+        -------
+        int
+            y_pixels_in_detector
+        """
         return self._get_detector_config("y_pixels_in_detector")
