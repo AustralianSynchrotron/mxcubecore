@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import pickle
 from typing import Union
 
 import matplotlib.pyplot as plt
@@ -192,9 +191,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         if not self.mxcubecore_workflow_aborted:
             last_id = 0
-            grid_size = num_cols * num_rows
-            number_of_spots_array = np.zeros((num_rows, num_cols))
-            resolution_array = np.zeros((num_rows, num_cols))
+            numer_of_frames = num_cols * num_rows
+            score_array = np.zeros((num_rows, num_cols))
             async with redis.asyncio.StrictRedis(
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
@@ -202,31 +200,27 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 password=settings.REDIS_PASSWORD,
                 db=settings.REDIS_DB,
             ) as async_redis_client:
-                for _ in range(grid_size):
+                for _ in range(numer_of_frames):
                     data, last_id = await self.read_message_from_redis_streams(
-                        topic=f"number_of_spots_{prefect_parameters.grid_scan_id}:{prefect_parameters.sample_id}",
+                        topic=f"spotfinder:sample_{prefect_parameters.sample_id}:grid_scan_{prefect_parameters.grid_scan_id}",  # noqa
                         id=last_id,
                         redis_client=async_redis_client,
                     )
-                    number_of_spots = float(data[b"number_of_spots"])
-                    resolution = float(data[b"resolution"])
-                    heatmap_coordinate = pickle.loads(data[b"heatmap_coordinate"])
-                    number_of_spots_array[
-                        heatmap_coordinate[1], heatmap_coordinate[0]
-                    ] = number_of_spots
-                    resolution_array[heatmap_coordinate[1], heatmap_coordinate[0]] = (
-                        resolution
+                    heatmap_coordinate = (
+                        int(data[b"heatmap_coordinate_x"]),
+                        int(data[b"heatmap_coordinate_y"]),
+                    )
+                    score_array[heatmap_coordinate[1], heatmap_coordinate[0]] = float(
+                        data[b"score"]
                     )
 
-            logging.getLogger("HWR").debug(
-                f"number_of_spots_list {number_of_spots_array}"
-            )
+            logging.getLogger("HWR").debug(f"score_list: {score_array}")
             logging.getLogger("HWR").info(f"Creating heatmap...")
 
             heatmap_array = self.create_heatmap(
                 num_cols=num_cols,
                 num_rows=num_rows,
-                number_of_spots_array=number_of_spots_array,
+                score_array=score_array,
             )
 
             heatmap = {
@@ -281,7 +275,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         return data, last_id
 
     def create_heatmap(
-        self, num_cols: int, num_rows: int, number_of_spots_array: npt.NDArray
+        self, num_cols: int, num_rows: int, score_array: npt.NDArray
     ) -> npt.NDArray:
         """
         Creates a heatmap from the number of spots, number of columns
@@ -301,7 +295,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         result : npt.NDArray
             An array containing a heatmap with rbga values
         """
-        z = number_of_spots_array
+        z = score_array
 
         z_min = np.min(z)
         z_max = np.max(z)
