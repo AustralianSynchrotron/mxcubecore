@@ -188,24 +188,6 @@ class SampleChanger(AbstractSampleChanger):
         else:
             return state_res.power and state_res.remote_mode
 
-    # @deprecated(
-    #     (
-    #         "The `SampleChanger.chained_load` method should not be used, "
-    #         "call the `SampleChanger.load` method instead."
-    #     )
-    # )
-    # @validate_call
-    # def chained_load(
-    #     self,
-    #     sample_to_unload: Union[tuple[int, int], str],
-    #     sample_to_load: Annotated[
-    #         Union[tuple[int, int], str],
-    #         Field(pattern=r"(\d+):(\d+)"),
-    #     ],
-    # ) -> Union[Pin, None]:
-    #     """ """
-    #     raise NotImplementedError
-
     def chained_load(self, sample_to_unload, sample_to_load):
         """
         Chain the unload of a sample with a load.
@@ -248,28 +230,6 @@ class SampleChanger(AbstractSampleChanger):
 
         self.unload()
         self.load(sample)
-
-    # @validate_call
-    # def load(
-    #     self,
-    #     sample: Annotated[
-    #         Union[tuple[int, int], str],
-    #         Field(pattern=r"(\d+):(\d+)"),
-    #     ],
-    #     wait: bool = True,
-    # ) -> Union[Pin, None]:
-    #     """ """
-    #     raise NotImplementedError
-
-    # def get_loaded_sample(self) -> Union[Pin, None]:
-    #     """ """
-    #     _client = self.get_client()
-    #     _goni_pin = _client.status.state.goni_pin
-    #     if _goni_pin is None:
-    #         return None
-    #     return self.get_component_by_address(
-    #         Pin.get_sample_address(_goni_pin.puck.id, _goni_pin.id),
-    #     )
 
     def is_mounted_sample(self, sample: tuple[int, int]) -> bool:
         return (
@@ -316,7 +276,6 @@ class SampleChanger(AbstractSampleChanger):
 
                     address = Pin.get_sample_address(puck_id, pin_id) # e.g. "1:01"
                     mxcube_pin: Pin = self.get_component_by_address(address)
-                    pin_datamatrix = f"matr{puck_id}_{pin_id}"
                     if robot_pin is not None and robot_puck.name: # check also that barcode exists
                         mxcube_pin._name = str(robot_pin) + "my sample" # This is where sample name is set!!
                         pin_datamatrix = str(robot_pin)
@@ -346,7 +305,18 @@ class SampleChanger(AbstractSampleChanger):
         except Exception as ex:
             ex
 
-    def _update_sample_changer_state(self, state_res: StateResponse):
+    def _update_sample_changer_state(self, state_res: StateResponse)-> None:
+        """Updates the sample changer state
+
+        Parameters
+        ----------
+        state_res : StateResponse
+            The Isara robot state response
+
+        Returns
+        -------
+        None 
+        """
         # Update SC state
         _is_enabled = state_res.power and state_res.remote_mode
         _is_normal_state = _is_enabled and not state_res.fault_or_stopped
