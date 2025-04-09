@@ -290,14 +290,14 @@ class SampleChanger(AbstractSampleChanger):
             client = self.get_client()
 
             state_res = client.status.state
-            loaded_pucks: dict[int, RobotPuck] = {}
+            loaded_pucks_dict: dict[int, RobotPuck] = {}
             for robot_puck in self.loaded_pucks:
-                loaded_pucks[robot_puck.id] = robot_puck
+                loaded_pucks_dict[robot_puck.id] = robot_puck
 
             components: list[Puck] = self.get_components()
             for mxcube_puck_idx in range(self.no_of_baskets):
                 puck_id = mxcube_puck_idx + 1
-                robot_puck = loaded_pucks.get(puck_id)
+                robot_puck = loaded_pucks_dict.get(puck_id)
                 mxcube_puck = components[mxcube_puck_idx]
                 mxcube_puck._set_info(
                     present=robot_puck is not None,
@@ -314,32 +314,32 @@ class SampleChanger(AbstractSampleChanger):
                             puck=robot_puck,
                         )
 
-                    address = Pin.get_sample_address(puck_id, pin_id)
+                    address = Pin.get_sample_address(puck_id, pin_id) # e.g. "1:01"
                     mxcube_pin: Pin = self.get_component_by_address(address)
                     pin_datamatrix = f"matr{puck_id}_{pin_id}"
-                    if robot_pin is not None:
-                        mxcube_pin._name = str(robot_pin)
+                    if robot_pin is not None and robot_puck.name: # check also that barcode exists
+                        mxcube_pin._name = str(robot_pin) + "my sample" # This is where sample name is set!!
                         pin_datamatrix = str(robot_pin)
                     
-                    mxcube_pin._set_info(
-                        present=robot_puck is not None,
-                        id=pin_datamatrix,
-                        scanned=False,
-                    )
-                    loaded: bool = False
-                    if state_res.goni_pin is not None:
-                        loaded = (
-                            state_res.goni_pin.puck.id,
-                            state_res.goni_pin.id,
-                        ) == (
-                            puck_id,
-                            pin_id,
+                        mxcube_pin._set_info(
+                            present=robot_puck is not None,
+                            id=pin_datamatrix,
+                            scanned=False,
                         )
-                    mxcube_pin._set_loaded(
-                        loaded=loaded,
-                        has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
-                    )
-                    mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
+                        loaded: bool = False
+                        if state_res.goni_pin is not None:
+                            loaded = (
+                                state_res.goni_pin.puck.id,
+                                state_res.goni_pin.id,
+                            ) == (
+                                puck_id,
+                                pin_id,
+                            )
+                        mxcube_pin._set_loaded(
+                            loaded=loaded,
+                            has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
+                        )
+                        mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
 
             self._update_sample_changer_state(state_res)
 
