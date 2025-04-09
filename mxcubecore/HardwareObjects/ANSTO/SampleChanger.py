@@ -12,7 +12,6 @@ from typing import (  # noqa: E402
 )
 
 from gevent import sleep  # noqa: E402
-from gevent import monkey
 from mx_robot_library.client.client import Client  # noqa: E402
 from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
 from mx_robot_library.schemas.common.path import RobotPaths  # noqa: E402
@@ -20,6 +19,7 @@ from mx_robot_library.schemas.common.position import RobotPositions  # noqa: E40
 from mx_robot_library.schemas.common.sample import Pin as RobotPin
 from mx_robot_library.schemas.common.sample import Puck as RobotPuck  # noqa: E402
 from mx_robot_library.schemas.common.tool import RobotTools  # noqa: E402
+from mx_robot_library.schemas.responses.state import StateResponse
 from pydantic import JsonValue  # noqa: E402
 from typing_extensions import (  # noqa: E402
     Literal,
@@ -340,6 +340,12 @@ class SampleChanger(AbstractSampleChanger):
                     )
                     _mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
 
+            self._update_sample_changer_state(_state_res)
+
+        except Exception as ex:
+            ex
+
+    def _update_sample_changer_state(self, _state_res: StateResponse):
             # Update SC state
             _is_enabled = _state_res.power and _state_res.remote_mode
             _is_normal_state = _is_enabled and not _state_res.fault_or_stopped
@@ -367,21 +373,12 @@ class SampleChanger(AbstractSampleChanger):
             elif _is_normal_state and _state_res.path.name == "":
                 _state = SampleChangerState.Ready
 
-            # SampleChangerState.Resetting
-            # SampleChangerState.Charging
-            # SampleChangerState.ChangingMode
-            # SampleChangerState.StandBy
-            # SampleChangerState.Initializing
-            # SampleChangerState.Closing
-
             _last_state = self.state
             if _state != _last_state:
                 self._set_state(
                     state=_state,
                     status=SampleChangerState.tostring(_state),
                 )
-        except Exception as ex:
-            ex
 
     def _do_select(self, component) -> None:
         raise NotImplementedError
