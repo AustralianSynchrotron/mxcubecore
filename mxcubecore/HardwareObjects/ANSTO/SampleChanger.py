@@ -126,10 +126,10 @@ class SampleChanger(AbstractSampleChanger):
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        for _puck_id in range(1, self.no_of_baskets + 1):
+        for puck_id in range(1, self.no_of_baskets + 1):
             basket = Puck(
                 self,
-                _puck_id,
+                puck_id,
                 samples_num=self.no_of_samples_in_basket,
             )
             self._add_component(basket)
@@ -182,11 +182,11 @@ class SampleChanger(AbstractSampleChanger):
         """ """
         try:
             _client = self.get_client()
-            _state_res = _client.status.state
+            state_res = _client.status.state
         except Exception:
             return None
         else:
-            return _state_res.power and _state_res.remote_mode
+            return state_res.power and state_res.remote_mode
 
     # @deprecated(
     #     (
@@ -287,98 +287,99 @@ class SampleChanger(AbstractSampleChanger):
         """ """
         try:
             # Update Puck/Pin info
-            _client = self.get_client()
+            client = self.get_client()
 
-            _state_res = _client.status.state
-            _loaded_pucks: dict[int, RobotPuck] = {}
-            for _puck in self.loaded_pucks:
-                _loaded_pucks[_puck.id] = _puck
+            state_res = client.status.state
+            loaded_pucks: dict[int, RobotPuck] = {}
+            for robot_puck in self.loaded_pucks:
+                loaded_pucks[robot_puck.id] = robot_puck
 
-            _components: list[Puck] = self.get_components()
-            for _mxcube_puck_idx in range(self.no_of_baskets):
-                _puck_id = _mxcube_puck_idx + 1
-                _puck = _loaded_pucks.get(_puck_id)
-                _mxcube_puck = _components[_mxcube_puck_idx]
-                _mxcube_puck._set_info(
-                    present=_puck is not None,
-                    id=(_puck is not None and str(_puck)) or None,
+            components: list[Puck] = self.get_components()
+            for mxcube_puck_idx in range(self.no_of_baskets):
+                puck_id = mxcube_puck_idx + 1
+                robot_puck = loaded_pucks.get(puck_id)
+                mxcube_puck = components[mxcube_puck_idx]
+                mxcube_puck._set_info(
+                    present=robot_puck is not None,
+                    id=(robot_puck is not None and str(robot_puck)) or None,
                     scanned=False,
                 )
 
-                for _mxcube_pin_idx in range(self.no_of_samples_in_basket):
-                    _pin_id = _mxcube_pin_idx + 1
-                    _pin: RobotPin | None = None
-                    if _puck is not None:
-                        _pin = RobotPin(
-                            id=_pin_id,
-                            puck=_puck,
+                for mxcube_pin_idx in range(self.no_of_samples_in_basket):
+                    pin_id = mxcube_pin_idx + 1
+                    robot_pin: RobotPin | None = None
+                    if robot_puck is not None:
+                        robot_pin = RobotPin(
+                            id=pin_id,
+                            puck=robot_puck,
                         )
 
-                    _address = Pin.get_sample_address(_puck_id, _pin_id)
-                    _mxcube_pin: Pin = self.get_component_by_address(_address)
-                    _pin_datamatrix = f"matr{_puck_id}_{_pin_id}"
-                    if _pin is not None:
-                        _mxcube_pin._name = str(_pin)
-                        _pin_datamatrix = str(_pin)
-                    _mxcube_pin._set_info(
-                        present=_puck is not None,
-                        id=_pin_datamatrix,
+                    address = Pin.get_sample_address(puck_id, pin_id)
+                    mxcube_pin: Pin = self.get_component_by_address(address)
+                    pin_datamatrix = f"matr{puck_id}_{pin_id}"
+                    if robot_pin is not None:
+                        mxcube_pin._name = str(robot_pin)
+                        pin_datamatrix = str(robot_pin)
+                    
+                    mxcube_pin._set_info(
+                        present=robot_puck is not None,
+                        id=pin_datamatrix,
                         scanned=False,
                     )
-                    _loaded: bool = False
-                    if _state_res.goni_pin is not None:
-                        _loaded = (
-                            _state_res.goni_pin.puck.id,
-                            _state_res.goni_pin.id,
+                    loaded: bool = False
+                    if state_res.goni_pin is not None:
+                        loaded = (
+                            state_res.goni_pin.puck.id,
+                            state_res.goni_pin.id,
                         ) == (
-                            _puck_id,
-                            _pin_id,
+                            puck_id,
+                            pin_id,
                         )
-                    _mxcube_pin._set_loaded(
-                        loaded=_loaded,
-                        has_been_loaded=_mxcube_pin.has_been_loaded() or _loaded,
+                    mxcube_pin._set_loaded(
+                        loaded=loaded,
+                        has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
                     )
-                    _mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
+                    mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
 
-            self._update_sample_changer_state(_state_res)
+            self._update_sample_changer_state(state_res)
 
         except Exception as ex:
             ex
 
-    def _update_sample_changer_state(self, _state_res: StateResponse):
-            # Update SC state
-            _is_enabled = _state_res.power and _state_res.remote_mode
-            _is_normal_state = _is_enabled and not _state_res.fault_or_stopped
-            _state: int = SampleChangerState.Unknown
-            if not _is_enabled:
-                _state = SampleChangerState.Disabled
-            elif _state_res.fault_or_stopped:
-                _state = SampleChangerState.Fault
-            elif _state_res.error is not None:
-                # Might need to modify this to read binary alarms set in robot status.
-                _state = SampleChangerState.Alarm
-            elif _state_res.path.name != "":
-                if _state_res.path.name in ("put", "getput", "putht", "getputht"):
-                    _state = SampleChangerState.Loading
-                elif _state_res.path.name in ("get", "getht"):
-                    _state = SampleChangerState.Unloading
-                elif _state_res.path.name == "pick":
-                    _state = SampleChangerState.Selecting
-                elif _state_res.path.name == "datamatrix":
-                    _state = SampleChangerState.Scanning
-                else:
-                    _state = SampleChangerState.Moving
-            elif _state_res.goni_pin is not None:
-                _state = SampleChangerState.Loaded
-            elif _is_normal_state and _state_res.path.name == "":
-                _state = SampleChangerState.Ready
+    def _update_sample_changer_state(self, state_res: StateResponse):
+        # Update SC state
+        _is_enabled = state_res.power and state_res.remote_mode
+        _is_normal_state = _is_enabled and not state_res.fault_or_stopped
+        _state: int = SampleChangerState.Unknown
+        if not _is_enabled:
+            _state = SampleChangerState.Disabled
+        elif state_res.fault_or_stopped:
+            _state = SampleChangerState.Fault
+        elif state_res.error is not None:
+            # Might need to modify this to read binary alarms set in robot status.
+            _state = SampleChangerState.Alarm
+        elif state_res.path.name != "":
+            if state_res.path.name in ("put", "getput", "putht", "getputht"):
+                _state = SampleChangerState.Loading
+            elif state_res.path.name in ("get", "getht"):
+                _state = SampleChangerState.Unloading
+            elif state_res.path.name == "pick":
+                _state = SampleChangerState.Selecting
+            elif state_res.path.name == "datamatrix":
+                _state = SampleChangerState.Scanning
+            else:
+                _state = SampleChangerState.Moving
+        elif state_res.goni_pin is not None:
+            _state = SampleChangerState.Loaded
+        elif _is_normal_state and state_res.path.name == "":
+            _state = SampleChangerState.Ready
 
-            _last_state = self.state
-            if _state != _last_state:
-                self._set_state(
-                    state=_state,
-                    status=SampleChangerState.tostring(_state),
-                )
+        _last_state = self.state
+        if _state != _last_state:
+            self._set_state(
+                state=_state,
+                status=SampleChangerState.tostring(_state),
+            )
 
     def _do_select(self, component) -> None:
         raise NotImplementedError
