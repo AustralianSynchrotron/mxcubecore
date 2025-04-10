@@ -34,6 +34,7 @@ from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import SampleChan
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (  # noqa: E402
     Basket as AbstractPuck,
 )
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import Container
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
     Pin as AbstractPin,
 )
@@ -82,9 +83,19 @@ class SampleData(TypedDict, total=True):
 class MxcubePin(AbstractPin):
     """MXCuBE Pin"""
 
-    def __init__(self, basket: MxcubePuck, basket_no: int, sample_no: int) -> None:
-        super().__init__(basket, basket_no, sample_no)
-        self.robot_id = sample_no
+    def __init__(self, basket: MxcubePuck, puck_location: int, port: int) -> None:
+        """
+        Parameters
+        ----------
+        basket : MxcubePuck
+            An MxcubePuck instance
+        puck_location : int
+            The puck location in the dewar
+        port : int
+            The pin position in the puck
+        """
+        super().__init__(basket, puck_location, port)
+        self.robot_id = port
         self.container: MxcubePuck
 
 
@@ -92,17 +103,33 @@ class MxcubePuck(AbstractPuck):
     """MXCuBE Puck"""
 
     def __init__(
-        self, container, number: int, samples_num: int = 10, name: str = "Puck"
+        self,
+        container: Container,
+        puck_location: int,
+        samples_num: int = 16,
+        name: str = "Puck",
     ) -> None:
+        """
+        Parameters
+        ----------
+        container : Container
+            The container, e.g. the SampleChanger hardware object
+        puck_location : int
+            The puck location in the dewar
+        samples_num : int, optional
+            The number of samples per puck, by default 16
+        name : str, optional
+            The name of the puck, by default "Puck"
+        """
         super(AbstractPuck, self).__init__(
-            self.__TYPE__, container, MxcubePuck.get_basket_address(number), True
+            self.__TYPE__, container, MxcubePuck.get_basket_address(puck_location), True
         )
-        self.robot_id = number
+        self.robot_id = puck_location
 
         self._name = name
         self.samples_num = samples_num
-        for _id in range(1, samples_num + 1):
-            slot = MxcubePin(self, number, _id)
+        for port in range(1, samples_num + 1):
+            slot = MxcubePin(self, puck_location, port)
             self._add_component(slot)
 
 
@@ -126,10 +153,10 @@ class SampleChanger(AbstractSampleChanger):
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        for puck_id in range(1, self.no_of_baskets + 1):
+        for puck_location in range(1, self.no_of_baskets + 1):
             basket = MxcubePuck(
                 self,
-                puck_id,
+                puck_location,
                 samples_num=self.no_of_samples_in_basket,
             )
             self._add_component(basket)
@@ -154,7 +181,7 @@ class SampleChanger(AbstractSampleChanger):
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
         client = self.get_client()
-        
+
         loaded_pucks = client.status.get_loaded_pucks()
         self.loaded_pucks_dict: dict[int, RobotPuck] = {}
         for robot_puck in loaded_pucks:
@@ -237,7 +264,9 @@ class SampleChanger(AbstractSampleChanger):
 
     def is_mounted_sample(self, sample: tuple[int, int]) -> bool:
         return (
-            self.get_component_by_address(MxcubePin.get_sample_address(sample[0], sample[1]))
+            self.get_component_by_address(
+                MxcubePin.get_sample_address(sample[0], sample[1])
+            )
             == self.get_loaded_sample()
         )
 
@@ -248,17 +277,20 @@ class SampleChanger(AbstractSampleChanger):
         return
 
     def _do_update_info(self) -> None:
-        """ """
+        """
+        Polls and updates the Puck/Pin information and robot state.
+        TODO: This method is called every second, but could be called
+        less frequently
+        """
         try:
-            # Update Puck/Pin info
             client = self.get_client()
 
             robot_state = client.status.state
 
             components: list[MxcubePuck] = self.get_components()
             for mxcube_puck_idx in range(self.no_of_baskets):
-                puck_id = mxcube_puck_idx + 1
-                robot_puck = self.loaded_pucks_dict.get(puck_id)
+                puck_location = mxcube_puck_idx + 1
+                robot_puck = self.loaded_pucks_dict.get(puck_location)
                 mxcube_puck = components[mxcube_puck_idx]
                 mxcube_puck._name = "test1"
                 mxcube_puck._set_info(
@@ -268,28 +300,55 @@ class SampleChanger(AbstractSampleChanger):
                 )
 
                 for mxcube_pin_idx in range(self.no_of_samples_in_basket):
-                    pin_id = mxcube_pin_idx + 1
-                    self._update_mxcube_pin_info(robot_puck, puck_id=puck_id, pin_id=pin_id, robot_state=robot_state)
+                    port = mxcube_pin_idx + 1
+                    self._update_mxcube_pin_info(
+                        robot_puck,
+                        puck_location=puck_location,
+                        port=port,
+                        robot_state=robot_state,
+                    )
 
             self._update_sample_changer_state(robot_state)
 
         except Exception as ex:
             ex
 
-    def _update_mxcube_pin_info(self, robot_puck: RobotPuck, puck_id:int, pin_id: int, robot_state: StateResponse):
+    def _update_mxcube_pin_info(
+        self,
+        robot_puck: RobotPuck,
+        puck_location: int,
+        port: int,
+        robot_state: StateResponse,
+    ):
+        """
+        Updates the pin information
+
+        Parameters
+        ----------
+        robot_puck : RobotPuck
+            A mx-robot-library Puck pydantic model
+        puck_location : int
+            The puck location in the dewar
+        port : int
+            The pin position in the puck
+        robot_state : StateResponse
+            The state from the robot as reported by the mx-robot-library
+        """
         robot_pin: RobotPin | None = None
         if robot_puck is not None:
             robot_pin = RobotPin(
-                id=pin_id,
+                id=port,
                 puck=robot_puck,
             )
 
-        address = MxcubePin.get_sample_address(puck_id, pin_id) # e.g. "1:01"
+        address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
         mxcube_pin: MxcubePin = self.get_component_by_address(address)
-        if robot_pin is not None and robot_puck.name: # check also that barcode exists
-            mxcube_pin._name = str(robot_pin) + "my sample" # This is where sample name is set!!
+        if robot_pin is not None and robot_puck.name:  # check also that barcode exists
+            mxcube_pin._name = str(
+                robot_pin
+            )  # TODO: This is where sample name is set!! get name from DL
             pin_datamatrix = str(robot_pin)
-        
+
             mxcube_pin._set_info(
                 present=robot_puck is not None,
                 id=pin_datamatrix,
@@ -301,8 +360,8 @@ class SampleChanger(AbstractSampleChanger):
                     robot_state.goni_pin.puck.id,
                     robot_state.goni_pin.id,
                 ) == (
-                    puck_id,
-                    pin_id,
+                    puck_location,
+                    port,
                 )
             mxcube_pin._set_loaded(
                 loaded=loaded,
@@ -310,9 +369,9 @@ class SampleChanger(AbstractSampleChanger):
             )
             mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
-
-    def _update_sample_changer_state(self, robot_state: StateResponse)-> None:
-        """Updates the sample changer state
+    def _update_sample_changer_state(self, robot_state: StateResponse) -> None:
+        """
+        Updates the sample changer state
 
         Parameters
         ----------
@@ -321,9 +380,8 @@ class SampleChanger(AbstractSampleChanger):
 
         Returns
         -------
-        None 
+        None
         """
-        # Update SC state
         _is_enabled = robot_state.power and robot_state.remote_mode
         _is_normal_state = _is_enabled and not robot_state.fault_or_stopped
         _state: int = SampleChangerState.Unknown
