@@ -12,7 +12,6 @@ from typing import (  # noqa: E402
 )
 
 from gevent import sleep  # noqa: E402
-from gevent import monkey
 from mx_robot_library.client.client import Client  # noqa: E402
 from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
 from mx_robot_library.schemas.common.path import RobotPaths  # noqa: E402
@@ -20,6 +19,7 @@ from mx_robot_library.schemas.common.position import RobotPositions  # noqa: E40
 from mx_robot_library.schemas.common.sample import Pin as RobotPin
 from mx_robot_library.schemas.common.sample import Puck as RobotPuck  # noqa: E402
 from mx_robot_library.schemas.common.tool import RobotTools  # noqa: E402
+from mx_robot_library.schemas.responses.state import StateResponse
 from pydantic import JsonValue  # noqa: E402
 from typing_extensions import (  # noqa: E402
     Literal,
@@ -34,6 +34,7 @@ from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import SampleChan
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (  # noqa: E402
     Basket as AbstractPuck,
 )
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import Container
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
     Pin as AbstractPin,
 )
@@ -79,30 +80,56 @@ class SampleData(TypedDict, total=True):
     defaultSubDir: Optional[str]
 
 
-class Pin(AbstractPin):
+class MxcubePin(AbstractPin):
     """MXCuBE Pin"""
 
-    def __init__(self, basket: Puck, basket_no: int, sample_no: int) -> None:
-        super().__init__(basket, basket_no, sample_no)
-        self.robot_id = sample_no
-        self.container: Puck
+    def __init__(self, basket: MxcubePuck, puck_location: int, port: int) -> None:
+        """
+        Parameters
+        ----------
+        basket : MxcubePuck
+            An MxcubePuck instance
+        puck_location : int
+            The puck location in the dewar
+        port : int
+            The pin position in the puck
+        """
+        super().__init__(basket, puck_location, port)
+        self.robot_id = port
+        self.container: MxcubePuck
 
 
-class Puck(AbstractPuck):
+class MxcubePuck(AbstractPuck):
     """MXCuBE Puck"""
 
     def __init__(
-        self, container, number: int, samples_num: int = 10, name: str = "Puck"
+        self,
+        container: Container,
+        puck_location: int,
+        samples_num: int = 16,
+        name: str = "Puck",
     ) -> None:
+        """
+        Parameters
+        ----------
+        container : Container
+            The container, e.g. the SampleChanger hardware object
+        puck_location : int
+            The puck location in the dewar
+        samples_num : int, optional
+            The number of samples per puck, by default 16
+        name : str, optional
+            The name of the puck, by default "Puck"
+        """
         super(AbstractPuck, self).__init__(
-            self.__TYPE__, container, Puck.get_basket_address(number), True
+            self.__TYPE__, container, MxcubePuck.get_basket_address(puck_location), True
         )
-        self.robot_id = number
+        self.robot_id = puck_location
 
         self._name = name
         self.samples_num = samples_num
-        for _id in range(1, samples_num + 1):
-            slot = Pin(self, number, _id)
+        for port in range(1, samples_num + 1):
+            slot = MxcubePin(self, puck_location, port)
             self._add_component(slot)
 
 
@@ -126,10 +153,10 @@ class SampleChanger(AbstractSampleChanger):
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        for _puck_id in range(1, self.no_of_baskets + 1):
-            basket = Puck(
+        for puck_location in range(1, self.no_of_baskets + 1):
+            basket = MxcubePuck(
                 self,
-                _puck_id,
+                puck_location,
                 samples_num=self.no_of_samples_in_basket,
             )
             self._add_component(basket)
@@ -154,7 +181,11 @@ class SampleChanger(AbstractSampleChanger):
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
         client = self.get_client()
-        self.loaded_pucks = client.status.get_loaded_pucks()
+
+        loaded_pucks = client.status.get_loaded_pucks()
+        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
+        for robot_puck in loaded_pucks:
+            self.loaded_pucks_dict[robot_puck.id] = robot_puck
 
     @dtask
     def __update_timer_task(self, *args):
@@ -182,29 +213,11 @@ class SampleChanger(AbstractSampleChanger):
         """ """
         try:
             _client = self.get_client()
-            _state_res = _client.status.state
+            robot_state = _client.status.state
         except Exception:
             return None
         else:
-            return _state_res.power and _state_res.remote_mode
-
-    # @deprecated(
-    #     (
-    #         "The `SampleChanger.chained_load` method should not be used, "
-    #         "call the `SampleChanger.load` method instead."
-    #     )
-    # )
-    # @validate_call
-    # def chained_load(
-    #     self,
-    #     sample_to_unload: Union[tuple[int, int], str],
-    #     sample_to_load: Annotated[
-    #         Union[tuple[int, int], str],
-    #         Field(pattern=r"(\d+):(\d+)"),
-    #     ],
-    # ) -> Union[Pin, None]:
-    #     """ """
-    #     raise NotImplementedError
+            return robot_state.power and robot_state.remote_mode
 
     def chained_load(self, sample_to_unload, sample_to_load):
         """
@@ -223,7 +236,7 @@ class SampleChanger(AbstractSampleChanger):
             sample_to_load: tuple[int, int] = tuple(
                 int(_item) for _item in sample_to_load.split(":", maxsplit=1)
             )
-        elif isinstance(sample_to_load, Pin):
+        elif isinstance(sample_to_load, MxcubePin):
             sample_to_load: tuple[int, int] = (
                 sample_to_load.container.robot_id,
                 sample_to_load.robot_id,
@@ -238,7 +251,7 @@ class SampleChanger(AbstractSampleChanger):
         holder_length: float,
         sample_location: Union[tuple[int, int], str],
         wait=False,
-    ) -> Union[Pin, None]:
+    ) -> Union[MxcubePin, None]:
         return self.load(sample_location, wait)
 
     def unload_then_load(self, sample=None, wait=True):
@@ -249,31 +262,11 @@ class SampleChanger(AbstractSampleChanger):
         self.unload()
         self.load(sample)
 
-    # @validate_call
-    # def load(
-    #     self,
-    #     sample: Annotated[
-    #         Union[tuple[int, int], str],
-    #         Field(pattern=r"(\d+):(\d+)"),
-    #     ],
-    #     wait: bool = True,
-    # ) -> Union[Pin, None]:
-    #     """ """
-    #     raise NotImplementedError
-
-    # def get_loaded_sample(self) -> Union[Pin, None]:
-    #     """ """
-    #     _client = self.get_client()
-    #     _goni_pin = _client.status.state.goni_pin
-    #     if _goni_pin is None:
-    #         return None
-    #     return self.get_component_by_address(
-    #         Pin.get_sample_address(_goni_pin.puck.id, _goni_pin.id),
-    #     )
-
     def is_mounted_sample(self, sample: tuple[int, int]) -> bool:
         return (
-            self.get_component_by_address(Pin.get_sample_address(sample[0], sample[1]))
+            self.get_component_by_address(
+                MxcubePin.get_sample_address(sample[0], sample[1])
+            )
             == self.get_loaded_sample()
         )
 
@@ -284,104 +277,143 @@ class SampleChanger(AbstractSampleChanger):
         return
 
     def _do_update_info(self) -> None:
-        """ """
+        """
+        Polls and updates the Puck/Pin information and robot state.
+        TODO: This method is called every second, but could be called
+        less frequently
+        """
         try:
-            # Update Puck/Pin info
-            _client = self.get_client()
+            client = self.get_client()
 
-            _state_res = _client.status.state
-            _loaded_pucks: dict[int, RobotPuck] = {}
-            for _puck in self.loaded_pucks:
-                _loaded_pucks[_puck.id] = _puck
+            robot_state = client.status.state
 
-            _components: list[Puck] = self.get_components()
-            for _mxcube_puck_idx in range(self.no_of_baskets):
-                _puck_id = _mxcube_puck_idx + 1
-                _puck = _loaded_pucks.get(_puck_id)
-                _mxcube_puck = _components[_mxcube_puck_idx]
-                _mxcube_puck._set_info(
-                    present=_puck is not None,
-                    id=(_puck is not None and str(_puck)) or None,
+            components: list[MxcubePuck] = self.get_components()
+            for mxcube_puck_idx in range(self.no_of_baskets):
+                puck_location = mxcube_puck_idx + 1
+                robot_puck = self.loaded_pucks_dict.get(puck_location)
+                mxcube_puck = components[mxcube_puck_idx]
+                mxcube_puck._name = "test1"
+                mxcube_puck._set_info(
+                    present=robot_puck is not None,
+                    id=(robot_puck is not None and str(robot_puck)) or None,
                     scanned=False,
                 )
 
-                for _mxcube_pin_idx in range(self.no_of_samples_in_basket):
-                    _pin_id = _mxcube_pin_idx + 1
-                    _pin: RobotPin | None = None
-                    if _puck is not None:
-                        _pin = RobotPin(
-                            id=_pin_id,
-                            puck=_puck,
-                        )
-
-                    _address = Pin.get_sample_address(_puck_id, _pin_id)
-                    _mxcube_pin: Pin = self.get_component_by_address(_address)
-                    _pin_datamatrix = f"matr{_puck_id}_{_pin_id}"
-                    if _pin is not None:
-                        _mxcube_pin._name = str(_pin)
-                        _pin_datamatrix = str(_pin)
-                    _mxcube_pin._set_info(
-                        present=_puck is not None,
-                        id=_pin_datamatrix,
-                        scanned=False,
+                for mxcube_pin_idx in range(self.no_of_samples_in_basket):
+                    port = mxcube_pin_idx + 1
+                    self._update_mxcube_pin_info(
+                        robot_puck,
+                        puck_location=puck_location,
+                        port=port,
+                        robot_state=robot_state,
                     )
-                    _loaded: bool = False
-                    if _state_res.goni_pin is not None:
-                        _loaded = (
-                            _state_res.goni_pin.puck.id,
-                            _state_res.goni_pin.id,
-                        ) == (
-                            _puck_id,
-                            _pin_id,
-                        )
-                    _mxcube_pin._set_loaded(
-                        loaded=_loaded,
-                        has_been_loaded=_mxcube_pin.has_been_loaded() or _loaded,
-                    )
-                    _mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
 
-            # Update SC state
-            _is_enabled = _state_res.power and _state_res.remote_mode
-            _is_normal_state = _is_enabled and not _state_res.fault_or_stopped
-            _state: int = SampleChangerState.Unknown
-            if not _is_enabled:
-                _state = SampleChangerState.Disabled
-            elif _state_res.fault_or_stopped:
-                _state = SampleChangerState.Fault
-            elif _state_res.error is not None:
-                # Might need to modify this to read binary alarms set in robot status.
-                _state = SampleChangerState.Alarm
-            elif _state_res.path.name != "":
-                if _state_res.path.name in ("put", "getput", "putht", "getputht"):
-                    _state = SampleChangerState.Loading
-                elif _state_res.path.name in ("get", "getht"):
-                    _state = SampleChangerState.Unloading
-                elif _state_res.path.name == "pick":
-                    _state = SampleChangerState.Selecting
-                elif _state_res.path.name == "datamatrix":
-                    _state = SampleChangerState.Scanning
-                else:
-                    _state = SampleChangerState.Moving
-            elif _state_res.goni_pin is not None:
-                _state = SampleChangerState.Loaded
-            elif _is_normal_state and _state_res.path.name == "":
-                _state = SampleChangerState.Ready
+            self._update_sample_changer_state(robot_state)
 
-            # SampleChangerState.Resetting
-            # SampleChangerState.Charging
-            # SampleChangerState.ChangingMode
-            # SampleChangerState.StandBy
-            # SampleChangerState.Initializing
-            # SampleChangerState.Closing
-
-            _last_state = self.state
-            if _state != _last_state:
-                self._set_state(
-                    state=_state,
-                    status=SampleChangerState.tostring(_state),
-                )
         except Exception as ex:
             ex
+
+    def _update_mxcube_pin_info(
+        self,
+        robot_puck: RobotPuck,
+        puck_location: int,
+        port: int,
+        robot_state: StateResponse,
+    ):
+        """
+        Updates the pin information
+
+        Parameters
+        ----------
+        robot_puck : RobotPuck
+            A mx-robot-library Puck pydantic model
+        puck_location : int
+            The puck location in the dewar
+        port : int
+            The pin position in the puck
+        robot_state : StateResponse
+            The state from the robot as reported by the mx-robot-library
+        """
+        robot_pin: RobotPin | None = None
+        if robot_puck is not None:
+            robot_pin = RobotPin(
+                id=port,
+                puck=robot_puck,
+            )
+
+        address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+        mxcube_pin: MxcubePin = self.get_component_by_address(address)
+        if robot_pin is not None and robot_puck.name:  # check also that barcode exists
+            mxcube_pin._name = str(
+                robot_pin
+            )  # TODO: This is where sample name is set!! get name from DL
+            pin_datamatrix = str(robot_pin)
+
+            mxcube_pin._set_info(
+                present=robot_puck is not None,
+                id=pin_datamatrix,
+                scanned=False,
+            )
+            loaded: bool = False
+            if robot_state.goni_pin is not None:
+                loaded = (
+                    robot_state.goni_pin.puck.id,
+                    robot_state.goni_pin.id,
+                ) == (
+                    puck_location,
+                    port,
+                )
+            mxcube_pin._set_loaded(
+                loaded=loaded,
+                has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
+            )
+            mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
+
+    def _update_sample_changer_state(self, robot_state: StateResponse) -> None:
+        """
+        Updates the sample changer state
+
+        Parameters
+        ----------
+        robot_state : StateResponse
+            The Isara robot state response
+
+        Returns
+        -------
+        None
+        """
+        _is_enabled = robot_state.power and robot_state.remote_mode
+        _is_normal_state = _is_enabled and not robot_state.fault_or_stopped
+        _state: int = SampleChangerState.Unknown
+        if not _is_enabled:
+            _state = SampleChangerState.Disabled
+        elif robot_state.fault_or_stopped:
+            _state = SampleChangerState.Fault
+        elif robot_state.error is not None:
+            # Might need to modify this to read binary alarms set in robot status.
+            _state = SampleChangerState.Alarm
+        elif robot_state.path.name != "":
+            if robot_state.path.name in ("put", "getput", "putht", "getputht"):
+                _state = SampleChangerState.Loading
+            elif robot_state.path.name in ("get", "getht"):
+                _state = SampleChangerState.Unloading
+            elif robot_state.path.name == "pick":
+                _state = SampleChangerState.Selecting
+            elif robot_state.path.name == "datamatrix":
+                _state = SampleChangerState.Scanning
+            else:
+                _state = SampleChangerState.Moving
+        elif robot_state.goni_pin is not None:
+            _state = SampleChangerState.Loaded
+        elif _is_normal_state and robot_state.path.name == "":
+            _state = SampleChangerState.Ready
+
+        _last_state = self.state
+        if _state != _last_state:
+            self._set_state(
+                state=_state,
+                status=SampleChangerState.tostring(_state),
+            )
 
     def _do_select(self, component) -> None:
         raise NotImplementedError
@@ -391,7 +423,7 @@ class SampleChanger(AbstractSampleChanger):
 
     def _do_load(
         self,
-        sample: Union[tuple[int, int], str, Pin],
+        sample: Union[tuple[int, int], str, MxcubePin],
     ) -> None:
         """ """
         _client = self.get_client()
@@ -399,7 +431,7 @@ class SampleChanger(AbstractSampleChanger):
             sample: tuple[int, int] = tuple(
                 int(_item) for _item in sample.split(":", maxsplit=1)
             )
-        elif isinstance(sample, Pin):
+        elif isinstance(sample, MxcubePin):
             sample: tuple[int, int] = (sample.container.robot_id, sample.robot_id)
 
         # Check position is currently SOAK
