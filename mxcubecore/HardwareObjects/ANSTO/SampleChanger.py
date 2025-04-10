@@ -79,30 +79,30 @@ class SampleData(TypedDict, total=True):
     defaultSubDir: Optional[str]
 
 
-class Pin(AbstractPin):
+class MxcubePin(AbstractPin):
     """MXCuBE Pin"""
 
-    def __init__(self, basket: Puck, basket_no: int, sample_no: int) -> None:
+    def __init__(self, basket: MxcubePuck, basket_no: int, sample_no: int) -> None:
         super().__init__(basket, basket_no, sample_no)
         self.robot_id = sample_no
-        self.container: Puck
+        self.container: MxcubePuck
 
 
-class Puck(AbstractPuck):
+class MxcubePuck(AbstractPuck):
     """MXCuBE Puck"""
 
     def __init__(
         self, container, number: int, samples_num: int = 10, name: str = "Puck"
     ) -> None:
         super(AbstractPuck, self).__init__(
-            self.__TYPE__, container, Puck.get_basket_address(number), True
+            self.__TYPE__, container, MxcubePuck.get_basket_address(number), True
         )
         self.robot_id = number
 
         self._name = name
         self.samples_num = samples_num
         for _id in range(1, samples_num + 1):
-            slot = Pin(self, number, _id)
+            slot = MxcubePin(self, number, _id)
             self._add_component(slot)
 
 
@@ -127,7 +127,7 @@ class SampleChanger(AbstractSampleChanger):
         )  # TODO: number of samples per project
 
         for puck_id in range(1, self.no_of_baskets + 1):
-            basket = Puck(
+            basket = MxcubePuck(
                 self,
                 puck_id,
                 samples_num=self.no_of_samples_in_basket,
@@ -154,7 +154,11 @@ class SampleChanger(AbstractSampleChanger):
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
         client = self.get_client()
-        self.loaded_pucks = client.status.get_loaded_pucks()
+        
+        loaded_pucks = client.status.get_loaded_pucks()
+        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
+        for robot_puck in loaded_pucks:
+            self.loaded_pucks_dict[robot_puck.id] = robot_puck
 
     @dtask
     def __update_timer_task(self, *args):
@@ -205,7 +209,7 @@ class SampleChanger(AbstractSampleChanger):
             sample_to_load: tuple[int, int] = tuple(
                 int(_item) for _item in sample_to_load.split(":", maxsplit=1)
             )
-        elif isinstance(sample_to_load, Pin):
+        elif isinstance(sample_to_load, MxcubePin):
             sample_to_load: tuple[int, int] = (
                 sample_to_load.container.robot_id,
                 sample_to_load.robot_id,
@@ -220,7 +224,7 @@ class SampleChanger(AbstractSampleChanger):
         holder_length: float,
         sample_location: Union[tuple[int, int], str],
         wait=False,
-    ) -> Union[Pin, None]:
+    ) -> Union[MxcubePin, None]:
         return self.load(sample_location, wait)
 
     def unload_then_load(self, sample=None, wait=True):
@@ -233,7 +237,7 @@ class SampleChanger(AbstractSampleChanger):
 
     def is_mounted_sample(self, sample: tuple[int, int]) -> bool:
         return (
-            self.get_component_by_address(Pin.get_sample_address(sample[0], sample[1]))
+            self.get_component_by_address(MxcubePin.get_sample_address(sample[0], sample[1]))
             == self.get_loaded_sample()
         )
 
@@ -250,15 +254,13 @@ class SampleChanger(AbstractSampleChanger):
             client = self.get_client()
 
             robot_state = client.status.state
-            loaded_pucks_dict: dict[int, RobotPuck] = {}
-            for robot_puck in self.loaded_pucks:
-                loaded_pucks_dict[robot_puck.id] = robot_puck
 
-            components: list[Puck] = self.get_components()
+            components: list[MxcubePuck] = self.get_components()
             for mxcube_puck_idx in range(self.no_of_baskets):
                 puck_id = mxcube_puck_idx + 1
-                robot_puck = loaded_pucks_dict.get(puck_id)
+                robot_puck = self.loaded_pucks_dict.get(puck_id)
                 mxcube_puck = components[mxcube_puck_idx]
+                mxcube_puck._name = "test1"
                 mxcube_puck._set_info(
                     present=robot_puck is not None,
                     id=(robot_puck is not None and str(robot_puck)) or None,
@@ -274,7 +276,7 @@ class SampleChanger(AbstractSampleChanger):
         except Exception as ex:
             ex
 
-    def _update_mxcube_pin_info(self, robot_puck: Puck, puck_id:int, pin_id: int, robot_state: StateResponse):
+    def _update_mxcube_pin_info(self, robot_puck: RobotPuck, puck_id:int, pin_id: int, robot_state: StateResponse):
         robot_pin: RobotPin | None = None
         if robot_puck is not None:
             robot_pin = RobotPin(
@@ -282,8 +284,8 @@ class SampleChanger(AbstractSampleChanger):
                 puck=robot_puck,
             )
 
-        address = Pin.get_sample_address(puck_id, pin_id) # e.g. "1:01"
-        mxcube_pin: Pin = self.get_component_by_address(address)
+        address = MxcubePin.get_sample_address(puck_id, pin_id) # e.g. "1:01"
+        mxcube_pin: MxcubePin = self.get_component_by_address(address)
         if robot_pin is not None and robot_puck.name: # check also that barcode exists
             mxcube_pin._name = str(robot_pin) + "my sample" # This is where sample name is set!!
             pin_datamatrix = str(robot_pin)
@@ -306,7 +308,7 @@ class SampleChanger(AbstractSampleChanger):
                 loaded=loaded,
                 has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
             )
-            mxcube_pin._set_holder_length(Pin.STD_HOLDERLENGTH)
+            mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
 
     def _update_sample_changer_state(self, robot_state: StateResponse)-> None:
@@ -363,7 +365,7 @@ class SampleChanger(AbstractSampleChanger):
 
     def _do_load(
         self,
-        sample: Union[tuple[int, int], str, Pin],
+        sample: Union[tuple[int, int], str, MxcubePin],
     ) -> None:
         """ """
         _client = self.get_client()
@@ -371,7 +373,7 @@ class SampleChanger(AbstractSampleChanger):
             sample: tuple[int, int] = tuple(
                 int(_item) for _item in sample.split(":", maxsplit=1)
             )
-        elif isinstance(sample, Pin):
+        elif isinstance(sample, MxcubePin):
             sample: tuple[int, int] = (sample.container.robot_id, sample.robot_id)
 
         # Check position is currently SOAK
