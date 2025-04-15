@@ -222,7 +222,7 @@ class AbstractPrefectWorkflow(ABC):
             )
             if r.status_code == HTTPStatus.OK:
                 if len(r.json()) == 1:
-                    return PinRead.model_validate(r.json())
+                    return PinRead.model_validate(r.json()[0])
                 else:
                     raise QueueExecutionException(
                         f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
