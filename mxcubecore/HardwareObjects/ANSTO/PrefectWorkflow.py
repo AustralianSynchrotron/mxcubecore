@@ -141,11 +141,11 @@ class PrefectWorkflow(HardwareObject):
         self.resolution: Resolution = hwr.get_hardware_object("/resolution")
 
         self.redis_connection = redis.StrictRedis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            username=settings.REDIS_USERNAME,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
+            host=settings.MXCUBE_REDIS_HOST,
+            port=settings.MXCUBE_REDIS_PORT,
+            username=settings.MXCUBE_REDIS_USERNAME,
+            password=settings.MXCUBE_REDIS_PASSWORD,
+            db=settings.MXCUBE_REDIS_DB,
         )
 
         self._save_default_collection_params_to_redis()

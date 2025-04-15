@@ -217,16 +217,23 @@ class AbstractPrefectWorkflow(ABC):
             r = client.get(
                 urljoin(
                     settings.DATA_LAYER_API,
-                    f"/pin/by_barcode_port_and_epn/{port}/{barcode}/{settings.EPN_STRING}",
+                    f"/samples/pins?filter_by_port={port}&filter_by_puck_barcode={barcode}&filter_by_visit_identifier={settings.EPN_STRING}",
                 )
             )
-            if r.status_code != HTTPStatus.OK:
+            if r.status_code == HTTPStatus.OK:
+                if len(r.json()) == 1:
+                    return PinRead.model_validate(r.json())
+                else:
+                    raise QueueExecutionException(
+                        f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
+                        self,
+                    )
+
+            else:
                 raise QueueExecutionException(
                     f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
                     self,
                 )
-
-            return PinRead.model_validate(r.json())
 
     def _get_barcode_and_port_of_mounted_pin(self) -> tuple[int, str]:
         """
@@ -291,11 +298,11 @@ class AbstractPrefectWorkflow(ABC):
             A redis connection
         """
         return redis.StrictRedis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            username=settings.REDIS_USERNAME,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
+            host=settings.MXCUBE_REDIS_HOST,
+            port=settings.MXCUBE_REDIS_PORT,
+            username=settings.MXCUBE_REDIS_USERNAME,
+            password=settings.MXCUBE_REDIS_PASSWORD,
+            db=settings.MXCUBE_REDIS_DB,
             decode_responses=True,
         )
 

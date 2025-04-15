@@ -54,11 +54,11 @@ class MX3PrefectClient:
         self.prefect_client = PrefectClient(api=urljoin(settings.PREFECT_URI, "api"))
 
         self.async_redis_connection = redis.asyncio.StrictRedis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            username=settings.REDIS_USERNAME,
-            password=settings.REDIS_PASSWORD,
-            db=settings.REDIS_DB,
+            host=settings.MXCUBE_REDIS_HOST,
+            port=settings.MXCUBE_REDIS_PORT,
+            username=settings.MXCUBE_REDIS_USERNAME,
+            password=settings.MXCUBE_REDIS_PASSWORD,
+            db=settings.MXCUBE_REDIS_DB,
             decode_responses=True,
         )
 
