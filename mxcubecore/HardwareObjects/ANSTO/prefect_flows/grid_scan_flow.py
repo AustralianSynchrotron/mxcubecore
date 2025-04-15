@@ -194,11 +194,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
             numer_of_frames = num_cols * num_rows
             score_array = np.zeros((num_rows, num_cols))
             async with redis.asyncio.StrictRedis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                username=settings.REDIS_USERNAME,
-                password=settings.REDIS_PASSWORD,
-                db=settings.REDIS_DB,
+                host=settings.MXCUBE_REDIS_HOST,
+                port=settings.MXCUBE_REDIS_PORT,
+                username=settings.MXCUBE_REDIS_USERNAME,
+                password=settings.MXCUBE_REDIS_PASSWORD,
+                db=settings.MXCUBE_REDIS_DB,
             ) as async_redis_client:
                 for _ in range(numer_of_frames):
                     data, last_id = await self.read_message_from_redis_streams(

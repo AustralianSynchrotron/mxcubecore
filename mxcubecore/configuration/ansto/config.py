@@ -40,11 +40,11 @@ class MD3(BaseSettings):
 
 
 class RedisSettings(BaseSettings):
-    REDIS_HOST: str = Field("localhost", env="MXCUBE_REDIS_HOST")
-    REDIS_PORT: int = Field("6379", env="MXCUBE_REDIS_PORT")
-    REDIS_USERNAME: str | None = Field(None, env="MXCUBE_REDIS_USERNAME")
-    REDIS_PASSWORD: str | None = Field(None, env="MXCUBE_REDIS_PASSWORD")
-    REDIS_DB: int = Field(0, env="MXCUBE_REDIS_DB")
+    MXCUBE_REDIS_HOST: str = Field("localhost", env="MXCUBE_REDIS_HOST")
+    MXCUBE_REDIS_PORT: int = Field("6379", env="MXCUBE_REDIS_PORT")
+    MXCUBE_REDIS_USERNAME: str | None = Field(None, env="MXCUBE_REDIS_USERNAME")
+    MXCUBE_REDIS_PASSWORD: str | None = Field(None, env="MXCUBE_REDIS_PASSWORD")
+    MXCUBE_REDIS_DB: int = Field(0, env="MXCUBE_REDIS_DB")
 
 
 class Robot(BaseSettings):
@@ -67,3 +67,4 @@ class ANSTOConfig(APIs, Robot, RedisSettings, MD3, PrefectSettings):
 
 
 settings = ANSTOConfig()
+print(settings)
