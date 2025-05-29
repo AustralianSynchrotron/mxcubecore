@@ -58,7 +58,6 @@ class APIs(BaseSettings):
 
 class ANSTOConfig(APIs, Robot, RedisSettings, MD3, PrefectSettings):
     BL_ACTIVE: bool = Field(default=False, env="BL_ACTIVE")
-    EPN_STRING: str = Field(default="my_epn", env="EPN_STRING")
     ADD_DUMMY_PIN_TO_DB: bool = Field(
         default=False,
         env="ADD_DUMMY_PIN_TO_DB",
