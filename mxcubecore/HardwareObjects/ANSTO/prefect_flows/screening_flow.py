@@ -38,7 +38,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         detector_distance = self._resolution_to_distance(
             dialog_box_model.resolution,
             energy=dialog_box_model.photon_energy,
-            roi_mode="disabled",
         )
 
         screening_params = ScreeningParams(
@@ -175,9 +174,9 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         if settings.ADD_DUMMY_PIN_TO_DB:
             # Dev only
             properties["sample_id"] = {
-                "title": "Sample id (dev only)",
-                "type": "string",
-                "default": "my_sample",
+                "title": "Database sample id (dev only)",
+                "type": "integer",
+                "default": 1,
                 "widget": "textarea",
             }
 

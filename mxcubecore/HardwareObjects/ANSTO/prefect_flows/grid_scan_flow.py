@@ -77,14 +77,14 @@ class GridScanFlow(AbstractPrefectWorkflow):
             logging.getLogger("HWR").info("Getting pin from the data layer...")
             pin = self.get_pin_model_of_mounted_sample_from_db()
             logging.getLogger("HWR").info(f"Mounted pin: {pin}")
-            sample_id = str(pin.id)  # Could also be sample name
+            sample_id = pin.id
         else:
             logging.getLogger("HWR").warning(
-                "The sample id will not be obtained from the data layer. "
-                "Setting sample id to `test_sample`. "
-                "This should only be used for development"
+                "SIM mode! The sample id will not be obtained from the data layer. "
+                "Setting sample id to 1. "
+                "Ensure that this sample id exists in the db before launching the flow"
             )
-            sample_id = "1"
+            sample_id = 1
 
         redis_grid_scan_id = self.redis_connection.get(
             f"mxcube_grid_scan_id:{sample_id}"
@@ -94,10 +94,13 @@ class GridScanFlow(AbstractPrefectWorkflow):
         else:
             grid_scan_id = int(redis_grid_scan_id) + 1
 
+        default_resolution = float(self.redis_connection.get("grid_scan:resolution"))
         detector_distance = self._resolution_to_distance(
-            dialog_box_model.resolution,
+            default_resolution,
             energy=dialog_box_model.photon_energy,
-            roi_mode="4M",
+        )
+        logging.getLogger("HWR").info(
+            f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
         )
 
         prefect_parameters = GridScanParams(
@@ -337,14 +340,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "default": float(self._get_dialog_box_param("omega_range")),
                     "widget": "textarea",
                 },
-                "resolution": {
-                    "title": "Resolution [Å]",
-                    "type": "number",
-                    "minimum": 0,  # TODO: get limits from distance PV
-                    "maximum": 3000,  # TODO: get limits from distance PV
-                    "default": float(self._get_dialog_box_param("resolution")),
-                    "widget": "textarea",
-                },
                 "photon_energy": {
                     "title": "Photon Energy [keV]",
                     "type": "number",
@@ -365,7 +360,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             "required": [
                 "md3_alignment_y_speed",
                 "omega_range",
-                "resolution",
                 "photon_energy",
                 "transmission",
             ],
