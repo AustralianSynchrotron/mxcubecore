@@ -12,17 +12,12 @@ from pydantic import (
 class GridScanDialogBox(BaseModel):
     md3_alignment_y_speed: float
     omega_range: float
-    resolution: float = Field(
-        description="Measured in Angstrom. This value is converted to "
-        "distance in meters internally, which is the parameter "
-        "prefect expects"
-    )
     photon_energy: float
     transmission: float = Field(description="Measured in percentage")
 
 
 class GridScanParams(BaseModel):
-    sample_id: str
+    sample_id: int
     grid_scan_id: Union[str, int]
     grid_top_left_coordinate: Union[tuple[int, int], list[int]]
     grid_height: int

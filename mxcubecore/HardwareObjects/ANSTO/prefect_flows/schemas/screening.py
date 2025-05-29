@@ -23,7 +23,7 @@ class ScreeningDialogBox(BaseModel):
     )
     photon_energy: float = Field(description="Detector distance in keV")
     transmission: float = Field(description="Measured in percentage")
-    sample_id: Optional[str] = None
+    sample_id: Optional[int] = None
     processing_pipeline: str = "dials"
     crystal_counter: int = 0
 
