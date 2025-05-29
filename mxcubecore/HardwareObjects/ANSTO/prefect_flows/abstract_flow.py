@@ -208,28 +208,54 @@ class AbstractPrefectWorkflow(ABC):
         )
         port, barcode = self._get_barcode_and_port_of_mounted_pin()
 
+        with redis.StrictRedis(
+            host=settings.MXCUBE_REDIS_HOST,
+            port=settings.MXCUBE_REDIS_PORT,
+            username=settings.MXCUBE_REDIS_USERNAME,
+            password=settings.MXCUBE_REDIS_PASSWORD,
+            db=settings.MXCUBE_REDIS_DB,
+        ) as redis_connection:
+
+            epn_value: bytes | None = redis_connection.get("epn")
+            if epn_value is None:
+                logging.getLogger("user_level_log").error(
+                    "epn redis key does not exist"
+                )
+                raise QueueExecutionException(
+                    f"epn redis key does not exist",
+                    self,
+                )
+
+            epn_string = epn_value.decode("utf-8")
+
         logging.getLogger("HWR").info(
             f"Getting pin id from the mx-data-layer-api for port {port}, "
-            f"barcode {barcode}, and epn_string {settings.EPN_STRING}"
+            f"barcode {barcode}, and epn_string {epn_string}"
         )
 
         with httpx.Client() as client:
             r = client.get(
                 urljoin(
                     settings.DATA_LAYER_API,
-                    f"/samples/pins?filter_by_port={port}&filter_by_puck_barcode={barcode}&filter_by_visit_identifier={settings.EPN_STRING}",
+                    f"/samples/pins?filter_by_port={port}&filter_by_puck_barcode={barcode}&filter_by_visit_identifier={epn_string}",
                 )
             )
             if r.status_code == HTTPStatus.OK:
                 if len(r.json()) == 1:
                     return PinRead.model_validate(r.json()[0])
                 else:
+                    logging.getLogger("user_level_log").error(
+                        f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string}"
+                    )
                     raise QueueExecutionException(
                         f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
                         self,
                     )
 
             else:
+                logging.getLogger("user_level_log").error(
+                    f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string}"
+                )
                 raise QueueExecutionException(
                     f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
                     self,
@@ -259,6 +285,7 @@ class AbstractPrefectWorkflow(ABC):
                     return (mounted_sample.id, puck.name.replace("-", ""))
 
         else:
+            logging.getLogger("user_level_log").error("No pin mounted on the goni")
             raise QueueExecutionException("No pin mounted on the goni", self)
 
     def _get_asyncio_event_loop(self, timeout: float = 30):
@@ -361,11 +388,10 @@ class AbstractPrefectWorkflow(ABC):
         with self._get_redis_connection() as redis_connection:
             return redis_connection.get(f"{self._collection_type}:{parameter}")
 
-    def _resolution_to_distance(
-        self, resolution: float, energy: float, roi_mode: Literal["4M", "disabled"]
-    ) -> float:
+    def _resolution_to_distance(self, resolution: float, energy: float) -> float:
         """
-        Converts resolution to distance
+        Converts resolution to distance. The mapping is always done
+        at 16M mode
 
         Parameters
         ----------
@@ -373,15 +399,12 @@ class AbstractPrefectWorkflow(ABC):
             Resolution in Angstrom
         energy : float
             Energy in keV
-        roi_mode : Literal["4M", "disabled"]
-            The detector roi mode
 
         Returns
         -------
         float
             The distance in meters
         """
-        self._set_detector_roi_mode(roi_mode)
         wavelength = self._keV_to_angstrom(energy)
         return (
             self.resolution.resolution_to_distance(

@@ -22,7 +22,7 @@ class FullDatasetDialogBox(BaseModel):
         "prefect expects"
     )
     photon_energy: float
-    sample_id: Optional[str] = None
+    sample_id: Optional[int] = None
     processing_pipeline: str
     crystal_counter: int
     transmission: float = Field(description="Measured in percentage")
