@@ -218,6 +218,9 @@ class AbstractPrefectWorkflow(ABC):
 
             epn_value: bytes | None = redis_connection.get("epn")
             if epn_value is None:
+                logging.getLogger("user_level_log").error(
+                    "epn redis key does not exist"
+                )
                 raise QueueExecutionException(
                     f"epn redis key does not exist",
                     self,
@@ -241,6 +244,9 @@ class AbstractPrefectWorkflow(ABC):
                 if len(r.json()) == 1:
                     return PinRead.model_validate(r.json()[0])
                 else:
+                    logging.getLogger("user_level_log").error(
+                        f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string}"
+                    )
                     raise QueueExecutionException(
                         f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
                         self,
@@ -276,6 +282,7 @@ class AbstractPrefectWorkflow(ABC):
                     return (mounted_sample.id, puck.name.replace("-", ""))
 
         else:
+            logging.getLogger("user_level_log").error("No pin mounted on the goni")
             raise QueueExecutionException("No pin mounted on the goni", self)
 
     def _get_asyncio_event_loop(self, timeout: float = 30):
