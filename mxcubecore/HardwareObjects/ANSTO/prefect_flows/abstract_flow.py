@@ -253,6 +253,9 @@ class AbstractPrefectWorkflow(ABC):
                     )
 
             else:
+                logging.getLogger("user_level_log").error(
+                    f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string}"
+                )
                 raise QueueExecutionException(
                     f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
                     self,

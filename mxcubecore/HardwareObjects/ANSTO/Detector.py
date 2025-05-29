@@ -251,7 +251,7 @@ class Detector(AbstractDetector):
     def get_width(self) -> int:
         """
         Gets x_pixels_in_detector. This is fixed at 16 Mode so that
-        all resolution calculations are based in 16M mode
+        all resolution calculations are done at 16M mode
 
         Returns
         -------
@@ -263,7 +263,7 @@ class Detector(AbstractDetector):
     def get_height(self) -> int:
         """
         Gets x_pixels_in_detector. This is fixed at 16 Mode so that
-        all resolution calculations are based in 16M mode
+        all resolution calculations are done at 16M mode
 
         Returns
         -------
