@@ -1,22 +1,14 @@
-
-import random
-import time
 import logging
-
-from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
-from mxcubecore.HardwareObjects.mockup.ActuatorMockup import ActuatorMockup
-
 from enum import (
     Enum,
     unique,
 )
-from mxcubecore.BaseHardwareObjects import HardwareObjectState
-from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
-from mx3_beamline_library.devices.beam import dmm_stripe
-from mxcubecore.BaseHardwareObjects import HardwareObject
-from mxcubecore.HardwareObjects.abstract.AbstractDetector import AbstractDetector
-from mxcubecore.configuration.ansto.config import settings
 
+from mx3_beamline_library.devices.beam import dmm_stripe
+
+from mxcubecore.BaseHardwareObjects import HardwareObjectState
+from mxcubecore.configuration.ansto.config import settings
+from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
 
 @unique
@@ -24,13 +16,14 @@ class DMMEnum(Enum):
     """Defines only the compulsory unknown."""
 
     UNKNOWN = "UNKNOWN"
-    DUMMY = "DUMMY" # These are used for shutters, not relevant for DMM
-    DUMMY2 = "DUMMY2" # These are used for shutters, not relevant for DMM
+    DUMMY = "DUMMY"  # These are used for shutters, not relevant for DMM
+    DUMMY2 = "DUMMY2"  # These are used for shutters, not relevant for DMM
     STRIPE_1_7 = 0
     STRIPE_2 = 1
     STRIPE_2_7 = 2
     MOVING = 3
     NOT_IN_POSITION = 4
+
 
 class DmmStripe(AbstractNState):
     """BeamDefinerMockup class"""
@@ -41,17 +34,15 @@ class DmmStripe(AbstractNState):
     def init(self):
         super().init()
         self.VALUES = DMMEnum
-        # self.update_value(self.get_value())
-        self.update_value(DMMEnum(dmm_stripe.get()))
+        self.update_value(self.get_value())
 
         if settings.BL_ACTIVE:
-            # The following channels are used to poll the transmission PV and the
-            # filter_wheel_is_moving PV
+
             self.dmm_stripe_channel = self.add_channel(
                 {
                     "type": "epics",
                     "name": "dmm_stripe",
-                    "polling": 1000,  # milliseconds
+                    "polling": 10000,  # milliseconds
                 },
                 dmm_stripe.pvname,
             )
@@ -63,25 +54,24 @@ class DmmStripe(AbstractNState):
         Parameters
         ----------
         value : float | None
-            The transmission value
+            The dmm stripe value
         """
         logging.getLogger("HWR").info(f"DMM stripe value changed: {value}")
         try:
             _value = DMMEnum(value)
-        except ValueError:
+        except Exception:
             _value = DMMEnum.UNKNOWN
         logging.getLogger("HWR").info(f"DMM all good: {_value}")
 
         self.emit("valueChanged", _value)
         logging.getLogger("HWR").info(f"DMM all good: {_value}")
 
-
     def get_value(self) -> Enum:
         """Get the beam value.
         Returns:
             (Enum): The current position Enum.
         """
-        value =  dmm_stripe.get()
+        value = dmm_stripe.get()
         return DMMEnum(value)
 
     def _set_value(self, value: Enum):
@@ -89,9 +79,10 @@ class DmmStripe(AbstractNState):
         Args:
             value (str, int, float or enum): Value to be set.
         """
-        logging.getLogger("user_level_log").warning("Setting DMM stripe is not supported.")
+        logging.getLogger("user_level_log").warning(
+            "Setting DMM stripe is not supported."
+        )
 
-    
     def get_state(self) -> HardwareObjectState:
         """Gets the state of the detector
 
@@ -100,7 +91,6 @@ class DmmStripe(AbstractNState):
         HardwareObjectState
             The state of the detector
         """
-
 
         # if state in busy_list:
         #     self._state = HardwareObjectState.BUSY

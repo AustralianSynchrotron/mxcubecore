@@ -36,6 +36,7 @@ _objects:
   - resolution: resolution.xml
   - mono_beam_shutter: mono_beam_shutter.xml
   - white_beam_shutter: white_beam_shutter.xml
+  - dmm_stripe: dmm_stripe.xml
   - fast_shutter: md3/fast_shutter.xml
   - hutch_interlock: hutchtrigger.xml
   - sample_changer: sc.xml

@@ -910,3 +910,14 @@ class Beamline(ConfiguredObject):
         return self._objects.get("white_beam_shutter")
 
     __content_roles.append("white_beam_shutter")
+
+    @property
+    def dmm_stripe(self):
+        """Dmm stripe Hardware object
+
+        Returns:
+            Optional[AbstractMachineInfo]:
+        """
+        return self._objects.get("dmm_stripe")
+
+    __content_roles.append("dmm_stripe")
