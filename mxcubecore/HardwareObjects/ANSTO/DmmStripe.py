@@ -56,22 +56,22 @@ class DmmStripe(AbstractNState):
         value : float | None
             The dmm stripe value
         """
-        logging.getLogger("HWR").info(f"DMM stripe value changed: {value}")
         try:
             _value = DMMEnum(value)
         except Exception:
             _value = DMMEnum.UNKNOWN
-        logging.getLogger("HWR").info(f"DMM all good: {_value}")
 
         self.emit("valueChanged", _value)
-        logging.getLogger("HWR").info(f"DMM all good: {_value}")
 
     def get_value(self) -> Enum:
         """Get the beam value.
         Returns:
             (Enum): The current position Enum.
         """
-        value = dmm_stripe.get()
+        try:
+            value = dmm_stripe.get()
+        except Exception as e:
+            return DMMEnum.UNKNOWN
         return DMMEnum(value)
 
     def _set_value(self, value: Enum):

@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 
 from gevent import (
@@ -9,7 +10,7 @@ from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
-import logging
+
 
 class ExporterNState(AbstractNState):
     """
