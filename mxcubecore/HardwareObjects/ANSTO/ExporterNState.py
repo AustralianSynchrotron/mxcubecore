@@ -9,7 +9,7 @@ from mxcubecore.Command.Exporter import Exporter
 from mxcubecore.Command.exporter.ExporterStates import ExporterStates
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
-
+import logging
 
 class ExporterNState(AbstractNState):
     """
@@ -38,6 +38,11 @@ class ExporterNState(AbstractNState):
         # use the value to check if action finished.
         self.use_value_as_state = self.get_property("value_state")
         state_channel = self.get_property("state_channel_name", "State")
+        self.read_only = self.get_property("read_only", False)
+        if self.read_only:
+            logging.getLogger("HWR").warning(
+                f"Actuator {self.name()} is read-only, cannot set value"
+            )
 
         _exporter_address = settings.EXPORTER_ADDRESS
         _host, _port = _exporter_address.split(":")
@@ -136,6 +141,12 @@ class ExporterNState(AbstractNState):
         """
         # NB Workaround beacuse diffractomer does not send event on
         # change of actuators (light, scintillator, cryostream...)
+        if self.read_only:
+            logging.getLogger("user_level_log").warning(
+                "Actuator is read-only, cannot set value: %s", value
+            )
+            raise ValueError("Attempt to set value for read-only Actuator")
+
         self.update_state(self.STATES.BUSY)
 
         if isinstance(value, Enum):
