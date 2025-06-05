@@ -61,7 +61,12 @@ class SampleChangerMaint(Equipment):
         self._update_soak_state(False)
     
     def _do_reset(self):
-        pass
+        self._update_reset_state(True)
+        self._update_message("Resetting...")
+
+        gevent.sleep(2)  # Simulate some processing time
+        self._update_message("Reset completed")
+        self._update_reset_state(False)
 
     def _do_dry_gripper(self):
         self._update_dry_state(True)
@@ -70,6 +75,12 @@ class SampleChangerMaint(Equipment):
         self._update_message("Gripper dried")
         self._update_dry_state(False)
 
+    def _do_return_prefetch(self):
+        self._update_return_prefetch(True)
+        self._update_message("Returning prefetched sample...")
+        gevent.sleep(2)
+        self._update_message("Returned prefetched sample")
+        self._update_return_prefetch(False)
 
     def _do_set_on_diff(self, sample):
         pass
@@ -125,6 +136,13 @@ class SampleChangerMaint(Equipment):
         return ret
 
     #########################           PRIVATE           #########################
+
+    def _update_return_prefetch(self, value):
+        """Update the return prefetch state and emit the corresponding signal."""
+        self._running = value
+        self.emit("returnPrefetchStateChanged", (value,))
+        self._update_global_state()
+    
     def _update_abort_state(self, value):
         """Update the abort state and emit the corresponding signal."""
         self._running = value
@@ -141,6 +159,12 @@ class SampleChangerMaint(Equipment):
         """Update the dry state and emit the corresponding signal."""
         self._running = value
         self.emit("dryStateChanged", (value,))
+        self._update_global_state()
+
+    def _update_reset_state(self, value):
+        """Update the reset state and emit the corresponding signal."""
+        self._running = value
+        self.emit("resetStateChanged", (value,))
         self._update_global_state()
 
     def _update_home_state(self, value):
@@ -241,12 +265,14 @@ class SampleChangerMaint(Equipment):
         }
 
         cmd_state = {
-            "powerOn": (not self._powered) and _ready,
-            "powerOff": (self._powered) and _ready,
+            "powerOn": (not self._powered) and _ready and not self._running,
+            "powerOff": (self._powered) and _ready and not self._running,
             "abort": not self._running and _ready,
             "home": not self._running and _ready,
             "dry": not self._running and _ready,
             "soak": not self._running and _ready,
+            "reset": not self._running and _ready,
+            "return_prefetch": not self._running and _ready,
         }
 
         message = self._message
@@ -267,21 +293,30 @@ class SampleChangerMaint(Equipment):
                     ["home", "Home", "Home (trajectory)"],
                     ["dry", "Dry", "Dry (trajectory)"],
                     ["soak", "Soak", "Soak (trajectory)"],
+
                 ],
             ]
         
-        power = [
-                "Power",
-                [
-                    ["powerOn", "PowerOn", "Switch Power On"],
-                    ["powerOff", "PowerOff", "Switch Power Off"],
-                ],
+        # power = [
+        #         "Power",
+        #         [
+        #             ["powerOn", "PowerOn", "Switch Power On"],
+        #             ["powerOff", "PowerOff", "Switch Power Off"],
+        #         ],
+        #     ]
+        recovery = [
+            "Recovery",
+            [
+                ["abort", "Abort", "Abort running trajectory"],
+                ["reset", "Reset", "Reset the robot"],
+                ["return_prefetch", "Return Prefetch", "Return prefetched sample"],
             ]
-        abort = ["Abort", [["abort", "Abort", "Abort running trajectory"]]]
+            ]
+
         cmd_list = [
-            power,
+            #power,
             positions,
-            abort
+            recovery,
         ]
         return cmd_list
 
@@ -300,4 +335,8 @@ class SampleChangerMaint(Equipment):
             self._do_dry_gripper()
         elif cmd_name == "soak":
             self._do_soak()
+        elif cmd_name == "reset":
+            self._do_reset()
+        elif cmd_name == "return_prefetch":
+            self._do_return_prefetch()
         return True
