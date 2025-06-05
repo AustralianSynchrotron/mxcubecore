@@ -1,6 +1,5 @@
-import time
-from typing import Literal
 import logging
+from typing import Literal
 
 import gevent
 
@@ -59,7 +58,7 @@ class SampleChangerMaint(Equipment):
         gevent.sleep(2)  # Simulate some processing time
         self._update_message("Soaking completed")
         self._update_soak_state(False)
-    
+
     def _do_reset(self):
         self._update_reset_state(True)
         self._update_message("Resetting...")
@@ -142,7 +141,7 @@ class SampleChangerMaint(Equipment):
         self._running = value
         self.emit("returnPrefetchStateChanged", (value,))
         self._update_global_state()
-    
+
     def _update_abort_state(self, value):
         """Update the abort state and emit the corresponding signal."""
         self._running = value
@@ -288,15 +287,14 @@ class SampleChangerMaint(Equipment):
         """ [cmd_id, cmd_display_name, nb_args, cmd_category, description ] """
 
         positions = [
-                "Positions",
-                [
-                    ["home", "Home", "Home (trajectory)"],
-                    ["dry", "Dry", "Dry (trajectory)"],
-                    ["soak", "Soak", "Soak (trajectory)"],
+            "Positions",
+            [
+                ["home", "Home", "Home (trajectory)"],
+                ["dry", "Dry", "Dry (trajectory)"],
+                ["soak", "Soak", "Soak (trajectory)"],
+            ],
+        ]
 
-                ],
-            ]
-        
         # power = [
         #         "Power",
         #         [
@@ -310,11 +308,11 @@ class SampleChangerMaint(Equipment):
                 ["abort", "Abort", "Abort running trajectory"],
                 ["reset", "Reset", "Reset the robot"],
                 ["return_prefetch", "Return Prefetch", "Return prefetched sample"],
-            ]
-            ]
+            ],
+        ]
 
         cmd_list = [
-            #power,
+            # power,
             positions,
             recovery,
         ]
