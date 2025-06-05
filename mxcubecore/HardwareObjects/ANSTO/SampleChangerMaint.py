@@ -1,5 +1,6 @@
 import time
 from typing import Literal
+import logging
 
 import gevent
 
@@ -35,6 +36,7 @@ class SampleChangerMaint(Equipment):
 
     ################################################################################
     def _do_abort(self):
+        logging.getLogger("HWR").info("Do abort called")
         pass
 
     def _do_reset(self):
@@ -48,6 +50,7 @@ class SampleChangerMaint(Equipment):
 
     def _do_power_state(self, state=False):
         """ """
+        logging.getLogger("HWR").info(f"Do power state called with {state}")
         self._powered = state
         self._update_powered_state(state)
 
@@ -196,33 +199,38 @@ class SampleChangerMaint(Equipment):
         [ cmd_name,  display_name, category ]
         """
         """ [cmd_id, cmd_display_name, nb_args, cmd_category, description ] """
-        cmd_list = [
-            [
+
+        positions = [
+                "Positions",
+                [
+                    ["home", "Home", "Home (trajectory)"],
+                    ["dry", "Dry", "Dry (trajectory)"],
+                    ["soak", "Soak", "Soak (trajectory)"],
+                ],
+            ]
+        
+        power = [
                 "Power",
                 [
                     ["powerOn", "PowerOn", "Switch Power On"],
                     ["powerOff", "PowerOff", "Switch Power Off"],
                 ],
-            ],
+            ]
+        abort = ["Abort", [["abort", "Abort", "Abort running trajectory"]]]
+        cmd_list = [
+            power,
+            #positions,
+            power
         ]
         return cmd_list
 
-    def _execute_server_task(self, method, *args):
-        task_id = method(*args)
-        ret = None
-        # introduced wait because it takes some time before the attribute PathRunning is set
-        # after launching a transfer
-        # after setting refresh in the Tango DS to 0.1 s a wait of 1s is enough
-        time.sleep(1.0)
-        while str(self._chnPathRunning.get_value()).lower() == "true":
-            gevent.sleep(0.1)
-        ret = True
-        return ret
-
     def send_command(self, cmd_name, args=None) -> Literal[True]:
         """ """
+        logging.getLogger("HWR").info("send_command called with %s", cmd_name)
         if cmd_name == "powerOn":
             self._do_power_state(True)
         if cmd_name == "powerOff":
             self._do_power_state(False)
+        if cmd_name == "abort":
+            self._do_abort()
         return True
