@@ -13,11 +13,9 @@ from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
 
 @unique
 class DMMEnum(Enum):
-    """Defines only the compulsory unknown."""
-
     UNKNOWN = "UNKNOWN"
-    DUMMY = "DUMMY"  # These are used for shutters, not relevant for DMM
-    DUMMY2 = "DUMMY2"  # These are used for shutters, not relevant for DMM
+    OPEN = "OPEN"  # These are used for shutters, not relevant for DMM
+    CLOSED = "CLOSED"  # These are used for shutters, not relevant for DMM
     STRIPE_1_7 = 0
     STRIPE_2 = 1
     STRIPE_2_7 = 2
