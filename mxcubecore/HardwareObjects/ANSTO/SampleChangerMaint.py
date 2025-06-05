@@ -36,35 +36,39 @@ class SampleChangerMaint(Equipment):
 
     ################################################################################
     def _do_abort(self):
-        logging.getLogger("HWR").info("Do abort called")
+        self._update_abort_state(True)
         self._update_message("Aborting current operation...")
 
         gevent.sleep(2)  # Simulate some processing time
 
         self._update_message("Aborted")
+        self._update_abort_state(False)
 
     def _do_home(self):
-        logging.getLogger("HWR").info("Do home called")
+        self._update_home_state(True)
         self._update_message("Homing...")
 
         gevent.sleep(2)  # Simulate some processing time
         self._update_message("Homing completed")
+        self._update_home_state(False)
 
     def _do_soak(self):
-        logging.getLogger("HWR").info("Do soak called")
+        self._update_soak_state(True)
         self._update_message("Soaking...")
 
         gevent.sleep(2)  # Simulate some processing time
         self._update_message("Soaking completed")
-
+        self._update_soak_state(False)
+    
     def _do_reset(self):
         pass
 
     def _do_dry_gripper(self):
-        logging.getLogger("HWR").info("Do dry gripper called")
+        self._update_dry_state(True)
         self._update_message("Drying gripper...")
         gevent.sleep(2)  # Simulate some processing time
         self._update_message("Gripper dried")
+        self._update_dry_state(False)
 
 
     def _do_set_on_diff(self, sample):
@@ -121,6 +125,29 @@ class SampleChangerMaint(Equipment):
         return ret
 
     #########################           PRIVATE           #########################
+    def _update_abort_state(self, value):
+        """Update the abort state and emit the corresponding signal."""
+        self._running = value
+        self.emit("abortStateChanged", (value,))
+        self._update_global_state()
+
+    def _update_soak_state(self, value):
+        """Update the soak state and emit the corresponding signal."""
+        self._running = value
+        self.emit("soakStateChanged", (value,))
+        self._update_global_state()
+
+    def _update_dry_state(self, value):
+        """Update the dry state and emit the corresponding signal."""
+        self._running = value
+        self.emit("dryStateChanged", (value,))
+        self._update_global_state()
+
+    def _update_home_state(self, value):
+        """Update the home state and emit the corresponding signal."""
+        self._running = value
+        self.emit("homeStateChanged", (value,))
+        self._update_global_state()
 
     def _update_running_state(self, value):
         self._running = value
@@ -216,10 +243,10 @@ class SampleChangerMaint(Equipment):
         cmd_state = {
             "powerOn": (not self._powered) and _ready,
             "powerOff": (self._powered) and _ready,
-            "abort": 1,
-            "home": 1,
-            "dry": 1,
-            "soak": 1,
+            "abort": not self._running and _ready,
+            "home": not self._running and _ready,
+            "dry": not self._running and _ready,
+            "soak": not self._running and _ready,
         }
 
         message = self._message
