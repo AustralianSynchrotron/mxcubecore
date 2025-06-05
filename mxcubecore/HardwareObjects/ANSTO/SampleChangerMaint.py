@@ -37,22 +37,52 @@ class SampleChangerMaint(Equipment):
     ################################################################################
     def _do_abort(self):
         logging.getLogger("HWR").info("Do abort called")
-        pass
+        self._update_message("Aborting current operation...")
+
+        gevent.sleep(2)  # Simulate some processing time
+
+        self._update_message("Aborted")
+
+    def _do_home(self):
+        logging.getLogger("HWR").info("Do home called")
+        self._update_message("Homing...")
+
+        gevent.sleep(2)  # Simulate some processing time
+        self._update_message("Homing completed")
+
+    def _do_soak(self):
+        logging.getLogger("HWR").info("Do soak called")
+        self._update_message("Soaking...")
+
+        gevent.sleep(2)  # Simulate some processing time
+        self._update_message("Soaking completed")
 
     def _do_reset(self):
         pass
 
     def _do_dry_gripper(self):
-        pass
+        logging.getLogger("HWR").info("Do dry gripper called")
+        self._update_message("Drying gripper...")
+        gevent.sleep(2)  # Simulate some processing time
+        self._update_message("Gripper dried")
+
 
     def _do_set_on_diff(self, sample):
         pass
 
     def _do_power_state(self, state=False):
         """ """
-        logging.getLogger("HWR").info(f"Do power state called with {state}")
+        if state:
+            self._update_message("Powering on...")
+        else:
+            self._update_message("Powering off...")
         self._powered = state
         self._update_powered_state(state)
+
+        if state:
+            self._update_message("Powered on")
+        else:
+            self._update_message("Powered off")
 
     def _do_enable_regulation(self):
         pass
@@ -186,6 +216,10 @@ class SampleChangerMaint(Equipment):
         cmd_state = {
             "powerOn": (not self._powered) and _ready,
             "powerOff": (self._powered) and _ready,
+            "abort": 1,
+            "home": 1,
+            "dry": 1,
+            "soak": 1,
         }
 
         message = self._message
@@ -219,8 +253,8 @@ class SampleChangerMaint(Equipment):
         abort = ["Abort", [["abort", "Abort", "Abort running trajectory"]]]
         cmd_list = [
             power,
-            #positions,
-            power
+            positions,
+            abort
         ]
         return cmd_list
 
@@ -229,8 +263,14 @@ class SampleChangerMaint(Equipment):
         logging.getLogger("HWR").info("send_command called with %s", cmd_name)
         if cmd_name == "powerOn":
             self._do_power_state(True)
-        if cmd_name == "powerOff":
+        elif cmd_name == "powerOff":
             self._do_power_state(False)
-        if cmd_name == "abort":
+        elif cmd_name == "abort":
             self._do_abort()
+        elif cmd_name == "home":
+            self._do_home()
+        elif cmd_name == "dry":
+            self._do_dry_gripper()
+        elif cmd_name == "soak":
+            self._do_soak()
         return True
