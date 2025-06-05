@@ -222,8 +222,25 @@ class Detector(AbstractDetector):
         """
         return
 
-    def restart(self) -> None:
-        return
+    def restart(self) -> str:
+        """Restarts the detector by calling the SIMPLON API
+
+        Returns
+        -------
+        str
+            A message indicating the result of the restart operation.
+            This message will be displayed in the UI.
+        """
+        with Client() as client:
+            try:
+                response = client.put(
+                    urljoin(settings.SIMPLON_API, "system/api/1.8.0/command/restart")
+                )
+                response.raise_for_status()
+            except Exception as e:
+                return f"Failed to restart the detector. Status code: {response.status_code}"
+
+        return "Restart successful"
 
     def get_beam_position(
         self, distance: float = None, wavelength: float = None
