@@ -108,7 +108,7 @@ beamline_setup:
       attribute: mono_beam_shutter
     - label: White Beam Shutter
       attribute: white_beam_shutter
-    - label: Detector
+    - label: Detector state
       attribute: detector
     - label: Energy
       attribute: energy
@@ -144,7 +144,8 @@ beamline_setup:
       precision: 2
       suffix: ph/s
       format: expo
-
+    - label: DMM stripe
+      attribute: dmm_stripe
 # TODO: Cameras have to be accessible externally
 # camera_setup:
 #   id: camera_setup
