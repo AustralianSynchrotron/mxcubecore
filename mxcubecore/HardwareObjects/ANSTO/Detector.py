@@ -2,6 +2,7 @@ import ast
 from typing import Literal
 from urllib.parse import urljoin
 
+import redis
 from httpx import Client
 
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
@@ -76,12 +77,6 @@ class Detector(AbstractDetector):
             self._get_detector_config("beam_center_x"),
             self._get_detector_config("beam_center_y"),
         )
-
-        if self._beam_centre == (0, 0):
-            raise ValueError(
-                "The beam centre has not been set via the SIMPLON API. "
-                "Ensure 'beam_center_x' and 'beam_center_y' are different from zero"
-            )
 
         self._width = self._get_detector_config("x_pixels_in_detector")
         self._height = self._get_detector_config("y_pixels_in_detector")
@@ -262,8 +257,8 @@ class Detector(AbstractDetector):
             tuple(float, float) :
             Beam position x,y coordinates [pixel].
         """
-
-        return self._beam_centre
+        beam_center = self._get_beam_center_16M(distance)
+        return beam_center
 
     def get_width(self) -> int:
         """
@@ -288,3 +283,62 @@ class Detector(AbstractDetector):
             y_pixels_in_detector
         """
         return self._height
+
+    def _get_beam_center_16M(self, distance: float) -> tuple[float, float]:
+        """
+        Gets the beam center for 16M mode from redis. The beam center is calculated using
+        the coefficients stored in redis for the keys `beam_center_x_16M` and
+        `beam_center_y_16M`. The coefficients are used to calculate the beam center
+        based on the distance following the formula:
+        beam_center = a + b * distance + c * distance^2
+
+        where distance is measured in millimeters.
+
+        Parameters
+        ----------
+        distance : float
+            The distance in millimeters
+
+        Returns
+        -------
+        tuple[float, float]
+            The beam center coordinates (x, y)
+        """
+        with self._get_redis_connection() as redis_connection:
+            coefficients_x = redis_connection.hgetall(name="beam_center_x_16M")
+            if not coefficients_x:
+                raise ValueError(
+                    "No beam center x coefficients found for 16M mode in Redis."
+                )
+            a = float(coefficients_x["a"])
+            b = float(coefficients_x["b"])
+            c = float(coefficients_x["c"])
+            beam_center_x = a + b * distance + c * distance**2
+
+            coefficients_y = redis_connection.hgetall(name="beam_center_y_16M")
+            if not coefficients_y:
+                raise ValueError(
+                    "No beam center y coefficients found for 16M mode in Redis."
+                )
+            a = float(coefficients_y["a"])
+            b = float(coefficients_y["b"])
+            c = float(coefficients_y["c"])
+            beam_center_y = a + b * distance + c * distance**2
+        return beam_center_x, beam_center_y
+
+    def _get_redis_connection(self) -> redis.StrictRedis:
+        """Create and return a Redis connection.
+
+        Returns
+        -------
+        redis.StrictRedis
+            A redis connection
+        """
+        return redis.StrictRedis(
+            host=settings.MXCUBE_REDIS_HOST,
+            port=settings.MXCUBE_REDIS_PORT,
+            username=settings.MXCUBE_REDIS_USERNAME,
+            password=settings.MXCUBE_REDIS_PASSWORD,
+            db=settings.MXCUBE_REDIS_DB,
+            decode_responses=True,
+        )
