@@ -1,42 +1,59 @@
 import logging
-from enum import (
-    Enum,
-    unique,
-)
 
 from mx3_beamline_library.devices.beam import dmm_stripe
 
-from mxcubecore.BaseHardwareObjects import HardwareObjectState
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.abstract.AbstractNState import AbstractNState
+from mxcubecore.HardwareObjects.abstract.AbstractMotor import AbstractMotor
+from mxcubecore.HardwareObjects.ANSTO.EPICSActuator import EPICSActuator
 
 
-@unique
-class DMMEnum(Enum):
-    UNKNOWN = "UNKNOWN"
-    OPEN = "OPEN"  # These are used for shutters, not relevant for DMM
-    CLOSED = "CLOSED"  # These are used for shutters, not relevant for DMM
-    STRIPE_1_7 = 0
-    STRIPE_2 = 1
-    STRIPE_2_7 = 2
-    MOVING = 3
-    NOT_IN_POSITION = 4
+class DmmStripe(AbstractMotor, EPICSActuator):
+    """Hardware Object that uses an Ophyd layer to the dmm_stripe.
 
+    Example of xml config file:
 
-class DmmStripe(AbstractNState):
-    """BeamDefinerMockup class"""
+    <object class = "ANSTO.dmm_stripe">
+    <username>dmm_stripe</username>
+    </object>
+    """
 
-    def __init__(self, *args):
-        super().__init__(*args)
+    def __init__(self, name: str) -> None:
+        """Constructor to instantiate OphydEpicsMotor class and it's features.
 
-    def init(self):
-        super().init()
-        self.VALUES = DMMEnum
-        self.update_value(self.get_value())
+        Parameters
+        ----------
+        name : str
+            Human readable name of the motor.
+
+        Returns
+        -------
+        None
+        """
+        AbstractMotor.__init__(self, name)
+        EPICSActuator.__init__(self, name)
+
+        self._wrap_range = None
+        # 3 and 4 mean moving and not in position respectively
+        self.dmm_mapping = {0: 1.7, 1: 2, 2: 2.7, 3: -1, 4: -1}
+
+    def init(self) -> None:
+        """Object initialization - executed after loading contents
+
+        Returns
+        -------
+        None
+        """
+        AbstractMotor.init(self)
+        EPICSActuator.init(self)
+
+        self.get_limits()
+        self.get_velocity()
+        self.update_state(self.STATES.READY)
 
         if settings.BL_ACTIVE:
-
-            self.dmm_stripe_channel = self.add_channel(
+            # The following channels are used to poll the dmm_stripe PV and the
+            # filter_wheel_is_moving PV
+            self.dmm_stipe_channel = self.add_channel(
                 {
                     "type": "epics",
                     "name": "dmm_stripe",
@@ -44,59 +61,69 @@ class DmmStripe(AbstractNState):
                 },
                 dmm_stripe.pvname,
             )
-            self.dmm_stripe_channel.connect_signal("update", self._value_changed)
+            self.dmm_stipe_channel.connect_signal("update", self._value_changed)
 
-    def _value_changed(self, value: int | None) -> None:
-        """Emits a valueChanged signal
+    def _value_changed(self, value: float | None) -> None:
+        """Emits a valueChanged signal. Used by self.dmm_stripe_channel
 
         Parameters
         ----------
         value : float | None
-            The dmm stripe value
+            The dmm_stripe value
         """
-        try:
-            _value = DMMEnum(value)
-        except Exception:
-            _value = DMMEnum.UNKNOWN
+        logging.getLogger("HWR").debug(f"{self.name} dmm_stripe value changed: {value}")
+        self._value = value
+        if value not in [3, 4]:
+            # only update the value in the UI if it is not moving or not in position
+            self.emit("valueChanged", self.dmm_mapping[self._value])
 
-        self.emit("valueChanged", _value)
+        if value in [3, 4]:
+            self.update_state(self.STATES.BUSY)
+            self.update_specific_state(self.SPECIFIC_STATES.MOVING)
+        else:
+            self.update_state(self.STATES.READY)
 
-    def get_value(self) -> Enum:
-        """Get the beam value.
-        Returns:
-            (Enum): The current position Enum.
-        """
-        try:
-            value = dmm_stripe.get()
-        except Exception as e:
-            return DMMEnum.UNKNOWN
-        return DMMEnum(value)
-
-    def _set_value(self, value: Enum):
-        """Set device to value
-        Args:
-            value (str, int, float or enum): Value to be set.
-        """
-        logging.getLogger("user_level_log").warning(
-            "Setting DMM stripe is not supported."
-        )
-
-    def get_state(self) -> HardwareObjectState:
-        """Gets the state of the detector
+    def get_limits(self) -> tuple:
+        """Get the limits of a motor.
 
         Returns
         -------
-        HardwareObjectState
-            The state of the detector
+        tuple
+            Low and High limits of a motor.
+        """
+        self._nominal_limits = (0, 100)
+        return self._nominal_limits
+
+    def get_value(self) -> float:
+        """Get the current position of the motor.
+
+        Returns
+        -------
+        float
+            The dmm_stripe value
         """
 
-        # if state in busy_list:
-        #     self._state = HardwareObjectState.BUSY
-        # elif state == "error":
-        #     self._state = HardwareObjectState.FAULT
-        # elif state in ["na", "test"]:
-        #     self._state = HardwareObjectState.UNKNOWN
-        # elif state in ["ready", "idle"]:
-        self._state = HardwareObjectState.READY
-        self.update_state(self._state)
-        return self._state
+        return self.dmm_mapping[dmm_stripe.get()]
+
+    def _set_value(self, value: float) -> None:
+        """Set the dmm stripe to a given value.
+
+        Parameters
+        ----------
+        value : float
+            The dmm_stripe value
+
+        Returns
+        -------
+        None
+        """
+        raise NotImplementedError("Setting the dmm stripe value is not implemented. ")
+
+    def abort(self) -> None:
+        """Stop the motor and update the new position of the motor.
+
+        Returns
+        -------
+        None
+        """
+        pass
