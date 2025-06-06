@@ -1,4 +1,5 @@
 import ast
+import logging
 from typing import Literal
 from urllib.parse import urljoin
 
@@ -226,7 +227,8 @@ class Detector(AbstractDetector):
             A message indicating the result of the restart operation.
             This message will be displayed in the UI.
         """
-        with Client() as client:
+        logging.getLogger("user_level_log").info(f"Restarting the detector...")
+        with Client(timeout=60) as client:
             try:
                 response = client.put(
                     urljoin(settings.SIMPLON_API, "system/api/1.8.0/command/restart")
@@ -236,6 +238,29 @@ class Detector(AbstractDetector):
                 return f"Failed to restart the detector. Status code: {response.status_code}"
 
         return "Restart successful"
+
+    def initialise(self) -> str:
+        """Initialises the detector by calling the SIMPLON API
+
+        Returns
+        -------
+        str
+            A message indicating the result of the restart operation.
+            This message will be displayed in the UI.
+        """
+        logging.getLogger("user_level_log").info(f"Initialising the detector...")
+        with Client(timeout=120) as client:
+            try:
+                response = client.put(
+                    urljoin(
+                        settings.SIMPLON_API, "detector/api/1.8.0/command/initialize"
+                    )
+                )
+                response.raise_for_status()
+            except Exception as e:
+                return f"Failed to initialise the detector. Status code: {response.status_code}"
+
+        return "Initialise successful"
 
     def get_beam_position(
         self, distance: float = None, wavelength: float = None

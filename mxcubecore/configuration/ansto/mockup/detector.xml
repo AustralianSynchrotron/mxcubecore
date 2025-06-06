@@ -5,5 +5,5 @@
   <model>16M</model>
   <manufacturer>DECTRIS</manufacturer>
   <roi_mode_list>["4M", "16M"]</roi_mode_list>
-  <exports>["restart"]</exports>
+  <exports>["restart", "initialise"]</exports>
 </object>
