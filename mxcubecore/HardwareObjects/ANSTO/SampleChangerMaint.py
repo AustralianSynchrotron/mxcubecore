@@ -1,15 +1,15 @@
 import logging
+from time import perf_counter
 from typing import Literal
 
 import gevent
-
-from mxcubecore.BaseHardwareObjects import Equipment
-from mxcubecore.TaskUtils import task
-from mxcubecore.configuration.ansto.config import settings
 from mx_robot_library.client.client import Client
 from mx_robot_library.schemas.common.path import RobotPaths
-from time import perf_counter
 from mx_robot_library.schemas.common.position import RobotPositions
+
+from mxcubecore.BaseHardwareObjects import Equipment
+from mxcubecore.configuration.ansto.config import settings
+from mxcubecore.TaskUtils import task
 
 
 class SampleChangerMaint(Equipment):
@@ -31,7 +31,6 @@ class SampleChangerMaint(Equipment):
         self._lid3state = 0
         self._charging = 0
         self._currenttool = 1
-        
 
     def init(self):
         """ """
@@ -64,17 +63,19 @@ class SampleChangerMaint(Equipment):
                     self._update_home_state(False)
                     return
                 self.robot_client.trajectory.home()
-                
+
                 self._wait_robot()
 
                 if self.robot_client.status.state.position != RobotPositions.HOME:
                     raise ValueError(
                         f"Current position is {self.robot_client.status.state.position}, not home"
                     )
-                                
+
                 self._update_message("Homing completed")
             except Exception as e:
-                self._update_message(f"Failed to change the robot position to home: {str(e)}")        
+                self._update_message(
+                    f"Failed to change the robot position to home: {str(e)}"
+                )
         else:
             gevent.sleep(2)  # Simulate some processing time
             self._update_message("Homing completed")
@@ -91,27 +92,29 @@ class SampleChangerMaint(Equipment):
                     self._update_home_state(False)
                     return
                 self.robot_client.trajectory.soak()
-                
+
                 self._wait_robot()
 
                 if self.robot_client.status.state.position != RobotPositions.SOAK:
                     raise ValueError(
                         f"Current position is {self.robot_client.status.state.position}, not soak"
                     )
-                
+
                 self._update_message("Soaking completed")
             except Exception as e:
-                self._update_message(f"Failed to change the robot position to soak: {str(e)}")
+                self._update_message(
+                    f"Failed to change the robot position to soak: {str(e)}"
+                )
         else:
             gevent.sleep(2)  # Simulate some processing time
             self._update_message("Soaking completed")
-        
+
         self._update_soak_state(False)
 
     def _do_reset(self):
         self._update_reset_state(True)
         self._update_message("Resetting...")
-        
+
         if settings.BL_ACTIVE:
             try:
                 self.robot_client.common.reset()
@@ -122,13 +125,13 @@ class SampleChangerMaint(Equipment):
         else:
             gevent.sleep(2)  # Simulate some processing time
             self._update_message("Reset completed")
-        
+
         self._update_reset_state(False)
 
     def _do_dry_gripper(self):
         self._update_dry_state(True)
         self._update_message("Drying gripper...")
-        
+
         if settings.BL_ACTIVE:
             try:
                 self.robot_client.trajectory.dry()
@@ -139,7 +142,7 @@ class SampleChangerMaint(Equipment):
         else:
             gevent.sleep(2)  # Simulate some processing time
             self._update_message("Gripper dried")
-        
+
         self._update_dry_state(False)
 
     def _do_return_prefetch(self):
@@ -148,7 +151,7 @@ class SampleChangerMaint(Equipment):
         if settings.BL_ACTIVE:
             try:
                 self.robot_client.trajectory.puck.return_pin()
-                self._wait_robot()                
+                self._wait_robot()
                 self._update_message("Returned prefetched sample")
             except Exception as e:
                 self._update_message(f"Failed to return pin: {str(e)}")
@@ -379,7 +382,8 @@ class SampleChangerMaint(Equipment):
         recovery = [
             "Recovery",
             [
-                ["abort", "Abort", "Abort running trajectory"],
+                # Abort does not exist in the robot library
+                # ["abort", "Abort", "Abort running trajectory"],
                 ["reset", "Reset", "Reset the robot"],
                 ["return_prefetch", "Return Prefetch", "Return prefetched sample"],
             ],
@@ -413,7 +417,7 @@ class SampleChangerMaint(Equipment):
             self._do_return_prefetch()
         return True
 
-    def _wait_robot(self, timeout = 120):
+    def _wait_robot(self, timeout=120):
         """
         Waits until the robot has finished running a trajectory
 
