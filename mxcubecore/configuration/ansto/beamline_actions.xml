@@ -1,11 +1,8 @@
-<object class="BeamlineActionsMockup">
+<object class="ANSTO.BeamlineActions">
     <commands>[
-      <!-- {"type": "controller", "name": "Centre Beam", "command": "HardwareObjects.mockup.BeamlineActionsMockup.SimulatedAction"},
-      {"type": "controller", "name": "Quick Realign", "command": "HardwareObjects.mockup.BeamlineActionsMockup.LongSimulatedAction"},
-      {"type": "controller", "name": "Anneal", "command": "HardwareObjects.mockup.BeamlineActionsMockup.SimulatedActionError"},
-      {"type": "annotated", "command": "HardwareObjects.mockup.BeamlineActionsMockup.Anneal2"},
-      {"type": "annotated", "command": "HardwareObjects.mockup.BeamlineActionsMockup.QuickRealign2"},
-      {"type": "annotated", "command": "HardwareObjects.mockup.BeamlineActionsMockup.ComboTest2"}, -->
+      {"type": "controller", "name": "Park Robot", "command": "HardwareObjects.ANSTO.BeamlineActions.ParkRobot"},
+      {"type": "controller", "name": "Detector Back", "command": "HardwareObjects.ANSTO.BeamlineActions.DetectorBack"},
+      {"type": "controller", "name": "Enter Hutch", "command": "HardwareObjects.ANSTO.BeamlineActions.EnterHutch"},
     ]
     </commands>
 </object>
