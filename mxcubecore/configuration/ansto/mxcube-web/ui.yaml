@@ -104,11 +104,11 @@ beamline_setup:
       attribute: capillary
     - label: Fast Shutter
       attribute: fast_shutter
-    - label: Mono shutter
+    - label: Mono Shutter
       attribute: mono_beam_shutter
     - label: White Beam Shutter
       attribute: white_beam_shutter
-    - label: Detector state
+    - label: Detector State
       attribute: detector
     - label: Energy
       attribute: energy
@@ -144,8 +144,10 @@ beamline_setup:
       precision: 2
       suffix: ph/s
       format: expo
-    - label: DMM stripe
+    - label: DMM Stripe
       attribute: dmm_stripe
+      precision: 1
+      suffix: nm
 # TODO: Cameras have to be accessible externally
 # camera_setup:
 #   id: camera_setup
