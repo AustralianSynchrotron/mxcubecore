@@ -53,7 +53,15 @@ class SampleChangerMaint(Equipment):
         self._update_message("Aborted")
         self._update_abort_state(False)
 
-    def _do_home(self):
+    def _do_home(self) -> None:
+        """
+        Sets the robot to home position.
+
+        Raises
+        ------
+        ValueError
+            If the robot is not in home position after the command is executed.
+        """
         self._update_home_state(True)
         self._update_message("Homing...")
         if settings.BL_ACTIVE:
@@ -78,10 +86,18 @@ class SampleChangerMaint(Equipment):
                 )
         else:
             gevent.sleep(2)  # Simulate some processing time
-            self._update_message("Homing completed")
+            self._update_message("[SIM mode] Homing completed")
         self._update_home_state(False)
 
     def _do_soak(self):
+        """
+        Sets the robot to soak position.
+
+        Raises
+        ------
+        ValueError
+            If the robot is not in soak position after the command is executed.
+        """
         self._update_soak_state(True)
         self._update_message("Soaking...")
 
@@ -107,11 +123,19 @@ class SampleChangerMaint(Equipment):
                 )
         else:
             gevent.sleep(2)  # Simulate some processing time
-            self._update_message("Soaking completed")
+            self._update_message("[SIM mode] Soaking completed")
 
         self._update_soak_state(False)
 
     def _do_reset(self):
+        """
+        Resets the robot.
+
+        Raises
+        ------
+        ValueError
+            If the robot is not reset after the command is executed.
+        """
         self._update_reset_state(True)
         self._update_message("Resetting...")
 
@@ -124,11 +148,19 @@ class SampleChangerMaint(Equipment):
                 self._update_message(f"Failed to reset the robot {str(e)}")
         else:
             gevent.sleep(2)  # Simulate some processing time
-            self._update_message("Reset completed")
+            self._update_message("[SIM mode] Reset completed")
 
         self._update_reset_state(False)
 
     def _do_dry_gripper(self):
+        """
+        Dries the gripper.
+
+        Raises
+        ------
+        ValueError
+            If the gripper is not dried after the command is executed.
+        """
         self._update_dry_state(True)
         self._update_message("Drying gripper...")
 
@@ -141,23 +173,31 @@ class SampleChangerMaint(Equipment):
                 self._update_message(f"Failed to dry: {str(e)}")
         else:
             gevent.sleep(2)  # Simulate some processing time
-            self._update_message("Gripper dried")
+            self._update_message("[SIM mode] Gripper dried")
 
         self._update_dry_state(False)
 
     def _do_return_prefetch(self):
+        """
+        Returns the prefetched pin.
+
+        Raises
+        ------
+        ValueError
+            If the pin cannot be returned after the command is executed.
+        """
         self._update_return_prefetch(True)
         self._update_message("Returning prefetched pin...")
         if settings.BL_ACTIVE:
             try:
                 self.robot_client.trajectory.puck.return_pin()
                 self._wait_robot()
-                self._update_message("Returned prefetched sample")
+                self._update_message("Returned prefetched pin")
             except Exception as e:
                 self._update_message(f"Failed to return pin: {str(e)}")
         else:
             gevent.sleep(2)
-            self._update_message("Returned prefetched pin")
+            self._update_message("[SIM mode] Returned prefetched pin")
         self._update_return_prefetch(False)
 
     def _do_set_on_diff(self, sample):
@@ -397,7 +437,21 @@ class SampleChangerMaint(Equipment):
         return cmd_list
 
     def send_command(self, cmd_name, args=None) -> Literal[True]:
-        """ """
+        """
+        Send a command to the sample changer hardware object.
+
+        Parameters
+        ----------
+        cmd_name : str
+            The name of the command to send.
+        args : dict, optional
+            Additional arguments for the command, by default None
+
+        Returns
+        -------
+        Literal[True]
+            Returns True to indicate the command was sent.
+        """
         logging.getLogger("HWR").info("send_command called with %s", cmd_name)
         if cmd_name == "powerOn":
             self._do_power_state(True)

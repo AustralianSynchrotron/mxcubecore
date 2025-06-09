@@ -21,6 +21,14 @@ class ParkRobot:
     """Send the robot home and close the lid"""
 
     def __call__(self, *args, **kw):
+        """
+        Send the robot home and close the lid
+
+        Returns
+        -------
+        args : tuple
+            The original arguments passed to the method
+        """
         robot = RobotTrajectory()
 
         robot.home()
@@ -38,7 +46,8 @@ class DetectorBack:
 
         return args
 
-    def _move_detector_back(self):
+    def _move_detector_back(self) -> None:
+        """Move the detector fast stage back to a fixed value of 650 mm"""
         try:
             logging.getLogger("user_level_log").info("Moving detector fast stage...")
             detector_fast_stage.move(650, wait=False)
@@ -59,6 +68,14 @@ class EnterHutch:
     """Send the robot home, close the lid, and send the detector back"""
 
     def __call__(self, *args, **kw):
+        """
+        Send the robot home, close the lid, and send the detector back
+
+        Returns
+        -------
+        args : tuple
+            The original arguments passed to the method
+        """
         robot = RobotTrajectory()
 
         robot.home()
@@ -69,7 +86,8 @@ class EnterHutch:
 
         return args
 
-    def _move_detector_back(self):
+    def _move_detector_back(self) -> None:
+        """Move the detector fast stage back to a fixed value of 650 mm"""
         try:
             logging.getLogger("user_level_log").info("Moving detector fast stage...")
             detector_fast_stage.move(650, wait=False)
@@ -87,11 +105,23 @@ class EnterHutch:
 
 
 class RobotTrajectory:
+    """
+    Class to handle robot trajectory commands such as homing and closing the lid.
+    """
+
     def __init__(self):
         if settings.BL_ACTIVE:
             self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
 
-    def home(self):
+    def home(self) -> None:
+        """
+        Send the robot to home position
+
+        Raises
+        ------
+        ValueError
+            If the robot is not in home position after the command
+        """
         logging.getLogger("user_level_log").info("Homing")
         if settings.BL_ACTIVE:
             try:
@@ -116,9 +146,17 @@ class RobotTrajectory:
                 )
         else:
             gevent.sleep(2)  # Simulate some processing time
-            logging.getLogger("user_level_log").info("Homing completed")
+            logging.getLogger("user_level_log").info("[SIM mode] Homing completed")
 
-    def close_lid(self):
+    def close_lid(self) -> None:
+        """
+        Close the robot lid
+
+        Raises
+        ------
+        ValueError
+            If the lid cannot be closed
+        """
         logging.getLogger("user_level_log").info("Homing")
         if settings.BL_ACTIVE:
             try:
@@ -137,9 +175,11 @@ class RobotTrajectory:
                 )
         else:
             gevent.sleep(2)  # Simulate some processing time
-            logging.getLogger("user_level_log").info("Lid successfully closed")
+            logging.getLogger("user_level_log").info(
+                "[SIM mode] Lid successfully closed"
+            )
 
-    def _wait_robot(self, timeout=120):
+    def _wait_robot(self, timeout=120) -> None:
         """
         Waits until the robot has finished running a trajectory
 
