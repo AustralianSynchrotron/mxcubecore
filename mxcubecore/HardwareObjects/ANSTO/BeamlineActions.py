@@ -122,7 +122,7 @@ class RobotTrajectory:
         ValueError
             If the robot is not in home position after the command
         """
-        logging.getLogger("user_level_log").info("Homing")
+        logging.getLogger("user_level_log").info("Homing...")
         if settings.BL_ACTIVE:
             try:
                 if self.robot_client.status.state.position == RobotPositions.HOME:
@@ -157,7 +157,7 @@ class RobotTrajectory:
         ValueError
             If the lid cannot be closed
         """
-        logging.getLogger("user_level_log").info("Homing")
+        logging.getLogger("user_level_log").info("Closing lid...")
         if settings.BL_ACTIVE:
             try:
 
@@ -171,7 +171,7 @@ class RobotTrajectory:
                 logging.getLogger("user_level_log").info("Lid successfully closed")
             except Exception as e:
                 logging.getLogger("user_level_log").info(
-                    f"Failed to close the robot lid {str(e)}"
+                    f"Failed to close the robot lid: {str(e)}"
                 )
         else:
             gevent.sleep(2)  # Simulate some processing time
