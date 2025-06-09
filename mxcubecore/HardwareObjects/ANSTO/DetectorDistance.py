@@ -213,5 +213,5 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
 
         except Exception as ex:
             logging.getLogger("user_level_log").error(
-                f"Failed to change detector distance: {ex}"
+                f"Failed to change detector distance: {str(ex)}"
             )
