@@ -1,30 +1,46 @@
-from inspect import stack as inspect_stack
-from typing import Any, cast
-from typing_extensions import Literal
-from urllib.parse import urljoin
 from datetime import timezone
-from pydantic import AnyHttpUrl, TypeAdapter
-from pydantic_core import Url, ValidationError
-from httpx import get as httpx_get, Response as HttpxResponse
+from inspect import stack as inspect_stack
+from typing import (
+    Any,
+    cast,
+)
+from urllib.parse import urljoin
+
 from dateutil.tz import gettz
-from gevent import sleep as gevent_sleep
 from flask import request
+from gevent import sleep as gevent_sleep
+from httpx import Response as HttpxResponse
+from httpx import get as httpx_get
 from mxcubeweb.app import MXCUBEApplication
-from mxcubeweb.core.models.usermodels import User
 from mxcubeweb.core.components.user.database import UserDatastore
+from mxcubeweb.core.models.usermodels import User
+from pydantic import (
+    AnyHttpUrl,
+    TypeAdapter,
+)
+from pydantic_core import (
+    Url,
+    ValidationError,
+)
+from typing_extensions import Literal
+
 from mxcubecore.HardwareObjects.abstract.AbstractLims import AbstractLims
 from mxcubecore.model.lims_session import (
     Lims,
     LimsSessionManager,
     Session,
 )
-from mxcubecore.model.lims_session import (
-    LimsSessionManager,
-    Session,
-)
 from mxcubecore.TaskUtils import task as dtask
-from .exceptions import SessionNotOpen, IdentityError, UserNotAuthorized
-from .schemas import KeycloakInfo, RemoteAccessSession
+
+from .exceptions import (
+    IdentityError,
+    SessionNotOpen,
+    UserNotAuthorized,
+)
+from .schemas import (
+    KeycloakInfo,
+    RemoteAccessSession,
+)
 
 
 class RemoteAccessLims(AbstractLims):
@@ -49,7 +65,7 @@ class RemoteAccessLims(AbstractLims):
                 AnyHttpUrl,
             ).validate_python(
                 self.get_property("gateway_api_url"),
-            )
+            ),
         )
         self._gateway_api_url = str(_gateway_api_url)
         self._local_timezone = gettz(self.get_property("local_timezone", None))
@@ -320,7 +336,9 @@ class RemoteAccessLims(AbstractLims):
                 "logbook_URL": "",
             }
         )
-        self.session_manager = LimsSessionManager(sessions=[_session], active_session=_session)
+        self.session_manager = LimsSessionManager(
+            sessions=[_session], active_session=_session
+        )
         return self.session_manager
 
     def is_user_login_type(self) -> Literal[True]:
