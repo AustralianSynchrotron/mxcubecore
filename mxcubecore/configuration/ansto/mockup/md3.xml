@@ -38,6 +38,6 @@
 
   <phaseList>["Transfer","Centring","BeamLocation", "DataCollection"]</phaseList>
   <headType>MiniKappa</headType>
-  <exports>["abort", "status", "my_fancy_function", "my_other_funny_function"]</exports>
+  <exports>["abort", "status"]</exports>
   <chip_definition_file>chip_definition.json</chip_definition_file>
 </object>

@@ -3,4 +3,5 @@
   <value_channel_name>FastShutterIsOpen</value_channel_name>
   <state_channel_name>HardwareState</state_channel_name>
   <values>{"OPEN": True, "CLOSED": False}</values>
+  <read_only>True</read_only>
 </device>

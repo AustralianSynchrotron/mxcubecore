@@ -121,6 +121,24 @@ class Diffractometer(GenericDiffractometer):
             "startSetPhase",
         )
 
+        self.get_md3_state = self.add_command(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "get_md3_state",
+            },
+            "getState",
+        )
+
+        self.md3_abort = self.add_command(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "md3_abort",
+            },
+            "abort",
+        )
+
         self.hwstate_attr = self.add_channel(
             {
                 "type": "exporter",
@@ -796,18 +814,49 @@ class Diffractometer(GenericDiffractometer):
         return point_one.as_dict()
 
     def abort(self) -> None:
-        return None
+        """
+        Aborts the current operation of the MD3 diffractometer.
+
+        This action can be displayed in the UI via the md3.xml config file
+        in the exports section, e.g.
+
+        <exports>["abort", "status"]</exports>
+
+        """
+        # TODO: test this with the MD3
+        self.md3_abort()
+        logging.getLogger("HWR").info("MD3 abort command sent")
 
     def status(self) -> str:
-        return "READY"
+        """Gets the current status of the MD3.
 
-    def my_fancy_function(
-        self, speed: float, num_images: int, exp_time: float, phase: PhaseEnum
-    ) -> bool:
-        return True
+        This action can be displayed in the UI via the md3.xml config file
+        in the exports section, e.g.
 
-    def my_other_funny_function(self) -> None:
-        pass
+        <exports>["abort", "status"]</exports>
+
+        Returns
+        -------
+        str
+            The current state of the MD3
+        """
+        # state = md3.state
+        try:
+            state = self.get_md3_state()
+        except Exception as e:
+            state = "Unknown"
+        return state
+
+    # Note extra functions can be added as long as they are also
+    # added in the xml config. The UI will automatically
+    # generate the buttons for them.
+    # def my_fancy_function(
+    #     self, speed: float, num_images: int, exp_time: float, phase: PhaseEnum
+    # ) -> bool:
+    #     return True
+
+    # def my_other_funny_function(self) -> None:
+    #     pass
 
     def ssx_chip_scan(self, parameters):
         return

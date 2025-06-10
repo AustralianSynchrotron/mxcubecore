@@ -211,7 +211,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
             detector_fast_stage.move(fast_stage_setpoint, wait=False)
             self.update_specific_state(self.SPECIFIC_STATES.MOVING)
 
-        except Exception:
+        except Exception as ex:
             logging.getLogger("user_level_log").error(
-                f"Failed to change detector distance"
+                f"Failed to change detector distance: {str(ex)}"
             )

@@ -2,6 +2,6 @@
   <username>Beam Definer</username>
   <object hwrid="/beam_size_ver" role="beam_size_ver" />
   <object hwrid="/beam_size_hor" role="beam_size_hor" />
-  <values>{"5x5": (0.005, 0.005), "10x10": (0.01, 0.01), "20x20": (0.02, 0.02), "50x50": (0.05, 0.05)}</values>
-  <default_size_name>50x50</default_size_name>
+  <values>{"2.5x2.5": (0.0025, 0.0025), "5x5": (0.005, 0.005), "10x10": (0.01, 0.01), "20x20": (0.02, 0.02)}</values>
+  <default_size_name>20x20</default_size_name>
 </object>
