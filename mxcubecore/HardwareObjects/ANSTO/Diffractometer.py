@@ -73,6 +73,8 @@ class Diffractometer(GenericDiffractometer):
 
         self.get_zoom_calibration()
 
+        self.phase_list = eval(self.get_property("phase_list"))
+
         self.mount_mode = self.get_property("sample_mount_mode")
         if self.mount_mode is None:
             self.mount_mode = "manual"
