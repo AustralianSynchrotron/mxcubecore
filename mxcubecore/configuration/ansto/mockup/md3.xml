@@ -36,7 +36,7 @@
   <!-- MD3 -->
   <grid_direction>{"fast": (0, 1), "slow": (1, 0), "omega_ref": 0}</grid_direction>
 
-  <phaseList>["Transfer","Centring","BeamLocation", "DataCollection"]</phaseList>
+  <phase_list>["Transfer", "Centring", "DataCollection"]</phase_list>
   <headType>MiniKappa</headType>
   <exports>["abort", "status"]</exports>
   <chip_definition_file>chip_definition.json</chip_definition_file>
