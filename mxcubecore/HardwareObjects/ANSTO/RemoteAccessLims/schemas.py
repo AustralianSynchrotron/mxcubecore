@@ -1,6 +1,16 @@
-from typing_extensions import Literal, TypedDict
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, UUID4, with_config
+
+from pydantic import (
+    UUID4,
+    BaseModel,
+    ConfigDict,
+    Field,
+    with_config,
+)
+from typing_extensions import (
+    Literal,
+    TypedDict,
+)
 
 
 @with_config(ConfigDict(extra="allow"))
