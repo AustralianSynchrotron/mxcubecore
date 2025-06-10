@@ -49,6 +49,18 @@ class DetectorBack:
     def _move_detector_back(self) -> None:
         """Move the detector fast stage back to a fixed value of 650 mm"""
         try:
+            limits = detector_fast_stage.limits
+            setpoint = limits[1] - 5  # Set point is 5 mm before the limit
+            logging.getLogger("user_level_log").info(
+                f"Moving detector fast stage to {setpoint} [mm]"
+            )
+        except Exception as e:
+            setpoint = 650
+            logging.getLogger("user_level_log").info(
+                f"Failed to get limits for detector fast stage. Using default value: {setpoint}"
+            )
+
+        try:
             logging.getLogger("user_level_log").info("Moving detector fast stage...")
             detector_fast_stage.move(650, wait=False)
 
@@ -88,6 +100,18 @@ class EnterHutch:
 
     def _move_detector_back(self) -> None:
         """Move the detector fast stage back to a fixed value of 650 mm"""
+        try:
+            limits = detector_fast_stage.limits
+            setpoint = limits[1] - 5  # Set point is 5 mm before the limit
+            logging.getLogger("user_level_log").info(
+                f"Moving detector fast stage to {setpoint} [mm]"
+            )
+        except Exception as e:
+            setpoint = 650
+            logging.getLogger("user_level_log").info(
+                f"Failed to get limits for detector fast stage. Using default value: {setpoint}"
+            )
+
         try:
             logging.getLogger("user_level_log").info("Moving detector fast stage...")
             detector_fast_stage.move(650, wait=False)
