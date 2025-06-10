@@ -47,7 +47,7 @@ class DetectorBack:
         return args
 
     def _move_detector_back(self) -> None:
-        """Move the detector fast stage back to a fixed value of 650 mm"""
+        """Move the detector fast stage back to upper limit minus 5 mm"""
         try:
             limits = detector_fast_stage.limits
             setpoint = limits[1] - 5  # Set point is 5 mm before the limit
@@ -62,7 +62,7 @@ class DetectorBack:
 
         try:
             logging.getLogger("user_level_log").info("Moving detector fast stage...")
-            detector_fast_stage.move(650, wait=False)
+            detector_fast_stage.move(setpoint, wait=False)
 
             while detector_fast_stage.moving:
                 gevent.sleep(0.5)
@@ -99,7 +99,7 @@ class EnterHutch:
         return args
 
     def _move_detector_back(self) -> None:
-        """Move the detector fast stage back to a fixed value of 650 mm"""
+        """Move the detector fast stage back to upper limit minus 5 mm"""
         try:
             limits = detector_fast_stage.limits
             setpoint = limits[1] - 5  # Set point is 5 mm before the limit
@@ -114,7 +114,7 @@ class EnterHutch:
 
         try:
             logging.getLogger("user_level_log").info("Moving detector fast stage...")
-            detector_fast_stage.move(650, wait=False)
+            detector_fast_stage.move(setpoint, wait=False)
 
             while detector_fast_stage.moving:
                 gevent.sleep(0.5)
