@@ -26,3 +26,11 @@ grid_scan:
   photon_energy: 13.0  # keV
   resolution: 1.5  # Ångström (16M)
   transmission: 2  # Percentage
+
+one_shot:
+  exposure_time: 2.0  # Total exposure time, seconds
+  omega_range: 20.0  # Degrees
+  number_of_frames: 1
+  photon_energy: 13.0  # keV
+  resolution: 2.0  # Ångström (16M)
+  transmission: 1  # Percentage

@@ -8,6 +8,9 @@ from pydantic_settings import BaseSettings
 
 class PrefectSettings(BaseSettings):
     PREFECT_URI: str = Field("http://localhost:4200", env="PREFECT_URI")
+    ONE_SHOT_DEPLOYMENT_NAME: str = Field(
+        "mxcube-one-shot/plans", env="ONE_SHOT_DEPLOYMENT_NAME"
+    )
     GRID_SCAN_DEPLOYMENT_NAME: str = Field(
         "mxcube-grid-scan/plans", env="GRID_SCAN_DEPLOYMENT_NAME"
     )

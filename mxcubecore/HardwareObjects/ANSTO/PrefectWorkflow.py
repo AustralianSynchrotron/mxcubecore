@@ -21,6 +21,7 @@ from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
+from .prefect_flows.one_shot_flow import OneShotFlow
 from .Resolution import Resolution
 
 
@@ -461,6 +462,24 @@ class PrefectWorkflow(HardwareObject):
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)
 
+        elif self.workflow_name == PrefectFlows.one_shot:
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+            self.one_shot_flow = OneShotFlow(
+                state=self._state, resolution=self.resolution
+            )
+            dialog_box_parameters = self.open_dialog(
+                self.one_shot_flow .dialog_box()
+            )
+            if dialog_box_parameters:
+                logging.getLogger("HWR").info(
+                    f"Dialog box parameters: {dialog_box_parameters}"
+                )
+                self.one_shot_flow .run(dialog_box_parameters=dialog_box_parameters)
+            else:
+                self.state.value = "ON"
+                raise QueueExecutionException("dialog_box_parameters is empty", self)
+
+
         else:
             logging.getLogger("HWR").error(
                 f"Workflow {self.workflow_name} not supported"
@@ -491,5 +510,9 @@ class PrefectWorkflow(HardwareObject):
             self.redis_connection.set(f"{collection_type}:{key}", value)
 
         collection_type = "grid_scan"
+        for key, value in default_params[collection_type].items():
+            self.redis_connection.set(f"{collection_type}:{key}", value)
+
+        collection_type = "one_shot"
         for key, value in default_params[collection_type].items():
             self.redis_connection.set(f"{collection_type}:{key}", value)

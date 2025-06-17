@@ -1,6 +1,11 @@
 <object class="ANSTO.PrefectWorkflow" role="workflow">
   <object href="/session" role="session"/>
   <workflow>
+    <title>One Shot</title>
+    <path>One Shot</path>
+    <requires>samplegrid</requires>
+  </workflow>
+  <workflow>
     <title>Screen Sample</title>
     <path>Screen Sample</path>
     <requires>samplegrid</requires>
