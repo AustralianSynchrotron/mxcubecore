@@ -84,9 +84,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
         try:
             loop = self._get_asyncio_event_loop()
             asyncio.set_event_loop(loop)
-            loop.run_until_complete(
-                one_shot_flow.trigger_data_collection(sample_id)
-            )
+            loop.run_until_complete(one_shot_flow.trigger_data_collection(sample_id))
             logging.getLogger("HWR").info(
                 "Full dataset collection complete. Data processing results will be displayed "
                 "in MX-PRISM shortly"

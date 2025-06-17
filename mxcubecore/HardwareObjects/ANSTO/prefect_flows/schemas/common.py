@@ -3,8 +3,10 @@ from pydantic import (
     Field,
 )
 
+
 class DataCollectionDialogBoxBase(BaseModel):
-    """Data Collection Dialog Box Base Model """
+    """Data Collection Dialog Box Base Model"""
+
     exposure_time: float
     omega_range: float
     resolution: float = Field(
@@ -44,4 +46,3 @@ class DataCollectionBase(BaseModel):
 
     class Config:
         extra = "forbid"
-

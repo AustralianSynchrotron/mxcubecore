@@ -1,5 +1,7 @@
-
-from .common import DataCollectionBase, DataCollectionDialogBoxBase
+from .common import (
+    DataCollectionBase,
+    DataCollectionDialogBoxBase,
+)
 
 
 class ScreeningDialogBox(DataCollectionDialogBoxBase):

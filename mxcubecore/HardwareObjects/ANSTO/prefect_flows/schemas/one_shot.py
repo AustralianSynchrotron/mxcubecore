@@ -1,4 +1,8 @@
-from .common import DataCollectionBase, DataCollectionDialogBoxBase
+from .common import (
+    DataCollectionBase,
+    DataCollectionDialogBoxBase,
+)
+
 
 class OneShotDialogBox(DataCollectionDialogBoxBase):
     """One Shot Dialog Box Model"""
