@@ -160,7 +160,11 @@ class MX3PrefectClient:
         flow_status = await self.async_redis_connection.get(
             f"mxcube_scan_state:{sample_id}"
         )
-        while flow_status not in [FlowState.FAILED, FlowState.READY_TO_UNMOUNT]:
+        while flow_status not in [
+            FlowState.FAILED,
+            FlowState.READY_TO_UNMOUNT,
+            FlowState.COMPLETED,
+        ]:
             await asyncio.sleep(poll_interval)
             flow_status = await self.async_redis_connection.get(
                 f"mxcube_scan_state:{sample_id}"

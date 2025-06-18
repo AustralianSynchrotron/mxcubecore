@@ -29,6 +29,7 @@ from ..Resolution import Resolution
 from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
+from .schemas.one_shot import OneShotDialogBox
 from .schemas.screening import ScreeningDialogBox
 
 
@@ -334,14 +335,20 @@ class AbstractPrefectWorkflow(ABC):
         )
 
     def _save_dialog_box_params_to_redis(
-        self, dialog_box: ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox
+        self,
+        dialog_box: (
+            ScreeningDialogBox
+            | FullDatasetDialogBox
+            | GridScanDialogBox
+            | OneShotDialogBox
+        ),
     ) -> None:
         """
         Save the last set parameters from the dialog box to Redis.
 
         Parameters
         ----------
-        dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox
+        dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox | OneShotDialogBox
             A dialog box pydantic model
         """
         with self._get_redis_connection() as redis_connection:
