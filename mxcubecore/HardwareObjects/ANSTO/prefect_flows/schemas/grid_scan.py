@@ -11,8 +11,7 @@ from pydantic import (
 
 class GridScanDialogBox(BaseModel):
     md3_alignment_y_speed: float
-    omega_range: float
-    photon_energy: float
+    # photon_energy: float
     transmission: float = Field(description="Measured in percentage")
 
 

@@ -1,49 +1,50 @@
 from __future__ import annotations
 
-import logging  # noqa: E402
+import logging
 from asyncio import new_event_loop as asyncio_new_event_loop
-from asyncio import set_event_loop as asyncio_set_event_loop  # noqa: E402
-from functools import lru_cache  # noqa: E402
-from time import time  # noqa: E402
-from typing import (  # noqa: E402
+from asyncio import set_event_loop as asyncio_set_event_loop
+from functools import lru_cache
+from http import HTTPStatus
+from time import time
+from typing import (
     Any,
     Optional,
     Union,
 )
+from urllib.parse import urljoin
 
-from gevent import sleep  # noqa: E402
-from mx_robot_library.client.client import Client  # noqa: E402
-from mx_robot_library.config import get_settings as get_robot_settings  # noqa: E402
-from mx_robot_library.schemas.common.path import RobotPaths  # noqa: E402
-from mx_robot_library.schemas.common.position import RobotPositions  # noqa: E402
+import httpx
+import redis
+from gevent import sleep
+from mx_robot_library.client.client import Client
+from mx_robot_library.config import get_settings as get_robot_settings
+from mx_robot_library.schemas.common.path import RobotPaths
+from mx_robot_library.schemas.common.position import RobotPositions
 from mx_robot_library.schemas.common.sample import Pin as RobotPin
-from mx_robot_library.schemas.common.sample import Puck as RobotPuck  # noqa: E402
-from mx_robot_library.schemas.common.tool import RobotTools  # noqa: E402
+from mx_robot_library.schemas.common.sample import Puck as RobotPuck
+from mx_robot_library.schemas.common.tool import RobotTools
 from mx_robot_library.schemas.responses.state import StateResponse
-from pydantic import JsonValue  # noqa: E402
-from typing_extensions import (  # noqa: E402
+from pydantic import JsonValue
+from typing_extensions import (
     Literal,
     TypedDict,
 )
 
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (  # noqa: E402
+from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
     SampleChanger as AbstractSampleChanger,
 )
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import SampleChangerState
-from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (  # noqa: E402
+from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
     Basket as AbstractPuck,
 )
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import Container
 from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
     Pin as AbstractPin,
 )
-from mxcubecore.TaskUtils import task as dtask  # noqa: E402
+from mxcubecore.TaskUtils import task as dtask
 
-from .prefect_flows.prefect_client import MX3PrefectClient  # noqa: E402
-
-# monkey.patch_all()
-
+from .prefect_flows.prefect_client import MX3PrefectClient
 
 hwr_logger = logging.getLogger("HWR")
 robot_config = get_robot_settings()
@@ -140,6 +141,8 @@ class SampleChanger(AbstractSampleChanger):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(self.__TYPE__, False, *args, **kwargs)
+
+        self._pin_name_cache = {}
 
     def init(self) -> None:
         self._selected_sample = -1
@@ -344,9 +347,14 @@ class SampleChanger(AbstractSampleChanger):
         address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
         mxcube_pin: MxcubePin = self.get_component_by_address(address)
         if robot_pin is not None and robot_puck.name:  # check also that barcode exists
-            mxcube_pin._name = str(
-                robot_pin
-            )  # TODO: This is where sample name is set!! get name from DL
+            try:
+                sample_name = self.get_sample_by_barcode_and_port(
+                    port=port,
+                    barcode=robot_puck.name.replace("-", ""),
+                )
+            except Exception:
+                sample_name = str(robot_pin)
+            mxcube_pin._name = sample_name
             pin_datamatrix = str(robot_pin)
 
             mxcube_pin._set_info(
@@ -425,7 +433,7 @@ class SampleChanger(AbstractSampleChanger):
         self,
         sample: Union[tuple[int, int], str, MxcubePin],
     ) -> None:
-        """ """
+
         _client = self.get_client()
         if isinstance(sample, str):
             sample: tuple[int, int] = tuple(
@@ -443,6 +451,9 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.SOAK:
                 # Timeout after 15 seconds if path not started
                 if time() >= _start_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to load sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
@@ -451,10 +462,16 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.UNDEFINED:
                 # Timeout after 120 seconds if path not finished
                 if time() >= _end_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to load sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
             if _client.status.state.position != RobotPositions.SOAK:
+                logging.getLogger("user_level_log").error(
+                    "Failed to load sample. Robot could not change position to SOAK"
+                )
                 raise PositionError()
 
         # Check double gripper tool mounted
@@ -480,21 +497,29 @@ class SampleChanger(AbstractSampleChanger):
             if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
                 raise ToolError()
 
-        # Mount pin using `mount` Prefect Flow
-        _prefect_mount_client = MX3PrefectClient(
-            name=self._mount_deployment_name,
-            parameters={
-                "pin": {
-                    "id": sample[1],
-                    "puck": {
-                        "id": sample[0],
-                    },
-                }
-            },
-        )
-        _event_loop = asyncio_new_event_loop()
-        asyncio_set_event_loop(_event_loop)
-        _event_loop.run_until_complete(_prefect_mount_client.trigger_flow(wait=True))
+        try:
+            # Mount pin using `mount` Prefect Flow
+            _prefect_mount_client = MX3PrefectClient(
+                name=self._mount_deployment_name,
+                parameters={
+                    "pin": {
+                        "id": sample[1],
+                        "puck": {
+                            "id": sample[0],
+                        },
+                    }
+                },
+            )
+            _event_loop = asyncio_new_event_loop()
+            asyncio_set_event_loop(_event_loop)
+            _event_loop.run_until_complete(
+                _prefect_mount_client.trigger_flow(wait=True)
+            )
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                f"Failed to mount sample. Please check the status of the robot."
+            )
+            raise
 
     def _do_unload(
         self,
@@ -512,6 +537,9 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.SOAK:
                 # Timeout after 15 seconds if path not started
                 if time() >= _start_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to unmount sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
@@ -520,10 +548,16 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.UNDEFINED:
                 # Timeout after 120 seconds if path not finished
                 if time() >= _end_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to unmount sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
             if _client.status.state.position != RobotPositions.SOAK:
+                logging.getLogger("user_level_log").error(
+                    "Failed to unmount sample. Robot could not change position to SOAK"
+                )
                 raise PositionError()
 
         # Check double gripper tool mounted
@@ -550,13 +584,21 @@ class SampleChanger(AbstractSampleChanger):
                 raise ToolError()
 
         # Mount pin using `unmount` Prefect Flow
-        _prefect_unmount_client = MX3PrefectClient(
-            name=self._unmount_deployment_name,
-            parameters={},
-        )
-        _event_loop = asyncio_new_event_loop()
-        asyncio_set_event_loop(_event_loop)
-        _event_loop.run_until_complete(_prefect_unmount_client.trigger_flow(wait=True))
+        try:
+            _prefect_unmount_client = MX3PrefectClient(
+                name=self._unmount_deployment_name,
+                parameters={},
+            )
+            _event_loop = asyncio_new_event_loop()
+            asyncio_set_event_loop(_event_loop)
+            _event_loop.run_until_complete(
+                _prefect_unmount_client.trigger_flow(wait=True)
+            )
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                f"Failed to unmount sample. Please check the status of the robot."
+            )
+            raise
 
     def _do_reset(self) -> None:
         """ """
@@ -566,3 +608,83 @@ class SampleChanger(AbstractSampleChanger):
     def is_powered(self) -> bool:
         _client = self.get_client()
         return _client.status.state.power
+
+    def get_sample_by_barcode_and_port(self, port: int, barcode: str) -> str:
+        """
+        Gets the pin model from the mx-data-layer-api from port and barcode.
+        The epn is read from redis.
+
+        Returns
+        -------
+        str
+            The sample name
+
+        """
+        with redis.StrictRedis(
+            host=settings.MXCUBE_REDIS_HOST,
+            port=settings.MXCUBE_REDIS_PORT,
+            username=settings.MXCUBE_REDIS_USERNAME,
+            password=settings.MXCUBE_REDIS_PASSWORD,
+            db=settings.MXCUBE_REDIS_DB,
+        ) as redis_connection:
+
+            epn_value: bytes | None = redis_connection.get("epn")
+            if epn_value is None:
+                logging.getLogger("user_level_log").error(
+                    "epn redis key does not exist"
+                )
+                raise ValueError(
+                    f"epn redis key does not exist",
+                )
+
+            epn_string = epn_value.decode("utf-8")
+
+        return self.get_pin_name(
+            epn_string=epn_string,
+            port=port,
+            barcode=barcode.replace("-", ""),
+        )
+
+    def get_pin_name(self, epn_string, port, barcode) -> str:
+        """
+        Get the pin name from the data layer API by barcode, port, and epn.
+        If the pin name is already cached, returns the cached value,
+        otherwise it will call the data layer API to get the pin name.
+
+        Parameters
+        ----------
+        epn_string : str
+            The epn strings
+        port : int
+            The port number of the pin.
+        barcode : str
+            The barcode of the puck containing the pin.
+
+        Returns
+        -------
+        str
+            The sample name.
+        """
+        key = (epn_string, port, barcode)
+        if key in self._pin_name_cache:
+            return self._pin_name_cache[key]
+
+        url = urljoin(
+            settings.DATA_LAYER_API,
+            f"/samples/pins?filter_by_port={port}&filter_by_puck_barcode={barcode}&filter_by_visit_identifier={epn_string}",
+        )
+        r = httpx.get(url)
+        if r.status_code == HTTPStatus.OK:
+            data = r.json()
+            if len(data) == 1:
+                name = data[0]["name"]
+                self._pin_name_cache[key] = name  # Cache only successful result
+                return name
+            else:
+                raise ValueError(
+                    f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
+                )
+        else:
+            raise ValueError(
+                f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
+            )
