@@ -425,7 +425,7 @@ class SampleChanger(AbstractSampleChanger):
         self,
         sample: Union[tuple[int, int], str, MxcubePin],
     ) -> None:
-        """ """
+
         _client = self.get_client()
         if isinstance(sample, str):
             sample: tuple[int, int] = tuple(
@@ -443,6 +443,9 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.SOAK:
                 # Timeout after 15 seconds if path not started
                 if time() >= _start_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to load sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
@@ -451,10 +454,16 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.UNDEFINED:
                 # Timeout after 120 seconds if path not finished
                 if time() >= _end_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to load sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
             if _client.status.state.position != RobotPositions.SOAK:
+                logging.getLogger("user_level_log").error(
+                    "Failed to load sample. Robot could not change position to SOAK"
+                )
                 raise PositionError()
 
         # Check double gripper tool mounted
@@ -480,21 +489,29 @@ class SampleChanger(AbstractSampleChanger):
             if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
                 raise ToolError()
 
-        # Mount pin using `mount` Prefect Flow
-        _prefect_mount_client = MX3PrefectClient(
-            name=self._mount_deployment_name,
-            parameters={
-                "pin": {
-                    "id": sample[1],
-                    "puck": {
-                        "id": sample[0],
-                    },
-                }
-            },
-        )
-        _event_loop = asyncio_new_event_loop()
-        asyncio_set_event_loop(_event_loop)
-        _event_loop.run_until_complete(_prefect_mount_client.trigger_flow(wait=True))
+        try:
+            # Mount pin using `mount` Prefect Flow
+            _prefect_mount_client = MX3PrefectClient(
+                name=self._mount_deployment_name,
+                parameters={
+                    "pin": {
+                        "id": sample[1],
+                        "puck": {
+                            "id": sample[0],
+                        },
+                    }
+                },
+            )
+            _event_loop = asyncio_new_event_loop()
+            asyncio_set_event_loop(_event_loop)
+            _event_loop.run_until_complete(
+                _prefect_mount_client.trigger_flow(wait=True)
+            )
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                f"Failed to mount sample. Please check the status of the robot."
+            )
+            raise
 
     def _do_unload(
         self,
