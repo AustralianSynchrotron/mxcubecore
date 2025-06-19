@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from mx3_beamline_library.devices.beam import energy_master
+
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
@@ -33,11 +35,13 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         None
         """
         # This is the payload we get from the UI"
-        dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
+        dialog_box_model = ScreeningDialogBox.model_validate(dialog_box_parameters)
+
+        photon_energy = energy_master.get()
 
         detector_distance = self._resolution_to_distance(
             dialog_box_model.resolution,
-            energy=dialog_box_model.photon_energy,
+            energy=photon_energy,
         )
 
         screening_params = ScreeningParams(
@@ -47,7 +51,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             count_time=None,
             number_of_frames=dialog_box_model.number_of_frames,
             detector_distance=detector_distance,
-            photon_energy=dialog_box_model.photon_energy,
+            photon_energy=photon_energy,
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
             beam_size=(80, 80),  # TODO: get beam size
@@ -71,7 +75,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "run_data_processing_pipeline": True,
             "hardware_trigger": True,
             "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
-            "pipeline": dialog_box_model.processing_pipeline,
+            "pipeline": self._get_dialog_box_param("processing_pipeline"),
             "data_processing_config": None,
         }
 
