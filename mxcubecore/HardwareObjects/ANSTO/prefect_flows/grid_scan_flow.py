@@ -325,33 +325,17 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "md3_alignment_y_speed": {
                     "title": "Alignment Y Speed [mm/s]",
                     "type": "number",
-                    "minimum": 0,
+                    "minimum": 0.1,
                     "maximum": 14.8,
                     "default": float(
                         self._get_dialog_box_param("md3_alignment_y_speed")
                     ),
                     "widget": "textarea",
                 },
-                "omega_range": {
-                    "title": "Omega Range [degrees]",
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 360,
-                    "default": float(self._get_dialog_box_param("omega_range")),
-                    "widget": "textarea",
-                },
-                "photon_energy": {
-                    "title": "Photon Energy [keV]",
-                    "type": "number",
-                    "minimum": 5,  # TODO: get limits from PV?
-                    "maximum": 25,
-                    "default": float(self._get_dialog_box_param("photon_energy")),
-                    "widget": "textarea",
-                },
                 "transmission": {
                     "title": "Transmission [%]",
                     "type": "number",
-                    "minimum": 0,  # TODO: get limits from PV?
+                    "minimum": 0,
                     "maximum": 100,
                     "default": float(self._get_dialog_box_param("transmission")),
                     "widget": "textarea",
@@ -359,8 +343,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             },
             "required": [
                 "md3_alignment_y_speed",
-                "omega_range",
-                "photon_energy",
                 "transmission",
             ],
             "dialogName": "Grid Scan Parameters",

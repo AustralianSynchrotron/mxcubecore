@@ -121,7 +121,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "title": "Omega Range [degrees]",
                 "type": "number",
                 "minimum": 0,
-                "exclusiveMaximum": 361,
                 "default": float(self._get_dialog_box_param("omega_range")),
                 "widget": "textarea",
             },
@@ -140,27 +139,13 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "default": float(self._get_dialog_box_param("resolution")),
                 "widget": "textarea",
             },
-            "photon_energy": {
-                "title": "Photon Energy [keV]",
-                "type": "number",
-                "minimum": 5,  # TODO: get limits from PV?
-                "maximum": 25,
-                "default": float(self._get_dialog_box_param("photon_energy")),
-                "widget": "textarea",
-            },
             "transmission": {
                 "title": "Transmission [%]",
                 "type": "number",
-                "minimum": 0,  # TODO: get limits from PV?
+                "minimum": 0,
                 "maximum": 100,
                 "default": float(self._get_dialog_box_param("transmission")),
                 "widget": "textarea",
-            },
-            "processing_pipeline": {
-                "title": "Data Processing Pipeline",
-                "type": "string",
-                "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
-                "default": self._get_dialog_box_param("processing_pipeline"),
             },
             "crystal_counter": {
                 "title": "Crystal ID",
@@ -187,8 +172,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "omega_range",
                 "number_of_frames",
                 "resolution",
-                "photon_energy",
-                "processing_pipeline",
                 "crystal_counter",
                 "transmission",
             ],
