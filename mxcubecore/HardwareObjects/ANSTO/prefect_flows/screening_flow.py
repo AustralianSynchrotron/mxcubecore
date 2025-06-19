@@ -113,6 +113,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
+        resolution_limits = self.resolution.get_limits()
+
         properties = {
             "exposure_time": {
                 "title": "Total Exposure Time [s]",
@@ -138,8 +140,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "resolution": {
                 "title": "Resolution [Å]",
                 "type": "number",
-                "minimum": 0,  # TODO: get limits from distance PV
-                "maximum": 3000,  # TODO: get limits from distance PV
+                "minimum": resolution_limits[0],
+                "maximum": resolution_limits[1],
                 "default": float(self._get_dialog_box_param("resolution")),
                 "widget": "textarea",
             },
