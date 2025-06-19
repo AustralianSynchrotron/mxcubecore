@@ -5,7 +5,6 @@ from .common import (
 
 
 class ScreeningDialogBox(DataCollectionDialogBoxBase):
-    processing_pipeline: str = "dials"
     crystal_counter: int = 0
     number_of_frames: int
 

@@ -14,7 +14,7 @@ class DataCollectionDialogBoxBase(BaseModel):
         "distance in meters internally, which is the parameter "
         "prefect expects"
     )
-    photon_energy: float = Field(description="Photon energy in keV")
+    # photon_energy: float = Field(description="Photon energy in keV")
     transmission: float = Field(description="Measured in percentage")
     sample_id: int | None = None
 
