@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import redis
 import redis.asyncio
+from mx3_beamline_library.devices.beam import energy_master
 
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import (
@@ -94,10 +95,12 @@ class GridScanFlow(AbstractPrefectWorkflow):
         else:
             grid_scan_id = int(redis_grid_scan_id) + 1
 
+        photon_energy = energy_master.get()
+
         default_resolution = float(self.redis_connection.get("grid_scan:resolution"))
         detector_distance = self._resolution_to_distance(
             default_resolution,
-            energy=dialog_box_model.photon_energy,
+            energy=photon_energy,
         )
         logging.getLogger("HWR").info(
             f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
@@ -113,8 +116,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
             number_of_columns=num_cols,
             number_of_rows=num_rows,
             detector_distance=detector_distance,
-            photon_energy=dialog_box_model.photon_energy,
-            omega_range=dialog_box_model.omega_range,
+            photon_energy=photon_energy,
+            omega_range=float(self._get_dialog_box_param("omega_range")),
             md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
             hardware_trigger=True,
             number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
@@ -325,33 +328,17 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "md3_alignment_y_speed": {
                     "title": "Alignment Y Speed [mm/s]",
                     "type": "number",
-                    "minimum": 0,
+                    "minimum": 0.1,
                     "maximum": 14.8,
                     "default": float(
                         self._get_dialog_box_param("md3_alignment_y_speed")
                     ),
                     "widget": "textarea",
                 },
-                "omega_range": {
-                    "title": "Omega Range [degrees]",
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 360,
-                    "default": float(self._get_dialog_box_param("omega_range")),
-                    "widget": "textarea",
-                },
-                "photon_energy": {
-                    "title": "Photon Energy [keV]",
-                    "type": "number",
-                    "minimum": 5,  # TODO: get limits from PV?
-                    "maximum": 25,
-                    "default": float(self._get_dialog_box_param("photon_energy")),
-                    "widget": "textarea",
-                },
                 "transmission": {
                     "title": "Transmission [%]",
                     "type": "number",
-                    "minimum": 0,  # TODO: get limits from PV?
+                    "minimum": 0,
                     "maximum": 100,
                     "default": float(self._get_dialog_box_param("transmission")),
                     "widget": "textarea",
@@ -359,8 +346,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             },
             "required": [
                 "md3_alignment_y_speed",
-                "omega_range",
-                "photon_energy",
                 "transmission",
             ],
             "dialogName": "Grid Scan Parameters",

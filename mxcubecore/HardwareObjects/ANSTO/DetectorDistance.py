@@ -148,7 +148,7 @@ class DetectorDistance(AbstractMotor, EPICSActuator):
         tuple
             Low and High limits of a motor.
         """
-        self._nominal_limits = (1, 2000)  # TODO: Need to get the actual limits
+        self._nominal_limits = (136, 708)  # TODO: Hardcoded limits for now!
         return self._nominal_limits
 
     @property

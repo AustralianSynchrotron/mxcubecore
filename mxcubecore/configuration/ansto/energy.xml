@@ -1,3 +1,4 @@
 <object class="ANSTO.Energy">
   <username>energy</username>
+  <read_only>True</read_only>
 </object>

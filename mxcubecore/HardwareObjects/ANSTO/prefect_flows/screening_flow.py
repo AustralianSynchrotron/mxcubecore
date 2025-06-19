@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from mx3_beamline_library.devices.beam import energy_master
+
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
@@ -33,11 +35,13 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         None
         """
         # This is the payload we get from the UI"
-        dialog_box_model = ScreeningDialogBox.parse_obj(dialog_box_parameters)
+        dialog_box_model = ScreeningDialogBox.model_validate(dialog_box_parameters)
+
+        photon_energy = energy_master.get()
 
         detector_distance = self._resolution_to_distance(
             dialog_box_model.resolution,
-            energy=dialog_box_model.photon_energy,
+            energy=photon_energy,
         )
 
         screening_params = ScreeningParams(
@@ -47,7 +51,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             count_time=None,
             number_of_frames=dialog_box_model.number_of_frames,
             detector_distance=detector_distance,
-            photon_energy=dialog_box_model.photon_energy,
+            photon_energy=photon_energy,
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
             beam_size=(80, 80),  # TODO: get beam size
@@ -71,7 +75,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "run_data_processing_pipeline": True,
             "hardware_trigger": True,
             "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
-            "pipeline": dialog_box_model.processing_pipeline,
+            "pipeline": self._get_dialog_box_param("processing_pipeline"),
             "data_processing_config": None,
         }
 
@@ -109,6 +113,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
+        resolution_limits = self.resolution.get_limits()
+
         properties = {
             "exposure_time": {
                 "title": "Total Exposure Time [s]",
@@ -121,7 +127,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "title": "Omega Range [degrees]",
                 "type": "number",
                 "minimum": 0,
-                "exclusiveMaximum": 361,
                 "default": float(self._get_dialog_box_param("omega_range")),
                 "widget": "textarea",
             },
@@ -135,32 +140,18 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "resolution": {
                 "title": "Resolution [Å]",
                 "type": "number",
-                "minimum": 0,  # TODO: get limits from distance PV
-                "maximum": 3000,  # TODO: get limits from distance PV
+                "minimum": resolution_limits[0],
+                "maximum": resolution_limits[1],
                 "default": float(self._get_dialog_box_param("resolution")),
-                "widget": "textarea",
-            },
-            "photon_energy": {
-                "title": "Photon Energy [keV]",
-                "type": "number",
-                "minimum": 5,  # TODO: get limits from PV?
-                "maximum": 25,
-                "default": float(self._get_dialog_box_param("photon_energy")),
                 "widget": "textarea",
             },
             "transmission": {
                 "title": "Transmission [%]",
                 "type": "number",
-                "minimum": 0,  # TODO: get limits from PV?
+                "minimum": 0,
                 "maximum": 100,
                 "default": float(self._get_dialog_box_param("transmission")),
                 "widget": "textarea",
-            },
-            "processing_pipeline": {
-                "title": "Data Processing Pipeline",
-                "type": "string",
-                "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
-                "default": self._get_dialog_box_param("processing_pipeline"),
             },
             "crystal_counter": {
                 "title": "Crystal ID",
@@ -187,8 +178,6 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "omega_range",
                 "number_of_frames",
                 "resolution",
-                "photon_energy",
-                "processing_pipeline",
                 "crystal_counter",
                 "transmission",
             ],
