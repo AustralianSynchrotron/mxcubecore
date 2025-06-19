@@ -537,6 +537,9 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.SOAK:
                 # Timeout after 15 seconds if path not started
                 if time() >= _start_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to unmount sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
@@ -545,10 +548,16 @@ class SampleChanger(AbstractSampleChanger):
             while _client.status.state.path != RobotPaths.UNDEFINED:
                 # Timeout after 120 seconds if path not finished
                 if time() >= _end_time_timeout:
+                    logging.getLogger("user_level_log").error(
+                        "Failed to unmount sample. Robot could not change position to SOAK"
+                    )
                     raise PathTimeout()
                 sleep(0.5)
 
             if _client.status.state.position != RobotPositions.SOAK:
+                logging.getLogger("user_level_log").error(
+                    "Failed to unmount sample. Robot could not change position to SOAK"
+                )
                 raise PositionError()
 
         # Check double gripper tool mounted
@@ -575,13 +584,21 @@ class SampleChanger(AbstractSampleChanger):
                 raise ToolError()
 
         # Mount pin using `unmount` Prefect Flow
-        _prefect_unmount_client = MX3PrefectClient(
-            name=self._unmount_deployment_name,
-            parameters={},
-        )
-        _event_loop = asyncio_new_event_loop()
-        asyncio_set_event_loop(_event_loop)
-        _event_loop.run_until_complete(_prefect_unmount_client.trigger_flow(wait=True))
+        try:
+            _prefect_unmount_client = MX3PrefectClient(
+                name=self._unmount_deployment_name,
+                parameters={},
+            )
+            _event_loop = asyncio_new_event_loop()
+            asyncio_set_event_loop(_event_loop)
+            _event_loop.run_until_complete(
+                _prefect_unmount_client.trigger_flow(wait=True)
+            )
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                f"Failed to unmount sample. Please check the status of the robot."
+            )
+            raise
 
     def _do_reset(self) -> None:
         """ """
