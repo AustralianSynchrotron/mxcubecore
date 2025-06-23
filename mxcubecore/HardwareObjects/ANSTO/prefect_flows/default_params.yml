@@ -29,7 +29,7 @@ grid_scan:
 
 one_shot:
   exposure_time: 0.5  # Total exposure time, seconds
-  omega_range: 0.0  # Degrees
+  omega_range: 1.0  # Degrees
   number_of_frames: 1
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)

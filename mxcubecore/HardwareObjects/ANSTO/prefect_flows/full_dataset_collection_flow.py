@@ -120,14 +120,14 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "exposure_time": {
                 "title": "Total Exposure Time [s]",
                 "type": "number",
-                "minimum": 0,
+                "exclusiveMinimum": 0,
                 "default": float(self._get_dialog_box_param("exposure_time")),
                 "widget": "textarea",
             },
             "omega_range": {
                 "title": "Omega Range [degrees]",
                 "type": "number",
-                "minimum": 0,
+                "exclusiveMinimum": 0,
                 "default": float(self._get_dialog_box_param("omega_range")),
                 "widget": "textarea",
             },
