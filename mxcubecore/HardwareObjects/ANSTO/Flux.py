@@ -6,7 +6,7 @@ from mxcubecore.HardwareObjects.abstract.AbstractFlux import AbstractFlux
 
 
 class Flux(AbstractFlux):
-    """Class to simulate beamline flux"""
+    """Flux class"""
 
     def __init__(self, name):
         super().__init__(name)
