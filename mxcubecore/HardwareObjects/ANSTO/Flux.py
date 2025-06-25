@@ -1,6 +1,5 @@
 from mx3_beamline_library.devices.beam import flux
 
-from mxcubecore import HardwareRepository as HWR
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractFlux import AbstractFlux
 
@@ -16,7 +15,7 @@ class Flux(AbstractFlux):
 
         if settings.BL_ACTIVE:
             # The following channel is used to poll the flux PV value
-            self.energy_channel = self.add_channel(
+            self.flux_channel = self.add_channel(
                 {
                     "type": "epics",
                     "name": "flux",
@@ -24,19 +23,26 @@ class Flux(AbstractFlux):
                 },
                 flux.pvname,
             )
-            self.energy_channel.connect_signal("update", self._value_changed)
+            self.flux_channel.connect_signal("update", self._value_changed)
 
     def _value_changed(self, value: float | None) -> None:
-        """Emits a valueChanged signal. Used by self.energy_channel
+        """Emits a valueChanged signal. Used to poll the flux PV.
 
         Parameters
         ----------
         value : float | None
-            The energy value
+            The flux value
         """
         self._value = value
         self.emit("valueChanged", self._value)
 
-    def get_value(self):
-        """Get flux in units of photons/s"""
+    def get_value(self) -> float:
+        """
+        Get flux in units of photons/s
+
+        Returns
+        -------
+        float
+            The flux in units of photons/s
+        """
         return flux.get()
