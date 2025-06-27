@@ -1,4 +1,4 @@
-<object class = "SampleChangerMockup">
+<object class = "ANSTO.SampleChangerMockup">
   <mount_deployment_name>plans/mount-pin-plan</mount_deployment_name>
   <unmount_deployment_name>plans/unmount-pin-plan</unmount_deployment_name>
 </object>
