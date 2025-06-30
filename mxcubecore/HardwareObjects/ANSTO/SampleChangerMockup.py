@@ -60,7 +60,7 @@ class SampleChangerMockup(AbstractSampleChanger.SampleChanger):
         None
         """
 
-        if sample_order is not None:
+        if sample_order is not None and len(sample_order) > 0:
             for i in range(len(sample_order)):
                 if sample_order[i] == sample:
                     try:
