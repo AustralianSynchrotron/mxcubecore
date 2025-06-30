@@ -9,7 +9,6 @@ from time import time
 from typing import (
     Any,
     Optional,
-    Union,
 )
 from urllib.parse import urljoin
 
@@ -222,48 +221,82 @@ class SampleChanger(AbstractSampleChanger):
         else:
             return robot_state.power and robot_state.remote_mode
 
-    def chained_load(self, sample_to_unload, sample_to_load):
+    def _mxcube_sample_to_prefect_sample(
+        self, mxcube_sample: str | MxcubePin
+    ) -> dict[str, Any]:
+        """MXCube sample to prefect sample conversion
+
+        Parameters
+        ----------
+        mxcube_sample : str | MxcubePin
+            The sample address in MXCuBE format, e.g. "1:01" or
+            an instance of MxcubePin.
+
+        Returns
+        -------
+        dict
+            A dictionary describing the pin locations that
+            prefect understands
         """
-        Chain the unload of a sample with a load.
+        if isinstance(mxcube_sample, str):
+            sample_tuple = tuple(
+                int(_item) for _item in mxcube_sample.split(":", maxsplit=1)
+            )
+        elif isinstance(mxcube_sample, MxcubePin):
+            sample_tuple = (
+                mxcube_sample.container.robot_id,
+                mxcube_sample.robot_id,
+            )
+        else:
+            raise ValueError(
+                "mxcube_sample must be a str or MxcubePin instance, not {type(mxcube_sample)}"
+            )
 
-        Args:
-            sample_to_unload (tuple): sample address on the form
-                                      (component1, ... ,component_N-1, component_N)
-            sample_to_load (tuple): sample address on the form
-                                      (component1, ... ,component_N-1, component_N)
-            (Object): Value returned by _execute_task either a Task or result of the
-                      operation
+        prefect_pin = {
+            "id": sample_tuple[1],
+            "puck": {
+                "id": sample_tuple[0],
+            },
+        }
+        return prefect_pin
+
+    def load(self, sample: str, sample_order: list[str] | None, wait: bool = False):
         """
-        _client = self.get_client()
-        if isinstance(sample_to_load, str):
-            sample_to_load: tuple[int, int] = tuple(
-                int(_item) for _item in sample_to_load.split(":", maxsplit=1)
-            )
-        elif isinstance(sample_to_load, MxcubePin):
-            sample_to_load: tuple[int, int] = (
-                sample_to_load.container.robot_id,
-                sample_to_load.robot_id,
-            )
+        Load a sample.
 
-        if _client.status.state.goni_pin is not None:
-            return self.unload_then_load(sample_to_load)
-        return self.load(sample_to_load)
+        Parameters
+        ----------
+        sample : tuple
+            sample address on the form (component1, ... ,component_N-1, component_N)
+        sample_order : list[str] | None
+            A sample order list containing a queue of samples. This can be used to prefetch
+            samples. If None prefetching is not used
+        wait : bool
+            True to wait for load to complete False otherwise
 
-    def load_sample(
-        self,
-        holder_length: float,
-        sample_location: Union[tuple[int, int], str],
-        wait=False,
-    ) -> Union[MxcubePin, None]:
-        return self.load(sample_location, wait)
+        Returns
+        -------
+        Object
+            Value returned by _execute_task either a Task or result of the
+            operation
+        """
+        if sample_order is not None and len(sample_order) > 0:
+            for i in range(len(sample_order)):
+                if sample_order[i] == sample:
+                    try:
+                        prefetch_sample = sample_order[i + 1]
+                    except IndexError:
+                        prefetch_sample = None
+                    break
+        else:
+            prefetch_sample = None
 
-    def unload_then_load(self, sample=None, wait=True):
-        """ """
         sample = self._resolve_component(sample)
         self.assert_not_charging()
 
-        self.unload()
-        self.load(sample)
+        return self._execute_task(
+            SampleChangerState.Loading, wait, self._do_load, sample, prefetch_sample
+        )
 
     def is_mounted_sample(self, sample: tuple[int, int]) -> bool:
         return (
@@ -431,16 +464,69 @@ class SampleChanger(AbstractSampleChanger):
 
     def _do_load(
         self,
-        sample: Union[tuple[int, int], str, MxcubePin],
+        sample: str | MxcubePin,
+        prefetch_sample: str | MxcubePin | None,
     ) -> None:
+        """
+        Mounts a sample on the robot using the `mount` Prefect Flow.
 
-        _client = self.get_client()
-        if isinstance(sample, str):
-            sample: tuple[int, int] = tuple(
-                int(_item) for _item in sample.split(":", maxsplit=1)
+        Parameters
+        ----------
+        sample : str | MxcubePin
+            The sample to mount, in MXCuBE format, e.g. "1:01" or an instance of MxcubePin.
+        prefetch_sample : str | MxcubePin | None
+            The sample to prefetch, in MXCuBE format, e.g. "1:02" or an instance of MxcubePin.
+            If None, no prefetching is done.
+
+        Returns
+        -------
+        None
+        """
+
+        prefect_sample_to_mount = self._mxcube_sample_to_prefect_sample(sample)
+
+        if prefetch_sample is not None:
+            prefect_prefetch = self._mxcube_sample_to_prefect_sample(prefetch_sample)
+        else:
+            prefect_prefetch = None
+
+        self._check_if_robot_is_ready()
+
+        try:
+            # Mount pin using `mount` Prefect Flow
+            _prefect_mount_client = MX3PrefectClient(
+                name=self._mount_deployment_name,
+                parameters={
+                    "pin": prefect_sample_to_mount,
+                    "prepick_pin": prefect_prefetch,
+                },
             )
-        elif isinstance(sample, MxcubePin):
-            sample: tuple[int, int] = (sample.container.robot_id, sample.robot_id)
+            _event_loop = asyncio_new_event_loop()
+            asyncio_set_event_loop(_event_loop)
+            _event_loop.run_until_complete(
+                _prefect_mount_client.trigger_flow(wait=True)
+            )
+        except Exception:
+            logging.getLogger("user_level_log").error(
+                f"Failed to mount sample. Please check the status of the robot."
+            )
+            raise
+
+    def _check_if_robot_is_ready(self) -> None:
+        """
+        Checks if the robot is ready to load or unload a sample.
+
+        Raises
+        ------
+        PathTimeout
+            If the robot does not change position to SOAK or does not change tool
+            to DOUBLE_GRIPPER
+        PositionError
+            If the robot could not change position to SOAK
+        ToolError
+            If the robot could not change tool to DOUBLE_GRIPPER
+        """
+        _client = self.get_client()
 
         # Check position is currently SOAK
         if _client.status.state.position != RobotPositions.SOAK:
@@ -497,91 +583,30 @@ class SampleChanger(AbstractSampleChanger):
             if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
                 raise ToolError()
 
-        try:
-            # Mount pin using `mount` Prefect Flow
-            _prefect_mount_client = MX3PrefectClient(
-                name=self._mount_deployment_name,
-                parameters={
-                    "pin": {
-                        "id": sample[1],
-                        "puck": {
-                            "id": sample[0],
-                        },
-                    }
-                },
-            )
-            _event_loop = asyncio_new_event_loop()
-            asyncio_set_event_loop(_event_loop)
-            _event_loop.run_until_complete(
-                _prefect_mount_client.trigger_flow(wait=True)
-            )
-        except Exception:
-            logging.getLogger("user_level_log").error(
-                f"Failed to mount sample. Please check the status of the robot."
-            )
-            raise
+    def chained_load(self, sample_to_unload, sample_to_load):
+        """Chained load is not needed as the `mount` prefect-flow handles
+        chained loads automatically
+        """
+        raise NotImplementedError
 
     def _do_unload(
         self,
-        sample_slot: Optional[Any] = None,
+        sample_slot: Any | None = None,
     ) -> None:
-        """ """
-        _client = self.get_client()
+        """
+        Unmounts a sample from the robot.
 
-        # Check position is currently SOAK
-        if _client.status.state.position != RobotPositions.SOAK:
-            _client.trajectory.soak(wait=False)
+        Parameters
+        ----------
+        sample_slot : Any | None
+            The sample slot to unload, by default None. If None, the currently loaded
+            sample will be unloaded.
 
-            # Wait for robot to start running the path
-            _start_time_timeout = time() + 15
-            while _client.status.state.path != RobotPaths.SOAK:
-                # Timeout after 15 seconds if path not started
-                if time() >= _start_time_timeout:
-                    logging.getLogger("user_level_log").error(
-                        "Failed to unmount sample. Robot could not change position to SOAK"
-                    )
-                    raise PathTimeout()
-                sleep(0.5)
-
-            # Wait for robot to finish running the path
-            _end_time_timeout = time() + 120
-            while _client.status.state.path != RobotPaths.UNDEFINED:
-                # Timeout after 120 seconds if path not finished
-                if time() >= _end_time_timeout:
-                    logging.getLogger("user_level_log").error(
-                        "Failed to unmount sample. Robot could not change position to SOAK"
-                    )
-                    raise PathTimeout()
-                sleep(0.5)
-
-            if _client.status.state.position != RobotPositions.SOAK:
-                logging.getLogger("user_level_log").error(
-                    "Failed to unmount sample. Robot could not change position to SOAK"
-                )
-                raise PositionError()
-
-        # Check double gripper tool mounted
-        if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
-            _client.trajectory.change_tool(tool=RobotTools.DOUBLE_GRIPPER, wait=False)
-
-            # Wait for robot to start running the path
-            _start_time_timeout = time() + 15
-            while _client.status.state.path != RobotPaths.CHANGE_TOOL:
-                # Timeout after 15 seconds if path not started
-                if time() >= _start_time_timeout:
-                    raise PathTimeout()
-                sleep(0.5)
-
-            # Wait for robot to finish running the path
-            _end_time_timeout = time() + 240
-            while _client.status.state.path != RobotPaths.UNDEFINED:
-                # Timeout after 240 seconds if path not finished
-                if time() >= _end_time_timeout:
-                    raise PathTimeout()
-                sleep(0.5)
-
-            if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
-                raise ToolError()
+        Returns
+        -------
+        None
+        """
+        self._check_if_robot_is_ready()
 
         # Mount pin using `unmount` Prefect Flow
         try:
