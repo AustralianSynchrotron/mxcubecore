@@ -250,7 +250,7 @@ class PrefectWorkflow(HardwareObject):
         logging.getLogger("HWR").debug(f"Opening {self._state.value}")
         while not self.gevent_event.is_set():
             self.gevent_event.wait()
-            time.sleep(0.1)
+            gevent.sleep(0.1)
 
         self.state.value = "ON"
         return self.params_dict
