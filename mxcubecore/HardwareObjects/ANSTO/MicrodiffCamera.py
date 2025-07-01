@@ -534,9 +534,8 @@ class MicrodiffCamera(HardwareObject):
 
             if live:
                 logging.getLogger("HWR").info("ANSTO Camera is going to poll images")
-                # self.delay = float(int(self.getProperty("interval"))/1000.0)
-                # the "interval" property is hardcoded at the moment
-                self.delay = float(int(100.0 / 1000.0))
+
+                self.delay = settings.MD3_CAMERA_DELAY
 
                 thread = Thread(target=self.poll, daemon=True)
                 thread.start()
