@@ -40,6 +40,7 @@ class MD3(BaseSettings):
     MD3_REDIS_HOST: str = Field("127.0.0.0", env="MD3_REDIS_HOST")
     MD3_REDIS_PORT: int = Field("6379", env="MD3_REDIS_PORT")
     EXPORTER_ADDRESS: str = Field("127.0.0.0:1234", env="EXPORTER_ADDRESS")
+    MD3_CAMERA_DELAY: float = Field(0.0, env="MD3_CAMERA_DELAY")
 
 
 class RedisSettings(BaseSettings):
