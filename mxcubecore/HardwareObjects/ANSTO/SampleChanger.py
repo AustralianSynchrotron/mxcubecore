@@ -280,6 +280,7 @@ class SampleChanger(AbstractSampleChanger):
             Value returned by _execute_task either a Task or result of the
             operation
         """
+        prefetch_sample = None  # Always define before the if-block
         if sample_order is not None and len(sample_order) > 0:
             for i in range(len(sample_order)):
                 if sample_order[i] == sample:
