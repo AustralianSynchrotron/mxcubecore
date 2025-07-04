@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from mx3_beamline_library.devices.beam import energy_master
@@ -8,11 +7,11 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
-from .prefect_client import MX3PrefectClient
 from .schemas.full_dataset import (
     FullDatasetDialogBox,
     FullDatasetParams,
 )
+from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class FullDatasetFlow(AbstractPrefectWorkflow):
@@ -82,7 +81,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             f"parameters sent to prefect flow {prefect_parameters}"
         )
 
-        full_dataset_flow = MX3PrefectClient(
+        full_dataset_flow = MX3SyncPrefectClient(
             name=settings.FULL_DATASET_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
@@ -90,11 +89,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         self._save_dialog_box_params_to_redis(dialog_box_model)
 
         try:
-            loop = self._get_asyncio_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(
-                full_dataset_flow.trigger_data_collection(sample_id)
-            )
+            full_dataset_flow.trigger_data_collection(sample_id)
             logging.getLogger("HWR").info(
                 "Full dataset collection complete. Data processing results will be displayed "
                 "in MX-PRISM shortly"
