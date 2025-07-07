@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Union
 
@@ -6,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import redis
-import redis.asyncio
 from mx3_beamline_library.devices.beam import energy_master
 
 from mxcubecore.configuration.ansto.config import settings
@@ -18,11 +16,11 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
-from .prefect_client import MX3PrefectClient
 from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
+from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class GridScanFlow(AbstractPrefectWorkflow):
@@ -136,15 +134,11 @@ class GridScanFlow(AbstractPrefectWorkflow):
         self._save_dialog_box_params_to_redis(dialog_box_model)
 
         try:
-            loop = self._get_asyncio_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(
-                self.start_prefect_flow_and_get_results_from_redis(
-                    prefect_parameters=prefect_parameters,
-                    num_cols=num_cols,
-                    num_rows=num_rows,
-                    grid_id=sid,
-                )
+            self.start_prefect_flow_and_get_results_from_redis(
+                prefect_parameters=prefect_parameters,
+                num_cols=num_cols,
+                num_rows=num_rows,
+                grid_id=sid,
             )
         except Exception as ex:
             logging.getLogger("HWR").info(f"Failed to execute raster flow: {str(ex)}")
@@ -155,7 +149,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             )
             raise QueueExecutionException(str(ex), self) from ex
 
-    async def start_prefect_flow_and_get_results_from_redis(
+    def start_prefect_flow_and_get_results_from_redis(
         self,
         prefect_parameters: GridScanParams,
         num_cols: int,
@@ -183,12 +177,12 @@ class GridScanFlow(AbstractPrefectWorkflow):
         None
         """
 
-        grid_scan_flow = MX3PrefectClient(
+        grid_scan_flow = MX3SyncPrefectClient(
             name=settings.GRID_SCAN_DEPLOYMENT_NAME,
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
 
-        await grid_scan_flow.trigger_grid_scan()
+        grid_scan_flow.trigger_grid_scan()
 
         logging.getLogger("HWR").info("Getting spotfinder results from redis...")
         logging.getLogger("HWR").info(
@@ -199,18 +193,18 @@ class GridScanFlow(AbstractPrefectWorkflow):
             last_id = 0
             numer_of_frames = num_cols * num_rows
             score_array = np.zeros((num_rows, num_cols))
-            async with redis.asyncio.StrictRedis(
+            with redis.StrictRedis(
                 host=settings.MXCUBE_REDIS_HOST,
                 port=settings.MXCUBE_REDIS_PORT,
                 username=settings.MXCUBE_REDIS_USERNAME,
                 password=settings.MXCUBE_REDIS_PASSWORD,
                 db=settings.MXCUBE_REDIS_DB,
-            ) as async_redis_client:
+            ) as redis_client:
                 for _ in range(numer_of_frames):
-                    data, last_id = await self.read_message_from_redis_streams(
+                    data, last_id = self.read_message_from_redis_streams(
                         topic=f"spotfinder:sample_{prefect_parameters.sample_id}:grid_scan_{prefect_parameters.grid_scan_id}",  # noqa
                         id=last_id,
-                        redis_client=async_redis_client,
+                        redis_client=redis_client,
                     )
                     heatmap_coordinate = (
                         int(data[b"heatmap_coordinate_x"]),
@@ -241,8 +235,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
         self._state.value = "ON"
         self.mxcubecore_workflow_aborted = False
 
-    async def read_message_from_redis_streams(
-        self, topic: str, id: Union[bytes, int], redis_client: redis.asyncio.StrictRedis
+    def read_message_from_redis_streams(
+        self, topic: str, id: Union[bytes, int], redis_client: redis.StrictRedis
     ) -> tuple[dict, bytes]:
         """
         Reads pickled messages from a redis stream
@@ -253,8 +247,8 @@ class GridScanFlow(AbstractPrefectWorkflow):
             Name of the topic of the redis stream, aka, the sample_id
         id : Union[bytes, int]
             id of the topic in bytes or int format
-        redis_client : redis.asyncio.StrictRedis
-            An async redis client
+        redis_client : redis.StrictRedis
+            A redis client
 
         Returns
         -------
@@ -264,7 +258,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             b'type', b'number_of_spots', b'image_id', and b'sequence_id'
         """
 
-        response = await redis_client.xread(
+        response = redis_client.xread(
             {topic: id}, count=1, block=30000
         )  # Wait 30 seconds
         if not response:

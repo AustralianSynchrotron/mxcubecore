@@ -11,16 +11,18 @@ try:
     # NOTE: State must be imported first,
     # otherwise the prefect client does not work properly
     from prefect import State  # noqa
-    from prefect.client.orchestration import get_client
-    from prefect.server.schemas.responses import FlowRunResponse
-
+    from prefect.client.orchestration import (
+        PrefectClient,
+        get_client,
+    )
+    from prefect.client.schemas import FlowRun
+    from prefect.server.schemas.filters import FlowRunFilter
+    from prefect.server.schemas.states import StateType  # noqa
 
 except ImportError:
     logging.getLogger("HWR").info(
         "Prefect is not installed, prefect flows will not be available"
     )
-    FlowRunResponse = None
-    State = None
 
 
 class FlowState(StrEnum):
@@ -51,7 +53,6 @@ class MX3SyncPrefectClient:
         self.parameters = parameters
         self.name = name
         self.flow_run_id = None
-        self.deployment_id = None
         self.redis_connection = redis.StrictRedis(
             host=settings.MXCUBE_REDIS_HOST,
             port=settings.MXCUBE_REDIS_PORT,
@@ -61,26 +62,7 @@ class MX3SyncPrefectClient:
             decode_responses=True,
         )
 
-    def get_deployment_id_from_name(self, name: str) -> UUID:
-        """
-        Gets the deployment id from the name of the flow
-
-        Parameters
-        ----------
-        name : str
-            A deployed flow's name: <FLOW_NAME>/<DEPLOYMENT_NAME>
-
-        Returns
-        -------
-        UUID
-            The deployment ID
-        """
-
-        with get_client(sync_client=True) as client:
-            result = client.read_deployment_by_name(name)
-        return result.id
-
-    def trigger_flow(self, wait=False, poll_interval=3) -> FlowRunResponse:
+    def trigger_flow(self, wait=False, poll_interval=3) -> FlowRun:
         """
         Triggers a prefect flow
 
@@ -91,7 +73,7 @@ class MX3SyncPrefectClient:
 
         Returns
         -------
-        FlowRunResponse
+        FlowRun
             The flow response
 
         Raises
@@ -101,12 +83,10 @@ class MX3SyncPrefectClient:
         Exception
             If there has been any other issue during the run
         """
-        self.deployment_id = self.get_deployment_id_from_name(self.name)
-
         with get_client(sync_client=True) as client:
-
+            deployment_id = client.read_deployment_by_name(self.name).id
             response = client.create_flow_run_from_deployment(
-                self.deployment_id, parameters=self.parameters
+                deployment_id, parameters=self.parameters
             )
             self.flow_run_id = response.id
 
@@ -134,15 +114,14 @@ class MX3SyncPrefectClient:
         -------
         None
         """
-        self.deployment_id = self.get_deployment_id_from_name(self.name)
         self.redis_connection.set(
             f"mxcube_scan_state:{sample_id}", FlowState.RUNNING, ex=3600
         )
 
         with get_client(sync_client=True) as client:
-
-            response: FlowRunResponse = client.create_flow_run_from_deployment(
-                self.deployment_id, parameters=self.parameters
+            deployment_id = client.read_deployment_by_name(self.name).id
+            response = client.create_flow_run_from_deployment(
+                deployment_id, parameters=self.parameters
             )
             self.flow_run_id = response.id
 
@@ -156,3 +135,74 @@ class MX3SyncPrefectClient:
                 flow_status = self.redis_connection.get(
                     f"mxcube_scan_state:{sample_id}"
                 )
+
+    def trigger_grid_scan(self) -> FlowRun:
+        """
+        Triggers a grid scans and waits until the flow state has
+        changed from scheduled or pending to running
+
+        Returns
+        -------
+        FlowRunResponse
+            The flow response
+
+        Raises
+        ------
+        ValueError
+            If the flow has not finished successfully
+        Exception
+            If there has been any other issue during the run
+        """
+        with get_client(sync_client=True) as client:
+
+            deployment_id = client.read_deployment_by_name(self.name).id
+
+            flow_run_id = client.create_flow_run_from_deployment(
+                deployment_id, parameters=self.parameters
+            ).id
+
+            state = self.get_flow_run_state(flow_run_id, client)
+            while (
+                state.type == StateType.SCHEDULED  # noqa
+                or state.type == StateType.PENDING  # noqa
+            ):
+                state = self.get_flow_run_state(flow_run_id, client)
+                sleep(1)
+
+    def get_flow_run_state(self, flow_run_id: UUID, client: PrefectClient) -> State:
+        """
+        Gets the state of a run
+
+        Parameters
+        ----------
+        flow_run_id : UUID, optional
+            The id of the run, by default None
+
+        Returns
+        -------
+        State
+            the state of the run
+
+        Raises
+        ------
+        RuntimeError
+            An error if the state could not be obtained
+        """
+        flow_runs = self.get_flow_runs(flow_run_id, client)
+        return flow_runs[0].state
+
+    def get_flow_runs(self, flow_run_id: UUID, client: PrefectClient) -> list[FlowRun]:
+        """Gets prefect flow runs
+
+        Parameters
+        ----------
+        flow_run_id : UUID, optional
+            The flow run ID, by default None
+
+        Returns
+        -------
+        list[FlowRunResponse]
+            A list of flow response
+        """
+        q = FlowRunFilter(id={"any_": [flow_run_id]})
+        return client.read_flow_runs(flow_run_filter=q)
