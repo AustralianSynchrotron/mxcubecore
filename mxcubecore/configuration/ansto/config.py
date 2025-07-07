@@ -70,4 +70,3 @@ class ANSTOConfig(APIs, Robot, RedisSettings, MD3, PrefectSettings):
 
 
 settings = ANSTOConfig()
-print(settings)
