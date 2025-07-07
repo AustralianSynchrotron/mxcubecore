@@ -21,6 +21,7 @@ from mx_robot_library.schemas.common.sample import Pin as RobotPin
 from mx_robot_library.schemas.common.sample import Puck as RobotPuck
 from mx_robot_library.schemas.common.tool import RobotTools
 from mx_robot_library.schemas.responses.state import StateResponse
+from prefect.server.schemas.states import StateType  # noqa
 from pydantic import JsonValue
 from typing_extensions import (
     Literal,
@@ -501,7 +502,15 @@ class SampleChanger(AbstractSampleChanger):
                 },
             )
 
-            _prefect_mount_client.trigger_flow(wait=True)
+            response = _prefect_mount_client.trigger_flow(wait=True)
+            if response.state.type != StateType.COMPLETED:
+                logging.getLogger("user_level_log").error(
+                    f"Failed to mount sample. Please check the status of the robot."
+                )
+                raise RuntimeError(
+                    "Failed to mount sample. Please check the status of the robot."
+                )
+
         except Exception:
             logging.getLogger("user_level_log").error(
                 f"Failed to mount sample. Please check the status of the robot."
@@ -611,7 +620,15 @@ class SampleChanger(AbstractSampleChanger):
                 parameters={},
             )
 
-            _prefect_unmount_client.trigger_flow(wait=True)
+            response = _prefect_unmount_client.trigger_flow(wait=True)
+            if response.state.type != StateType.COMPLETED:
+                logging.getLogger("user_level_log").error(
+                    "Failed to mount sample. Please check the status of the robot."
+                )
+                raise RuntimeError(
+                    "Failed to mount sample. Please check the status of the robot."
+                )
+
         except Exception:
             logging.getLogger("user_level_log").error(
                 f"Failed to unmount sample. Please check the status of the robot."
