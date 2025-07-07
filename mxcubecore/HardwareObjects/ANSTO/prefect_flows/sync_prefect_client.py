@@ -201,7 +201,7 @@ class MX3SyncPrefectClient:
 
         Returns
         -------
-        list[FlowRunResponse]
+        list[FlowRun]
             A list of flow response
         """
         q = FlowRunFilter(id={"any_": [flow_run_id]})
