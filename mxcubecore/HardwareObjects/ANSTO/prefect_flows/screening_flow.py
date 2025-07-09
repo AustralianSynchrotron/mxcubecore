@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from mx3_beamline_library.devices.beam import energy_master
@@ -8,11 +7,11 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
-from .prefect_client import MX3PrefectClient
 from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
 )
+from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class ScreeningFlow(AbstractPrefectWorkflow):
@@ -83,7 +82,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             f"parameters sent to prefect flow {prefect_parameters}"
         )
 
-        screening_flow = MX3PrefectClient(
+        screening_flow = MX3SyncPrefectClient(
             name=settings.SCREENING_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
@@ -91,14 +90,11 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         self._save_dialog_box_params_to_redis(dialog_box_model)
 
         try:
-            loop = self._get_asyncio_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(screening_flow.trigger_data_collection(sample_id))
+            screening_flow.trigger_data_collection(sample_id)
             logging.getLogger("HWR").info(
                 "Screening complete. Data processing results will be displayed "
                 "in MX-PRISM shortly"
             )
-
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
         except Exception as ex:

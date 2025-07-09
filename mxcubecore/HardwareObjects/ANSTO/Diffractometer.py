@@ -1,5 +1,4 @@
 import ast
-import asyncio
 import logging
 import random
 import time
@@ -20,7 +19,7 @@ from mxcubecore.HardwareObjects.GenericDiffractometer import (
     PhaseEnum,
 )
 
-from .prefect_flows.prefect_client import MX3PrefectClient
+from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 
 EXPORTER_TO_HWOBJ_STATE = {
     "Fault": HardwareObjectState.FAULT,
@@ -323,7 +322,7 @@ class Diffractometer(GenericDiffractometer):
         # so we convert the units to micrometers
         # beam_size_micrometers = tuple([b * 1000 for b in self.beam.get_beam_size()])
         try:
-            sample_centering = MX3PrefectClient(
+            sample_centering = MX3SyncPrefectClient(
                 name=settings.SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
                 parameters={
                     "sample_id": "test",
@@ -333,9 +332,8 @@ class Diffractometer(GenericDiffractometer):
                 },
             )
             # NOTE: using asyncio.run() does not seem to work consistently
-            loop = asyncio.get_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(sample_centering.trigger_flow(wait=True))
+
+            sample_centering.trigger_flow(wait=True)
             logging.getLogger("HWR").debug("Optical centering finished")
         except Exception:
             logging.getLogger("user_level_log").error(

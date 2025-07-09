@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from mx3_beamline_library.devices.beam import energy_master
@@ -8,11 +7,11 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
-from .prefect_client import MX3PrefectClient
 from .schemas.one_shot import (
     OneShotDialogBox,
     OneShotParams,
 )
+from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class OneShotFlow(AbstractPrefectWorkflow):
@@ -78,7 +77,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
             f"parameters sent to prefect flow {prefect_parameters}"
         )
 
-        one_shot_flow = MX3PrefectClient(
+        one_shot_flow = MX3SyncPrefectClient(
             name=settings.ONE_SHOT_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
@@ -86,9 +85,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
         self._save_dialog_box_params_to_redis(dialog_box_model)
 
         try:
-            loop = self._get_asyncio_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(one_shot_flow.trigger_data_collection(sample_id))
+            one_shot_flow.trigger_data_collection(sample_id)
             logging.getLogger("HWR").info("One-shot flow complete")
         except Exception as ex:
             raise QueueExecutionException(str(ex), self) from ex

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-from asyncio import new_event_loop as asyncio_new_event_loop
-from asyncio import set_event_loop as asyncio_set_event_loop
 from functools import lru_cache
 from http import HTTPStatus
 from time import time
@@ -23,6 +21,7 @@ from mx_robot_library.schemas.common.sample import Pin as RobotPin
 from mx_robot_library.schemas.common.sample import Puck as RobotPuck
 from mx_robot_library.schemas.common.tool import RobotTools
 from mx_robot_library.schemas.responses.state import StateResponse
+from prefect.server.schemas.states import StateType  # noqa
 from pydantic import JsonValue
 from typing_extensions import (
     Literal,
@@ -43,7 +42,7 @@ from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
 )
 from mxcubecore.TaskUtils import task as dtask
 
-from .prefect_flows.prefect_client import MX3PrefectClient
+from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 
 hwr_logger = logging.getLogger("HWR")
 robot_config = get_robot_settings()
@@ -495,18 +494,23 @@ class SampleChanger(AbstractSampleChanger):
 
         try:
             # Mount pin using `mount` Prefect Flow
-            _prefect_mount_client = MX3PrefectClient(
+            _prefect_mount_client = MX3SyncPrefectClient(
                 name=self._mount_deployment_name,
                 parameters={
                     "pin": prefect_sample_to_mount,
                     "prepick_pin": prefect_prefetch,
                 },
             )
-            _event_loop = asyncio_new_event_loop()
-            asyncio_set_event_loop(_event_loop)
-            _event_loop.run_until_complete(
-                _prefect_mount_client.trigger_flow(wait=True)
-            )
+
+            response = _prefect_mount_client.trigger_flow(wait=True)
+            if response.state.type != StateType.COMPLETED:
+                logging.getLogger("user_level_log").error(
+                    f"Failed to mount sample. Please check the status of the robot."
+                )
+                raise RuntimeError(
+                    "Failed to mount sample. Please check the status of the robot."
+                )
+
         except Exception:
             logging.getLogger("user_level_log").error(
                 f"Failed to mount sample. Please check the status of the robot."
@@ -611,15 +615,20 @@ class SampleChanger(AbstractSampleChanger):
 
         # Mount pin using `unmount` Prefect Flow
         try:
-            _prefect_unmount_client = MX3PrefectClient(
+            _prefect_unmount_client = MX3SyncPrefectClient(
                 name=self._unmount_deployment_name,
                 parameters={},
             )
-            _event_loop = asyncio_new_event_loop()
-            asyncio_set_event_loop(_event_loop)
-            _event_loop.run_until_complete(
-                _prefect_unmount_client.trigger_flow(wait=True)
-            )
+
+            response = _prefect_unmount_client.trigger_flow(wait=True)
+            if response.state.type != StateType.COMPLETED:
+                logging.getLogger("user_level_log").error(
+                    "Failed to mount sample. Please check the status of the robot."
+                )
+                raise RuntimeError(
+                    "Failed to mount sample. Please check the status of the robot."
+                )
+
         except Exception:
             logging.getLogger("user_level_log").error(
                 f"Failed to unmount sample. Please check the status of the robot."
