@@ -176,6 +176,15 @@ class Diffractometer(GenericDiffractometer):
         self.read_phase.connect_signal("update", self._update_phase_value)
         self.state.connect_signal("update", self._update_state)
 
+        self.get_md3_head_type = self.add_command(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "get_md3_head_type",
+            },
+            "getHeadType",
+        )
+
     def _update_phase_value(self, value: str = None) -> None:
         """
         Updates the phase of the md3
@@ -282,7 +291,7 @@ class Diffractometer(GenericDiffractometer):
         return
 
     def in_plate_mode(self):
-        return self.mount_mode == "plate"
+        return self.get_md3_head_type() == "Plate"
 
     def use_sample_changer(self):
         return self.mount_mode == "sample_changer"
