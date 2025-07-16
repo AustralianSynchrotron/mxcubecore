@@ -22,6 +22,7 @@ from mxcubecore.configuration.ansto.config import settings
 import redis
 
 from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
+from .redis_utils import get_redis_connection
 
 EXPORTER_TO_HWOBJ_STATE = {
     "Fault": HardwareObjectState.FAULT,
@@ -303,7 +304,7 @@ class Diffractometer(GenericDiffractometer):
         bool
             True if the md3 is in plate mode
         """
-        with self._get_redis_connection() as redis_connection:
+        with get_redis_connection() as redis_connection:
             head_type = redis_connection.get("mxcube:md3_head_type")
             if head_type is None:
                 raise ValueError("MD3 head type (mxcube:md3_head_type) not found in redis")
@@ -319,7 +320,7 @@ class Diffractometer(GenericDiffractometer):
         None
         """
         head_type =  self.get_md3_head_type()
-        with self._get_redis_connection() as redis_connection:
+        with get_redis_connection() as redis_connection:
             redis_connection.set("mxcube:md3_head_type", head_type)
         
 
@@ -916,19 +917,4 @@ class Diffractometer(GenericDiffractometer):
         self.get_zoom_calibration()
         return (self.pixels_per_mm_x, self.pixels_per_mm_y)
 
-    def _get_redis_connection(self) -> redis.StrictRedis:
-        """Create and return a Redis connection.
 
-        Returns
-        -------
-        redis.StrictRedis
-            A redis connection
-        """
-        return redis.StrictRedis(
-            host=settings.MXCUBE_REDIS_HOST,
-            port=settings.MXCUBE_REDIS_PORT,
-            username=settings.MXCUBE_REDIS_USERNAME,
-            password=settings.MXCUBE_REDIS_PASSWORD,
-            db=settings.MXCUBE_REDIS_DB,
-            decode_responses=True
-        )

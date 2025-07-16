@@ -24,6 +24,7 @@ from scipy.constants import (
 
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+from typing import Literal
 
 from ..Resolution import Resolution
 from .schemas.data_layer import PinRead
@@ -477,3 +478,20 @@ class AbstractPrefectWorkflow(ABC):
                     ),
                     json={"value": roi_mode},
                 )
+
+    def get_head_type(self) -> Literal["SmartMagnet", "MiniKappa", "Plate", "Permanent", "Unknown"]:
+        """
+        Get the md3 head type from the md3 and saved it to redis
+
+        Returns
+        -------
+        None
+        """
+        with self._get_redis_connection() as redis_connection:
+            head_type = redis_connection.get("mxcube:md3_head_type")
+
+        if head_type is None:
+            # Default is Smart Magnet
+            return "SmartMagnet"
+        
+        return head_type

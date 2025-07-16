@@ -33,3 +33,4 @@ class GridScanParams(BaseModel):
     crystal_finder_threshold: int = 1
     number_of_processes: Optional[float] = None
     transmission: float = Field(strict=True, ge=0, le=1)
+    use_centring_table: bool

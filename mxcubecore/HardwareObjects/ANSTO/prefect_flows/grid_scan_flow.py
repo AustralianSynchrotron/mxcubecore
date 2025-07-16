@@ -104,6 +104,12 @@ class GridScanFlow(AbstractPrefectWorkflow):
             f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
         )
 
+        head_type = self.get_head_type()
+        if head_type == "Plate":
+            use_centring_table = False
+        else:
+            use_centring_table = True
+
         prefect_parameters = GridScanParams(
             sample_id=sample_id,
             grid_scan_id=grid_scan_id,
@@ -121,6 +127,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
+            use_centring_table=use_centring_table,
         )
 
         self.redis_connection.set(
