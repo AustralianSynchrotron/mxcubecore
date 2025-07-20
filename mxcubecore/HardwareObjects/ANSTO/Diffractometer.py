@@ -18,8 +18,6 @@ from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
     PhaseEnum,
 )
-from mxcubecore.configuration.ansto.config import settings
-import redis
 
 from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 from .redis_utils import get_redis_connection
@@ -307,10 +305,12 @@ class Diffractometer(GenericDiffractometer):
         with get_redis_connection() as redis_connection:
             head_type = redis_connection.get("mxcube:md3_head_type")
             if head_type is None:
-                raise ValueError("MD3 head type (mxcube:md3_head_type) not found in redis")
+                raise ValueError(
+                    "MD3 head type (mxcube:md3_head_type) not found in redis"
+                )
 
-        return head_type=="Plate"
-    
+        return head_type == "Plate"
+
     def _save_head_type_to_redis(self) -> None:
         """
         Get the md3 head type from the md3 and saved it to redis
@@ -319,10 +319,9 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-        head_type =  self.get_md3_head_type()
+        head_type = self.get_md3_head_type()
         with get_redis_connection() as redis_connection:
             redis_connection.set("mxcube:md3_head_type", head_type)
-        
 
     def use_sample_changer(self):
         return self.mount_mode == "sample_changer"
@@ -916,5 +915,3 @@ class Diffractometer(GenericDiffractometer):
         """
         self.get_zoom_calibration()
         return (self.pixels_per_mm_x, self.pixels_per_mm_y)
-
-

@@ -84,7 +84,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
             "pipeline": self._get_dialog_box_param("processing_pipeline"),
             "data_processing_config": None,
-            "type": type
+            "type": type,
         }
 
         logging.getLogger("HWR").debug(

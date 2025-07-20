@@ -1,15 +1,16 @@
 import redis
+
 from mxcubecore.configuration.ansto.config import settings
 
 
-def get_redis_connection(decode_response: bool=True) -> redis.StrictRedis:
+def get_redis_connection(decode_response: bool = True) -> redis.StrictRedis:
     """Create and return a Redis connection.
 
     Parameters
     ----------
     decode_response : bool
         By default True
-    
+
     Returns
     -------
     redis.StrictRedis

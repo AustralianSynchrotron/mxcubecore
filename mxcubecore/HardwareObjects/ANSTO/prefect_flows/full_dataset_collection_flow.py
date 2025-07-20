@@ -42,7 +42,6 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             energy=photon_energy,
         )
 
-
         full_dataset_params = FullDatasetParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
@@ -83,7 +82,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
-            "type":type,
+            "type": type,
         }
 
         logging.getLogger("HWR").debug(
