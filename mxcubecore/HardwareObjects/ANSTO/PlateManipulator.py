@@ -285,7 +285,7 @@ class PlateManipulator(AbstractSampleChanger):
             self.chan_drop_location = DummyChannel()
             self.move_plate_to_shelf = DummyChannel()
 
-        # TODO: move self.state to mock
+        # TODO: move self.md3_state to mock
         self.md3_state = self.add_channel(
             {
                 "type": "exporter",
@@ -478,7 +478,6 @@ class PlateManipulator(AbstractSampleChanger):
             # self.move_plate_to_shelf(row, col, drop)
             # drop_address = drop.address # in the format e.g. 'F4:1'
 
-            #self.update_state(self.STATES.BUSY)
             msg = "Moving to position %s:%d" % ((chr(65 + row), col))
             logging.getLogger("user_level_log").warning(
                 "Plate Manipulator: %s Please wait..." % msg
@@ -487,11 +486,11 @@ class PlateManipulator(AbstractSampleChanger):
             with get_redis_connection() as redis_connection:
                 redis_connection.set("current_drop_location", sample_str)
 
-            # self.emit("progressInit", (msg, 100))
-            # for step in range(50):
-            #     self.emit("progressStep", step * 2)
-            #     time.sleep(0.02)
-            # self.emit("progressStop", ())
+            self.emit("progressInit", (msg, 100))
+            gevent.sleep(0.1)
+            while self.md3_state.get_value().lower() != "ready":
+                gevent.sleep(0.1)
+            self.emit("progressStop", ())
 
             if old_sample != new_sample:
                 if old_sample is not None:
@@ -501,20 +500,11 @@ class PlateManipulator(AbstractSampleChanger):
 
             self.update_info()
             logging.getLogger("user_level_log").info("Plate Manipulator: Sample loaded")
-            # self.update_state(self.STATES.READY)
-
-    def _set_state(self, state=None, status=None):
-        """Set the state"""
-        if (state is not None) and (self.state != state):
-            former = self.state
-            self.state = state
-            if status is None:
-                status = SampleChangerState.tostring(state)
-            self._trigger_state_changed_event(former)
-
-        if status is not None:
-            self.status = status
-            self._trigger_status_changed_event()
+        
+        # This may not be necessary
+        self.emit( "loaded_sample_changed",
+            {"address": sample_str, "barcode": ""})
+        self.get_loaded_sample()
 
     def get_loaded_sample(self) -> Xtal | None:
         """
@@ -543,6 +533,14 @@ class PlateManipulator(AbstractSampleChanger):
         """
         self._reset_loaded_sample()
         self._on_state_changed("Ready")
+
+    def _reset_loaded_sample(self):
+        for smp in self.get_sample_list():
+            smp._set_loaded(False)
+
+        with get_redis_connection() as redis_connection:
+            redis_connection.delete("current_drop_location")
+        self._trigger_loaded_sample_changed_event(None)
 
     def _do_reset(self):
         """
@@ -770,12 +768,16 @@ class PlateManipulator(AbstractSampleChanger):
         else:
             _state = SampleChangerState.Unknown
 
+        if md3_state == "ready" and self.has_loaded_sample():
+            _state = SampleChangerState.Loaded
+
         _last_state = self.state
-        #if _state != _last_state:
-        self._set_state(
-            state=_state,
-            status=SampleChangerState.tostring(_state),
-        )
+        if _state != _last_state:
+            self._set_state(
+                state=_state,
+                status=SampleChangerState.tostring(_state),
+            )
+
 
     def get_room_temperature_mode(self):
         return True
