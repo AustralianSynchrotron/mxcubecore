@@ -332,7 +332,6 @@ class PlateManipulator(AbstractSampleChanger):
 
     def state_changed(self, state):
         try:
-            # self.plate_location_changed(self.chan_plate_location.get_value())
             self._on_state_changed(state)
         except AttributeError:
             pass
@@ -348,7 +347,6 @@ class PlateManipulator(AbstractSampleChanger):
         Descript. : state change callback. Based on diffractometer state
                     sets PlateManipulatorMockup state.
         """
-        SampleChangerState = AbstractSampleChanger.SampleChangerState
         if state is None:
             self._set_state(SampleChangerState.Unknown)
         else:
@@ -418,14 +416,27 @@ class PlateManipulator(AbstractSampleChanger):
             self._set_loaded_sample(sample)
 
     def load(self, sample=None, sample_order=None, wait=True):
-        comp = self.get_component_by_address(sample)
-        coords = comp.get_coords()
-        self._load_sample(coords, sample[:-2])
+        """
+        Load a sample.
 
-        if comp:
-            self._set_loaded_sample(comp)
-            comp._set_loaded(True, True)
-        return 
+        Args:
+            sample (tuple): sample address on the form
+                            (component1, ... ,component_N-1, component_N)
+            wait (boolean): True to wait for load to complete False otherwise
+
+        Returns
+            (Object): Value returned by _execute_task either a Task or result of the
+                      operation
+        """
+        sample: Xtal = self._resolve_component(sample)
+        # comp = self.get_component_by_address(sample)
+        coords = sample.get_coords()
+
+
+
+        return self._execute_task(
+            SampleChangerState.Loading, wait, self._load_sample, coords, sample.address[:-2]
+        )
 
     def _parse_plate_address(self, address):
         import re
@@ -470,8 +481,8 @@ class PlateManipulator(AbstractSampleChanger):
         # self.plate_location = [row, col, self.reference_pos_x, pos_y]
         # col += 1
         col += 1
-        cell = self.get_component_by_address("%s%d" % (chr(65 + row), col))
-        drop = cell.get_component_by_address("%s%d:%d" % (chr(65 + row), col, drop))
+        cell: Cell = self.get_component_by_address("%s%d" % (chr(65 + row), col))
+        drop: Drop = cell.get_component_by_address("%s%d:%d" % (chr(65 + row), col, drop))
         new_sample = drop.get_sample()
         old_sample = self.get_loaded_sample()
         new_sample: Xtal = drop.get_sample()
@@ -491,21 +502,25 @@ class PlateManipulator(AbstractSampleChanger):
             gevent.sleep(0.1)
             while self.md3_state.get_value().lower() != "ready":
                 gevent.sleep(0.1)
-            self.emit("progressStop", ())
 
             if old_sample != new_sample:
                 if old_sample is not None:
                     old_sample._set_loaded(False, True)
+                    self._trigger_loaded_sample_changed_event(old_sample)
+                    gevent.sleep(0.01)
                 if new_sample is not None:
                     new_sample._set_loaded(True, True)
+                    self._trigger_loaded_sample_changed_event(new_sample)
 
             self.update_info()
+            self.emit("progressStop", ())
+
             logging.getLogger("user_level_log").info("Plate Manipulator: Sample loaded")
         
-        # This may not be necessary
-        self.emit( "loaded_sample_changed",
-            {"address": sample_str, "barcode": ""})
-        self.get_loaded_sample()
+        # # This may not be necessary
+        # self.emit( "loaded_sample_changed",
+        #     {"address": sample_str, "barcode": ""})
+        # self._set_loaded_sample(new_sample)
 
     def get_loaded_sample(self) -> Xtal | None:
         """
@@ -533,7 +548,9 @@ class PlateManipulator(AbstractSampleChanger):
         Descript. :
         """
         self._reset_loaded_sample()
-        self._on_state_changed("Ready")
+        self._trigger_loaded_sample_changed_event(None)
+
+        # self._on_state_changed("Ready")
 
     def _reset_loaded_sample(self):
         for smp in self.get_sample_list():
@@ -654,9 +671,44 @@ class PlateManipulator(AbstractSampleChanger):
         self._update_loaded_sample()
         self._update_sample_changer_state()
 
+    def update_info(self):
+        """
+        Update sample changer sample information, currently loaded sample
+        and emits infoChanged and loadedSampleChanged when loaded sample
+        have changed
+        """
+        former_loaded = self.get_loaded_sample()
+        self._do_update_info()
+        if self._is_dirty():
+            self._trigger_info_changed_event()
+
+        loaded = self.get_loaded_sample()
+        if loaded != former_loaded:
+            self._trigger_loaded_sample_changed_event(loaded)
+            self._reset_dirty()
+
     def _update_loaded_sample(self):
         """Updates plate location"""
-        old_sample = self.get_loaded_sample()
+        sample_list = self.get_sample_list()
+
+        with get_redis_connection(decode_response=True) as redis_connection:
+            drop_location = redis_connection.get("current_drop_location")
+        if drop_location is None:
+            # No sample loaded, reset all samples
+            for sample in sample_list:
+                sample: Xtal
+                sample._set_loaded(loaded=False, has_been_loaded=False)
+                # sample._set_info(present=False, id=None, scanned=False)
+            return
+
+        for sample in sample_list:
+            sample: Xtal
+            if sample.address[:-2] == drop_location:
+                sample._set_loaded(loaded=True, has_been_loaded=True)
+                sample._set_info(
+                    present=True, id=sample.id, scanned=False)
+            else:
+                sample._set_loaded(loaded=False, has_been_loaded=False)
         # plate_location = None
         # if self.chan_plate_location is not None:
         #    plate_location = self.chan_plate_location.get_value()
