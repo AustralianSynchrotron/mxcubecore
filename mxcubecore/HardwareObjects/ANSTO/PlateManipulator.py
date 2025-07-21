@@ -418,13 +418,14 @@ class PlateManipulator(AbstractSampleChanger):
             self._set_loaded_sample(sample)
 
     def load(self, sample=None, sample_order=None, wait=True):
-        comp = self._resolve_component(sample)
+        comp = self.get_component_by_address(sample)
         coords = comp.get_coords()
-        res = self._load_sample(coords, sample[:-2])
-        if res:
-            self._set_loaded_sample(comp, sample)
+        self._load_sample(coords, sample[:-2])
+
+        if comp:
+            self._set_loaded_sample(comp)
             comp._set_loaded(True, True)
-        return res
+        return 
 
     def _parse_plate_address(self, address):
         import re
