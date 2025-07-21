@@ -388,20 +388,7 @@ class PlateManipulator(AbstractSampleChanger):
                 basket._add_component(cell)
         self._set_state(SampleChangerState.Ready)
 
-    def _do_abort(self):
-        """
-        Descript. :
-        """
-        self._abort()
 
-    def _do_change_mode(self, mode):
-        """
-        Descript. :
-        """
-        if mode == AbstractSampleChanger.SampleChangerMode.Charging:
-            self._set_phase("Transfer")
-        elif mode == AbstractSampleChanger.SampleChangerMode.Normal:
-            self._set_phase("Centring")
 
     def _do_load(self, sample=None):
         """
@@ -516,11 +503,7 @@ class PlateManipulator(AbstractSampleChanger):
             self.emit("progressStop", ())
 
             logging.getLogger("user_level_log").info("Plate Manipulator: Sample loaded")
-        
-        # # This may not be necessary
-        # self.emit( "loaded_sample_changed",
-        #     {"address": sample_str, "barcode": ""})
-        # self._set_loaded_sample(new_sample)
+
 
     def get_loaded_sample(self) -> Xtal | None:
         """
@@ -550,8 +533,6 @@ class PlateManipulator(AbstractSampleChanger):
         self._reset_loaded_sample()
         self._trigger_loaded_sample_changed_event(None)
 
-        # self._on_state_changed("Ready")
-
     def _reset_loaded_sample(self):
         for smp in self.get_sample_list():
             smp._set_loaded(False)
@@ -560,23 +541,7 @@ class PlateManipulator(AbstractSampleChanger):
             redis_connection.delete("current_drop_location")
         self._trigger_loaded_sample_changed_event(None)
 
-    def _do_reset(self):
-        """
-        Descript. :
-        """
-        self._reset(False)
-        self._wait_device_ready()
 
-    def _do_scan(self, component, recursive):
-        """
-        Descript. :
-        """
-        if not isinstance(component, PlateManipulator):
-            raise Exception("Not supported")
-        self._initializeData()
-        if self.get_token() is None:
-            raise Exception("No plate barcode defined")
-        self._load_data(self.get_token())
 
     def _do_select(self, component):
         """
@@ -631,38 +596,7 @@ class PlateManipulator(AbstractSampleChanger):
         self._reset_loaded_sample()
         self._wait_device_ready()
 
-    def _load_data(self, barcode):
-        processing_plan = Crims.get_processing_plan(
-            barcode, self.crims_url, self.crims_user_agent, self.harvester_key
-        )
 
-        if processing_plan is None:
-            msg = "No information about plate with barcode %s found in CRIMS" % barcode
-            logging.getLogger("user_level_log").error(msg)
-        else:
-            msg = "Information about plate with barcode %s found in CRIMS" % barcode
-            logging.getLogger("user_level_log").info(msg)
-            self._set_info(True, processing_plan.plate.barcode, True)
-
-            for x in processing_plan.plate.xtal_list:
-                cell = self.get_component_by_address(
-                    Cell._get_cell_address(x.row, x.column)
-                )
-                cell._set_info(True, "", True)
-                drop = self.get_component_by_address(
-                    Drop._get_drop_address(cell, x.shelf)
-                )
-                drop._set_info(True, "", True)
-                xtal = Xtal(drop, drop.get_number_of_components())
-                xtal._set_info(True, x.pin_id, True)
-                xtal._set_image_url(x.image_url)
-                xtal._set_image_x(x.offset_x)
-                xtal._set_image_y(x.offset_y)
-                xtal._set_login(x.login)
-                xtal._set_name(x.sample)
-                xtal._set_info_url(x.summary_url)
-                drop._add_component(xtal)
-            return processing_plan
 
     def _do_update_info(self):
         """
@@ -709,24 +643,6 @@ class PlateManipulator(AbstractSampleChanger):
                     present=True, id=sample.id, scanned=False)
             else:
                 sample._set_loaded(loaded=False, has_been_loaded=False)
-        # plate_location = None
-        # if self.chan_plate_location is not None:
-        #    plate_location = self.chan_plate_location.get_value()
-
-        # if self.plate_location is not None:
-        # new_sample = self.get_sample(self.plate_location)
-
-        # if old_sample != new_sample:
-        #     if old_sample is not None:
-        #         # there was a sample on the gonio
-        #         loaded = False
-        #         has_been_loaded = True
-        #         old_sample._set_loaded(loaded, has_been_loaded)
-        #     if new_sample is not None:
-        #         # self._update_sample_barcode(new_sample)
-        #         loaded = True
-        #         has_been_loaded = True
-        #         new_sample._set_loaded(loaded, has_been_loaded)
 
     def get_sample(self, plate_location):
         row = int(plate_location[0])
@@ -757,6 +673,7 @@ class PlateManipulator(AbstractSampleChanger):
         return sample_list
 
     def is_mounted_sample(self, sample_location):
+        # TODO
         client = self.get_client()
 
         # return client.status.state.goni_plate() is not None
@@ -775,21 +692,9 @@ class PlateManipulator(AbstractSampleChanger):
 
         return plate_info_dict
 
-    def get_plate_location(self):
-        return self.plate_location
 
-    def change_plate_barcode(self, barcode):
-        if self._load_data(barcode):
-            self.plate_barcode = barcode
-            return True
-        else:
-            raise Exception("barcode unknown")
 
-    def sync_with_crims(self):
-        return self._load_data(self.plate_barcode)
 
-    def re_emit_values(self):
-        return
 
     def move_to_crystal_position(self, crystal_uuid):
         """
@@ -841,8 +746,19 @@ class PlateManipulator(AbstractSampleChanger):
         for overwriting in tests
         """
         return Client(host=settings.ROBOT_HOST, readonly=False)
+    
+    # Not implemented
+    def _do_reset(self):
+        pass
+    def _do_scan(self, component, recursive):
+        pass
+    def _do_abort(self):
+        pass
 
-
+    def _do_change_mode(self, mode):
+        pass
+    def sync_with_crims(self):
+        pass
 class DummyChannel:
     """Only used for SIM mode"""
 
