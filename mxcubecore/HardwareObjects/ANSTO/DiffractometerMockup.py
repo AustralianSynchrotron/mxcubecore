@@ -29,6 +29,7 @@ from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
     PhaseEnum,
 )
+
 from .redis_utils import get_redis_connection
 
 
@@ -128,11 +129,11 @@ class DiffractometerMockup(GenericDiffractometer):
                 logging.getLogger("HWR").warning(
                     "mxcube:md3_head_type redis key not found. "
                     "Assuming SmartMagnet head type."
-                    )
+                )
                 # By default assume pin SmartMagnet heat type
                 return False
 
-        return head_type=="Plate"
+        return head_type == "Plate"
 
     def use_sample_changer(self):
         return self.mount_mode == "sample_changer"

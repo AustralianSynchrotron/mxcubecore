@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<object class="DiffractometerMockup">
+<object class="ANSTO.DiffractometerMockup">
   <username>diffractometer</username>
   <object role="focus" hwrid="./md3/motor_x"></object>
   <object role="zoom" hwrid="./md3/zoom"></object>
