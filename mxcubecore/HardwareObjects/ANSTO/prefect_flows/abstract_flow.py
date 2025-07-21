@@ -477,3 +477,21 @@ class AbstractPrefectWorkflow(ABC):
                     ),
                     json={"value": roi_mode},
                 )
+
+    def get_head_type(
+        self,
+    ) -> Literal["SmartMagnet", "MiniKappa", "Plate", "Permanent", "Unknown"]:
+        """
+        Get the md3 head type from the md3 and saved it to redis
+
+        Returns
+        -------
+        None
+        """
+        with self._get_redis_connection() as redis_connection:
+            head_type = redis_connection.get("mxcube:md3_head_type")
+
+        if head_type is None:
+            raise ValueError("mxcube:md3_head_type is not set in redis")
+
+        return head_type

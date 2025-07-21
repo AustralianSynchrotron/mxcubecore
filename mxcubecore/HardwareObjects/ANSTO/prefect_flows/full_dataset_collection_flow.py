@@ -66,6 +66,13 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             )
             sample_id = dialog_box_model.sample_id
 
+        head_type = self.get_head_type()
+        if head_type == "Plate":
+            type = "tray"
+        elif head_type == "SmartMagnet":
+            type = "pin"
+        else:
+            raise NotImplementedError(f"MD3 head type {head_type} not implemented")
         prefect_parameters = {
             "sample_id": sample_id,
             "crystal_counter": dialog_box_model.crystal_counter,
@@ -75,6 +82,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
             "pipeline": dialog_box_model.processing_pipeline,
             "data_processing_config": None,
+            "type": type,
         }
 
         logging.getLogger("HWR").debug(

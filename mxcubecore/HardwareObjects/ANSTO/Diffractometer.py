@@ -20,6 +20,7 @@ from mxcubecore.HardwareObjects.GenericDiffractometer import (
 )
 
 from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
+from .redis_utils import get_redis_connection
 
 EXPORTER_TO_HWOBJ_STATE = {
     "Fault": HardwareObjectState.FAULT,
@@ -176,6 +177,17 @@ class Diffractometer(GenericDiffractometer):
         self.read_phase.connect_signal("update", self._update_phase_value)
         self.state.connect_signal("update", self._update_state)
 
+        self.get_md3_head_type = self.add_command(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "get_md3_head_type",
+            },
+            "getHeadType",
+        )
+
+        self._save_head_type_to_redis()
+
     def _update_phase_value(self, value: str = None) -> None:
         """
         Updates the phase of the md3
@@ -281,8 +293,35 @@ class Diffractometer(GenericDiffractometer):
     def execute_server_task(self, method, timeout=30, *args):
         return
 
-    def in_plate_mode(self):
-        return self.mount_mode == "plate"
+    def in_plate_mode(self) -> bool:
+        """
+        Determines if the diffractometer is in plate mode
+
+        Returns
+        -------
+        bool
+            True if the md3 is in plate mode
+        """
+        with get_redis_connection() as redis_connection:
+            head_type = redis_connection.get("mxcube:md3_head_type")
+            if head_type is None:
+                raise ValueError(
+                    "MD3 head type (mxcube:md3_head_type) not found in redis"
+                )
+
+        return head_type == "Plate"
+
+    def _save_head_type_to_redis(self) -> None:
+        """
+        Get the md3 head type from the md3 and saved it to redis
+
+        Returns
+        -------
+        None
+        """
+        head_type = self.get_md3_head_type()
+        with get_redis_connection() as redis_connection:
+            redis_connection.set("mxcube:md3_head_type", head_type)
 
     def use_sample_changer(self):
         return self.mount_mode == "sample_changer"
