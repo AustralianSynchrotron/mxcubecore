@@ -492,7 +492,6 @@ class AbstractPrefectWorkflow(ABC):
             head_type = redis_connection.get("mxcube:md3_head_type")
 
         if head_type is None:
-            # Default is Smart Magnet
-            return "SmartMagnet"
+            raise ValueError("mxcube:md3_head_type is not set in redis")
 
         return head_type
