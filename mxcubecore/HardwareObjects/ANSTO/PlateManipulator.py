@@ -51,7 +51,9 @@ from mx_robot_library.client import Client
 
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.abstract import AbstractSampleChanger
+from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
+    SampleChanger as AbstractSampleChanger,
+)
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import SampleChangerState
 from mxcubecore.HardwareObjects.abstract.sample_changer import (
     Container,
@@ -217,13 +219,13 @@ class Cell(Container.Container):
         return str(row) + str(col)
 
 
-class PlateManipulator(AbstractSampleChanger.SampleChanger):
+class PlateManipulator(AbstractSampleChanger):
     """ """
 
     __TYPE__ = "PlateManipulator"
 
     def __init__(self, *args, **kwargs):
-        super(PlateManipulator, self).__init__(self.__TYPE__, False, *args, **kwargs)
+        super().__init__(self.__TYPE__, False, *args, **kwargs)
 
         self.plate_label = None
         self.num_cols = None
@@ -254,7 +256,7 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
         self.reference_pos_x = self.get_property("referencePosX")
 
         # self.chan_current_phase = self.get_channel_object("CurrentPhase")
-        self.chan_drop_location = self.get_channel_object("DropLocation")
+        #self.chan_drop_location = self.get_channel_object("DropLocation")
         # self.chan_plate_location = self.get_channel_object("PlateLocation")
         # if self.chan_plate_location is not None:
         #     self.chan_plate_location.connect_signal(
@@ -283,7 +285,8 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
             self.chan_drop_location = DummyChannel()
             self.move_plate_to_shelf = DummyChannel()
 
-        self.state = self.add_channel(
+        # TODO: move self.state to mock
+        self.md3_state = self.add_channel(
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
@@ -291,18 +294,16 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
             },
             "State",
         )
-        self.state.connect_signal("update", self._update_state)
+        self.md3_state.connect_signal("update", self._update_state)
 
         if not self.reference_pos_x:
             self.reference_pos_x = 0.5
 
         self._init_sc_contents()
 
-        AbstractSampleChanger.SampleChanger.init(self)
+        super().init()
 
-        self.update_state(self.STATES.READY)
-        list_ = self.get_sample_list()
-        print(list_)
+        self.update_info()
 
     def _update_state(self, value: str) -> None:
         """
@@ -387,7 +388,7 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
             for col in range(self.num_cols):
                 cell = Cell(basket, chr(65 + row), col + 1, self.num_drops)
                 basket._add_component(cell)
-        self._set_state(AbstractSampleChanger.SampleChangerState.Ready)
+        self._set_state(SampleChangerState.Ready)
 
     def _do_abort(self):
         """
@@ -477,7 +478,7 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
             # self.move_plate_to_shelf(row, col, drop)
             # drop_address = drop.address # in the format e.g. 'F4:1'
 
-            self.update_state(self.STATES.BUSY)
+            #self.update_state(self.STATES.BUSY)
             msg = "Moving to position %s:%d" % ((chr(65 + row), col))
             logging.getLogger("user_level_log").warning(
                 "Plate Manipulator: %s Please wait..." % msg
@@ -500,7 +501,7 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
 
             self.update_info()
             logging.getLogger("user_level_log").info("Plate Manipulator: Sample loaded")
-            self.update_state(self.STATES.READY)
+            # self.update_state(self.STATES.READY)
 
     def _set_state(self, state=None, status=None):
         """Set the state"""
@@ -652,12 +653,7 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
         Descript. :
         """
         self._update_loaded_sample()
-        self._set_state(status=SampleChangerState.tostring(SampleChangerState.Ready))
-        # client = self.get_client()
-
-        # robot_state = client.status.state
-
-        # self._update_sample_changer_state(robot_state)
+        self._update_sample_changer_state()
 
     def _update_loaded_sample(self):
         """Updates plate location"""
@@ -749,76 +745,37 @@ class PlateManipulator(AbstractSampleChanger.SampleChanger):
          Descript. : Move Diff to crystal position
          Get crystal_uuid from processing plan for loaded sample/drop
         #"""
-        ret = None
-        if crystal_uuid in ["undefined", None]:
-            loaded_sample = self.chan_drop_location.get_value()
-            row = int(loaded_sample[0])
-            col = int(loaded_sample[1])
-            drop = int(loaded_sample[2])
+        # This is where we can unblur the image after moving to the position
 
-            # if self.processing_plan:
-            #     for x in self.processing_plan.plate.xtal_list:
-            #         if (row == ord(x.row) - 65  and  col == x.column -1 and drop == x.shelf -1):
-            #             crystal_uuid = x.crystal_uuid
-            # else : raise Exception("No processing_plan OR Crystal Found in this well")
+        self.update_info()
 
-        # if self.cmd_move_to_crystal_position and crystal_uuid:
-        #         try:
-        #             # ret = self.cmd_move_to_crystal_position(row, col, drop, x.image_url, x.offset_x, x.offset_y, 0.0, 0.0, False)
-        #             ret = self.cmd_move_to_crystal_position(self.plate_barcode, crystal_uuid)
-        #         except Exception as ex:
-        #             raise Exception("Could not move to crystal position %s" %str(ex))
-        # else:
-        #     raise Exception("move_to_crystal_position command or crystal UUID not found")
-        self.update_state(self.STATES.READY)
-        self._set_state(status=SampleChangerState.tostring(SampleChangerState.Ready))
-        # return ret
-
-    def _update_sample_changer_state(self, robot_state) -> None:
+    def _update_sample_changer_state(self) -> None:
         """
         Updates the sample changer state
-
-        Parameters
-        ----------
-        robot_state : StateResponse
-            The Isara robot state response
 
         Returns
         -------
         None
         """
-        _is_enabled = robot_state.power and robot_state.remote_mode
-        _is_normal_state = _is_enabled and not robot_state.fault_or_stopped
+        md3_state = self.md3_state.get_value().lower()
         _state: int = SampleChangerState.Unknown
-        if not _is_enabled:
-            _state = SampleChangerState.Disabled
-        elif robot_state.fault_or_stopped:
-            _state = SampleChangerState.Fault
-        elif robot_state.error is not None:
-            # Might need to modify this to read binary alarms set in robot status.
-            _state = SampleChangerState.Alarm
-        elif robot_state.path.name != "":
-            if robot_state.path.name in ("put", "getput", "putht", "getputht"):
-                _state = SampleChangerState.Loading
-            elif robot_state.path.name in ("get", "getht"):
-                _state = SampleChangerState.Unloading
-            elif robot_state.path.name == "pick":
-                _state = SampleChangerState.Selecting
-            elif robot_state.path.name == "datamatrix":
-                _state = SampleChangerState.Scanning
-            else:
-                _state = SampleChangerState.Moving
-        elif robot_state.goni_pin is not None:
-            _state = SampleChangerState.Loaded
-        elif _is_normal_state and robot_state.path.name == "":
+        if md3_state =="ready":
             _state = SampleChangerState.Ready
+        elif md3_state == "fault":
+            _state = SampleChangerState.Moving
+        elif md3_state == "moving":
+            _state = SampleChangerState.Moving
+        elif md3_state == "alarm":
+            _state = SampleChangerState.Alarm
+        else:
+            _state = SampleChangerState.Unknown
 
         _last_state = self.state
-        if _state != _last_state:
-            self._set_state(
-                state=_state,
-                status=SampleChangerState.tostring(_state),
-            )
+        #if _state != _last_state:
+        self._set_state(
+            state=_state,
+            status=SampleChangerState.tostring(_state),
+        )
 
     def get_room_temperature_mode(self):
         return True
