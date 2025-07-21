@@ -11,7 +11,6 @@ from typing import (
 from urllib.parse import urljoin
 
 import httpx
-import redis
 from gevent import sleep
 from mx_robot_library.client.client import Client
 from mx_robot_library.config import get_settings as get_robot_settings
@@ -43,6 +42,7 @@ from mxcubecore.HardwareObjects.abstract.sample_changer.Container import (
 from mxcubecore.TaskUtils import task as dtask
 
 from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
+from .redis_utils import get_redis_connection
 
 hwr_logger = logging.getLogger("HWR")
 robot_config = get_robot_settings()
@@ -133,7 +133,14 @@ class MxcubePuck(AbstractPuck):
 
 
 class SampleChanger(AbstractSampleChanger):
-    """ANSTO Sample Changer"""
+    """ANSTO Sample Changer
+
+    NOTE: Polling of the puck and pin information and state is determined by the
+    `self.use_update_timer` property. If set to True, the puck and pin information
+    and state will be updated every second. The interval can be changed by setting
+    `self.__timer_1s_task` or `self.__update_timer_task`.
+
+    """
 
     __TYPE__ = "IRELEC_ISARA2"
 
@@ -322,6 +329,7 @@ class SampleChanger(AbstractSampleChanger):
             client = self.get_client()
 
             robot_state = client.status.state
+            puck_list = self.get_pucks_by_epn()
 
             components: list[MxcubePuck] = self.get_components()
             for mxcube_puck_idx in range(self.no_of_baskets):
@@ -342,6 +350,7 @@ class SampleChanger(AbstractSampleChanger):
                         puck_location=puck_location,
                         port=port,
                         robot_state=robot_state,
+                        puck_list=puck_list,
                     )
 
             self._update_sample_changer_state(robot_state)
@@ -355,6 +364,7 @@ class SampleChanger(AbstractSampleChanger):
         puck_location: int,
         port: int,
         robot_state: StateResponse,
+        puck_list: list[dict],
     ):
         """
         Updates the pin information
@@ -369,6 +379,8 @@ class SampleChanger(AbstractSampleChanger):
             The pin position in the puck
         robot_state : StateResponse
             The state from the robot as reported by the mx-robot-library
+        puck_list : list[dict]
+            A list of pucks from the data layer API, each puck is a dictionary
         """
         robot_pin: RobotPin | None = None
         if robot_puck is not None:
@@ -382,11 +394,16 @@ class SampleChanger(AbstractSampleChanger):
         if robot_pin is not None and robot_puck.name:  # check also that barcode exists
             try:
                 sample_name = self.get_sample_by_barcode_and_port(
+                    puck_list=puck_list,
                     port=port,
                     barcode=robot_puck.name.replace("-", ""),
                 )
             except Exception:
                 sample_name = str(robot_pin)
+
+            if sample_name is None:
+                sample_name = str(robot_pin)
+
             mxcube_pin._name = sample_name
             pin_datamatrix = str(robot_pin)
 
@@ -644,82 +661,67 @@ class SampleChanger(AbstractSampleChanger):
         _client = self.get_client()
         return _client.status.state.power
 
-    def get_sample_by_barcode_and_port(self, port: int, barcode: str) -> str:
+    def get_sample_by_barcode_and_port(
+        self, puck_list: list[dict], port: int, barcode: str
+    ) -> str:
         """
-        Gets the pin model from the mx-data-layer-api from port and barcode.
-        The epn is read from redis.
-
-        Returns
-        -------
-        str
-            The sample name
-
-        """
-        with redis.StrictRedis(
-            host=settings.MXCUBE_REDIS_HOST,
-            port=settings.MXCUBE_REDIS_PORT,
-            username=settings.MXCUBE_REDIS_USERNAME,
-            password=settings.MXCUBE_REDIS_PASSWORD,
-            db=settings.MXCUBE_REDIS_DB,
-        ) as redis_connection:
-
-            epn_value: bytes | None = redis_connection.get("epn")
-            if epn_value is None:
-                logging.getLogger("user_level_log").error(
-                    "epn redis key does not exist"
-                )
-                raise ValueError(
-                    f"epn redis key does not exist",
-                )
-
-            epn_string = epn_value.decode("utf-8")
-
-        return self.get_pin_name(
-            epn_string=epn_string,
-            port=port,
-            barcode=barcode.replace("-", ""),
-        )
-
-    def get_pin_name(self, epn_string, port, barcode) -> str:
-        """
-        Get the pin name from the data layer API by barcode, port, and epn.
-        If the pin name is already cached, returns the cached value,
-        otherwise it will call the data layer API to get the pin name.
+        Get the pin name from the data layer API by barcode and port.
+        The puck_list has to be obtained from the data layer API using the
+        `get_pucks_by_epn` method.
 
         Parameters
         ----------
-        epn_string : str
-            The epn strings
+        puck_list : list[dict]
+            A list of pucks from the data layer API, each puck is a dictionary
+            containing the puck information.
         port : int
             The port number of the pin.
         barcode : str
-            The barcode of the puck containing the pin.
+            The barcode of the puck containing the pin. Barcode must be in the format
+            "MX3005".
 
         Returns
         -------
         str
             The sample name.
         """
-        key = (epn_string, port, barcode)
-        if key in self._pin_name_cache:
-            return self._pin_name_cache[key]
+        for i in range(len(puck_list)):
+            if puck_list[i]["barcode"] == barcode:
+                for pin in puck_list[i]["pins"]:
+                    if pin["port"] == port:
+                        return pin["name"]
+        return None
 
-        url = urljoin(
-            settings.DATA_LAYER_API,
-            f"/samples/pins?filter_by_port={port}&filter_by_puck_barcode={barcode}&filter_by_visit_identifier={epn_string}",
-        )
-        r = httpx.get(url)
-        if r.status_code == HTTPStatus.OK:
-            data = r.json()
-            if len(data) == 1:
-                name = data[0]["name"]
-                self._pin_name_cache[key] = name  # Cache only successful result
-                return name
-            else:
-                raise ValueError(
-                    f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
+    def get_pucks_by_epn(self) -> list[dict]:
+        """
+        Gets the pucks by epn from the data layer API.
+
+        Returns
+        -------
+        list[dict]
+            A list of pucks, each puck is a dictionary containing the puck information.
+            If the epn redis key does not exist, or if there is an error
+            an empty list is returned.
+        """
+        try:
+            with get_redis_connection(decode_response=True) as redis_connection:
+                epn_string: bytes | None = redis_connection.get("epn")
+                if epn_string is None:
+                    logging.getLogger("user_level_log").error(
+                        "epn redis key does not exist"
+                    )
+                    raise ValueError(
+                        f"epn redis key does not exist",
+                    )
+
+            r = httpx.get(
+                urljoin(
+                    settings.DATA_LAYER_API,
+                    f"samples/pucks?filter_by_visit_identifier={epn_string}",
                 )
-        else:
-            raise ValueError(
-                f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
             )
+            if r.status_code != HTTPStatus.OK:
+                return []
+            return r.json()
+        except Exception:
+            return []
