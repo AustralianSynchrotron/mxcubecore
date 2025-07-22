@@ -392,29 +392,7 @@ class PlateManipulator(AbstractSampleChanger):
 
 
 
-    def load(self, sample: str | None = None, sample_order: list | None=None, wait: bool=True) -> None:
-        """
-        Load a sample.
-
-        Parameters
-        ----------
-        sample : str | None
-            The address of the sample to load, in the format 'B7:1-0'
-        sample_order : list | None
-            The order in which to load samples. This is not used for trays,
-            only useful for the pin sample changer.
-        wait : bool
-            Whether to wait for the load operation to complete.
-
-        Returns
-        -------
-        None
-        """
-
-        sample: Xtal = self._resolve_component(sample)
-        return self._execute_task(
-            SampleChangerState.Loading, wait, self._do_load, sample
-        )
+ 
 
     def _parse_plate_address(self, address: str) -> tuple[int, int, int]:
         """
@@ -462,42 +440,75 @@ class PlateManipulator(AbstractSampleChanger):
                 return smp
         return None
 
-    def _do_load(self, new_sample: Xtal):
+    def load(self, sample: str | None = None, sample_order: list | None=None, wait: bool=True) -> None:
         """
-        Descript. : function to move to plate location.
-                    Location is estimated by sample location and reference positions.
+        Load a sample.
+
+        Parameters
+        ----------
+        sample : str | None
+            The address of the sample to load, in the format 'B7:1-0'
+        sample_order : list | None
+            The order in which to load samples. Not used for trays
+        wait : bool
+            Whether to wait for the load operation to complete.
+
+        Returns
+        -------
+        None
         """
 
-        sample_str = new_sample.address[:-2]  # e.g. 'B7:1'
-        row_int, col_int, drop_int = self._parse_plate_address(sample_str)
+        sample: Xtal = self._resolve_component(sample)
+        return self._execute_task(
+            SampleChangerState.Loading, wait, self._do_load, sample
+        )
 
-        old_sample = self.get_loaded_sample()
-        if old_sample != new_sample:
-            msg = f"Moving to position {sample_str}"
-            logging.getLogger("user_level_log").warning(
-                f"Plate Manipulator: {msg} Please wait..."
-            )
-            # self.move_plate_to_shelf(col_int, row_int, drop_int)
-            with get_redis_connection() as redis_connection:
-                redis_connection.set("current_drop_location", sample_str)
+    def _do_load(self, new_sample: Xtal) -> None:
+        """
+        Moves the tray to the new_sample position and updates the loaded sample state.
+        Called by the load method.
 
-            self.emit("progressInit", (msg, 100))
-            gevent.sleep(0.1)
-            while self.md3_state.get_value().lower() != "ready":
+        Parameters
+        ----------
+        new_sample : Xtal
+            The sample to load, which should be an instance of the Xtal class.
+
+        Raises
+        ------
+        Exception
+            If there is an error during the loading process, an exception is raised.
+        """
+        try:
+            sample_str = new_sample.address[:-2]  # e.g. 'B7:1'
+
+            # TODO: we're not moving the plate yet
+            row_int, col_int, drop_int = self._parse_plate_address(sample_str)
+
+            old_sample = self.get_loaded_sample()
+            if old_sample != new_sample:
+                # self.move_plate_to_shelf(col_int, row_int, drop_int)
+                with get_redis_connection() as redis_connection:
+                    redis_connection.set("current_drop_location", sample_str)
+
                 gevent.sleep(0.1)
+                while self.md3_state.get_value().lower() != "ready":
+                    gevent.sleep(0.1)
 
-            if old_sample is not None:
-                old_sample._set_loaded(False, True)
-                self._trigger_loaded_sample_changed_event(old_sample)
-                gevent.sleep(0.01)
-            if new_sample is not None:
-                new_sample._set_loaded(True, True)
-                self._trigger_loaded_sample_changed_event(new_sample)
+                if old_sample is not None:
+                    old_sample._set_loaded(False, True)
+                    self._trigger_loaded_sample_changed_event(old_sample)
+                    gevent.sleep(0.01)
+                if new_sample is not None:
+                    new_sample._set_loaded(True, True)
+                    self._trigger_loaded_sample_changed_event(new_sample)
 
-            self.update_info()
-            self.emit("progressStop", ())
+                self.update_info()
 
-            logging.getLogger("user_level_log").info("Plate Manipulator: Sample loaded")
+        except Exception as e:
+            logging.getLogger("user_level_log").error(
+                f"Error loading sample {new_sample.address}: {str(e)}"
+            )
+            raise e
 
 
     def get_loaded_sample(self) -> Xtal | None:
@@ -521,9 +532,18 @@ class PlateManipulator(AbstractSampleChanger):
 
         return loaded_sample
 
-    def _do_unload(self, sample_slot=None) -> None:
+    def _do_unload(self, sample_slot: Xtal | None=None) -> None:
         """
-        Descript. :
+        Resets the loaded sample state and deletes the current drop location from redis
+
+        Parameters
+        ----------
+        sample_slot : Xtal | None
+            The sample to unload. Not used in this implementation
+
+        Returns
+        -------
+        None
         """
         self._reset_loaded_sample()
         self._trigger_loaded_sample_changed_event(None)
