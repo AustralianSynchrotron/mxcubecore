@@ -65,14 +65,6 @@ import re
 
 from .redis_utils import get_redis_connection
 
-EXPORTER_TO_HWOBJ_STATE = {
-    "Fault": HardwareObjectState.FAULT,
-    "Ready": HardwareObjectState.READY,
-    "Moving": HardwareObjectState.BUSY,
-    "Busy": HardwareObjectState.BUSY,
-    "Unknown": HardwareObjectState.BUSY,
-    "Offline": HardwareObjectState.OFF,
-}
 
 
 class Xtal(Sample.Sample):
@@ -257,14 +249,6 @@ class PlateManipulator(AbstractSampleChanger):
         self.harvester_key = self.get_property("harvesterKey")
         self.reference_pos_x = self.get_property("referencePosX")
 
-        # self.chan_current_phase = self.get_channel_object("CurrentPhase")
-        #self.chan_drop_location = self.get_channel_object("DropLocation")
-        # self.chan_plate_location = self.get_channel_object("PlateLocation")
-        # if self.chan_plate_location is not None:
-        #     self.chan_plate_location.connect_signal(
-        #         "update", self.plate_location_changed
-        #     )
-        # self.plate_location_changed(self.chan_plate_location.get_value())
         if settings.BL_ACTIVE:
             self.chan_drop_location = self.add_channel(
                 {
@@ -296,7 +280,14 @@ class PlateManipulator(AbstractSampleChanger):
             },
             "State",
         )
-        self.md3_state.connect_signal("update", self._update_state)
+        self.md3_phase = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "phase",
+            },
+            "CurrentPhase",
+        )
 
         if not self.reference_pos_x:
             self.reference_pos_x = 0.5
@@ -307,66 +298,13 @@ class PlateManipulator(AbstractSampleChanger):
 
         self.update_info()
 
-    def _update_state(self, value: str) -> None:
-        """
-        Updates the state of the md3
 
-        Parameters
-        ----------
-        value : str
-           The state of the md3
-
-        Returns
-        -------
-        None
-        """
-        _state = SampleChangerState.Ready
-        self._set_state(
-            # EXPORTER_TO_HWOBJ_STATE.get(value, HardwareObjectState.UNKNOWN)
-            state=SampleChangerState.Ready,
-            status=SampleChangerState.tostring(_state),
-        )
-
-    def plate_location_changed(self, plate_location):
-        self.plate_location = plate_location
-        self._update_loaded_sample()
-        self.update_info()
-
-    def state_changed(self, state):
-        try:
-            self._on_state_changed(state)
-        except AttributeError:
-            pass
 
     def _read_state(self):
         return "ready"
 
     def _ready(self):
         return True
-
-    def _on_state_changed(self, state):
-        """
-        Descript. : state change callback. Based on diffractometer state
-                    sets PlateManipulatorMockup state.
-        """
-        if state is None:
-            self._set_state(SampleChangerState.Unknown)
-        else:
-            if state == "Alarm":
-                self._set_state(SampleChangerState.Alarm)
-            elif state == "Fault":
-                self._set_state(SampleChangerState.Fault)
-            elif state == "Moving" or state == "Running":
-                self._set_state(SampleChangerState.Moving)
-            elif state == "Ready":
-                if self.current_phase == "Transfer":
-                    self._set_state(SampleChangerState.Charging)
-                elif self.current_phase == "Centring":
-                    self._set_state(SampleChangerState.Ready)
-                else:
-                    self._set_state(SampleChangerState.StandBy)
-            elif state == "Initializing":
-                self._set_state(SampleChangerState.Initializing)
 
     def _init_sc_contents(self):
         """
@@ -457,11 +395,32 @@ class PlateManipulator(AbstractSampleChanger):
         -------
         None
         """
-
+        self.assert_not_charging()
         sample: Xtal = self._resolve_component(sample)
         return self._execute_task(
             SampleChangerState.Loading, wait, self._do_load, sample
         )
+
+    def assert_not_charging(self) -> None:
+        """ 
+        Checks if the sample changer is not currently charging or moving.
+        If it is, an exception is raised.
+
+        Raises
+        ------
+        Exception
+            If the sample changer is currently charging or moving, an exception is raised.
+        """
+        current_phase = self.md3_phase.get_value()
+        current_state = self.md3_state.get_value()
+        if current_phase == "Transfer" or current_state != "Ready":
+            logging.getLogger("user_level_log").error(
+                f"The current md3 phase is {current_phase} and the current md3 state is {current_state}."
+                "Wait until the md3 is ready and not in transfer phase."
+            )
+            raise Exception(
+                "Sample changer is currently charging or moving. Please wait until it is ready."
+            )
 
     def _do_load(self, new_sample: Xtal) -> None:
         """
@@ -736,21 +695,25 @@ class PlateManipulator(AbstractSampleChanger):
         -------
         None
         """
-        md3_state = self.md3_state.get_value().lower()
+        md3_state = self.md3_state.get_value()
+        current_phase = self.md3_phase.get_value()
         _state: int = SampleChangerState.Unknown
-        if md3_state =="ready":
+        if md3_state =="Ready":
             _state = SampleChangerState.Ready
-        elif md3_state == "fault":
+        elif md3_state == "Fault":
             _state = SampleChangerState.Moving
-        elif md3_state == "moving":
+        elif md3_state == "Moving":
             _state = SampleChangerState.Moving
-        elif md3_state == "alarm":
+        elif md3_state == "Alarm":
             _state = SampleChangerState.Alarm
         else:
             _state = SampleChangerState.Unknown
 
-        if md3_state == "ready" and self.has_loaded_sample():
+        if md3_state == "Ready" and self.has_loaded_sample():
             _state = SampleChangerState.Loaded
+
+        if md3_state == "Ready" and current_phase == "Transfer":
+            _state = SampleChangerState.Charging
 
         _last_state = self.state
         if _state != _last_state:
