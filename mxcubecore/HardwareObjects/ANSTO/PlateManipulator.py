@@ -15,7 +15,7 @@ from mxcubecore.HardwareObjects.abstract.sample_changer import (
     Sample,
 )
 
-from .mockup.sim_channels import (
+from .mockup.channels import (
     SimMd3Phase,
     SimMd3State,
 )
