@@ -169,7 +169,11 @@ class Cell(Container.Container):
 
 
 class PlateManipulator(AbstractSampleChanger):
-    """This class is based on the mxcubecore Plate manipulator class."""
+    """This class is based on the mxcubecore Plate manipulator class.
+
+    It uses simulated channels for the MD3 state and phase if
+    settings.BL_ACTIVE is False.
+    """
 
     __TYPE__ = "PlateManipulator"
 
@@ -463,21 +467,6 @@ class PlateManipulator(AbstractSampleChanger):
                 sample._set_info(present=True, id=sample.id, scanned=False)
             else:
                 sample._set_loaded(loaded=False, has_been_loaded=False)
-
-    def get_sample(self, plate_location):
-        row = int(plate_location[0])
-        col = int(plate_location[1])
-        y_pos = float(plate_location[3])
-        drop_index = abs(y_pos * self.num_drops) + 1
-        if drop_index > self.num_drops:
-            drop_index = self.num_drops
-
-        cell = self.get_component_by_address("%s%d" % (chr(65 + row), col + 1))
-        if cell:
-            drop = cell.get_component_by_address(
-                "%s%d:%d" % (chr(65 + row), col + 1, drop_index)
-            )
-            return drop.get_sample()
 
     def get_sample_list(self) -> list[Xtal]:
         """
