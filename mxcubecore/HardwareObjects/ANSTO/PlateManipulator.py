@@ -15,6 +15,10 @@ from mxcubecore.HardwareObjects.abstract.sample_changer import (
     Sample,
 )
 
+from .mockup.sim_channels import (
+    SimMd3Phase,
+    SimMd3State,
+)
 from .redis_utils import get_redis_connection
 
 
@@ -178,44 +182,42 @@ class PlateManipulator(AbstractSampleChanger):
         self.num_drops = self.get_property("numDrops")
 
         if settings.BL_ACTIVE:
-            self.chan_drop_location = self.add_channel(
+            # TODO: use in-house code to mode plate to shelf
+            # self.chan_drop_location = self.add_channel(
+            #     {
+            #         "type": "exporter",
+            #         "exporter_address": settings.EXPORTER_ADDRESS,
+            #         "name": "get_md3_head_type",
+            #     },
+            #     "DropLocation",
+            # )
+            # self.move_plate_to_shelf = self.add_command(
+            #     {
+            #         "type": "exporter",
+            #         "exporter_address": settings.EXPORTER_ADDRESS,
+            #         "name": "move_plate_to_shelf",
+            #     },
+            #     "startMovePlateToShelf",
+            # )
+            self.md3_state = self.add_channel(
                 {
                     "type": "exporter",
                     "exporter_address": settings.EXPORTER_ADDRESS,
-                    "name": "get_md3_head_type",
+                    "name": "state",
                 },
-                "DropLocation",
+                "State",
             )
-            self.move_plate_to_shelf = self.add_command(
+            self.md3_phase = self.add_channel(
                 {
                     "type": "exporter",
                     "exporter_address": settings.EXPORTER_ADDRESS,
-                    "name": "move_plate_to_shelf",
+                    "name": "phase",
                 },
-                "startMovePlateToShelf",
+                "CurrentPhase",
             )
-
         else:
-            self.chan_drop_location = DummyChannel()
-            self.move_plate_to_shelf = DummyChannel()
-
-        # TODO: move self.md3_state to mock
-        self.md3_state = self.add_channel(
-            {
-                "type": "exporter",
-                "exporter_address": settings.EXPORTER_ADDRESS,
-                "name": "state",
-            },
-            "State",
-        )
-        self.md3_phase = self.add_channel(
-            {
-                "type": "exporter",
-                "exporter_address": settings.EXPORTER_ADDRESS,
-                "name": "phase",
-            },
-            "CurrentPhase",
-        )
+            self.md3_state = SimMd3State()
+            self.md3_phase = SimMd3Phase()
 
         self._init_sc_contents()
 
@@ -600,17 +602,3 @@ class PlateManipulator(AbstractSampleChanger):
 
     def _do_select(self, component):
         pass
-
-
-class DummyChannel:
-    """Only used for SIM mode"""
-
-    def get_value(self, *args, **kwargs):
-        return None  # or any default value you want
-
-    def __getattr__(self, name):
-        # Return a dummy function for any method
-        def dummy(*args, **kwargs):
-            return None
-
-        return dummy
