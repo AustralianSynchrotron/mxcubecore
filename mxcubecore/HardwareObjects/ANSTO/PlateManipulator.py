@@ -390,39 +390,29 @@ class PlateManipulator(AbstractSampleChanger):
 
 
 
-    def _do_load(self, sample=None):
-        """
-        Descript. :
-        """
-        selected = self.get_selected_sample()
-        if sample is None:
-            sample = self.get_selected_sample()
-        if sample is not None:
-            if sample != selected:
-                self._do_select(sample)
-            self._set_loaded_sample(sample)
-
-    def load(self, sample=None, sample_order=None, wait=True):
+    def load(self, sample: str | None = None, sample_order: list | None=None, wait: bool=True) -> None:
         """
         Load a sample.
 
-        Args:
-            sample (tuple): sample address on the form
-                            (component1, ... ,component_N-1, component_N)
-            wait (boolean): True to wait for load to complete False otherwise
+        Parameters
+        ----------
+        sample : str | None
+            The address of the sample to load, in the format 'B7:1-0'
+        sample_order : list | None
+            The order in which to load samples. This is not used for trays,
+            only useful for the pin sample changer.
+        wait : bool
+            Whether to wait for the load operation to complete.
 
         Returns
-            (Object): Value returned by _execute_task either a Task or result of the
-                      operation
+        -------
+        None
         """
+
         sample: Xtal = self._resolve_component(sample)
-        # comp = self.get_component_by_address(sample)
         coords = sample.get_coords()
-
-
-
         return self._execute_task(
-            SampleChangerState.Loading, wait, self._load_sample, coords, sample.address[:-2]
+            SampleChangerState.Loading, wait, self._do_load, coords, sample.address[:-2]
         )
 
     def _parse_plate_address(self, address):
@@ -437,10 +427,14 @@ class PlateManipulator(AbstractSampleChanger):
         drop = int(drop_str) - 1
         return row, col, drop
 
-    def get_loaded_sample(self):
+    def get_loaded_sample(self) -> Xtal | None:
         """
-        Returns:
-            (Sample) Currently loaded sample
+        Returns the currently loaded sample based on the current drop location stored in Redis.
+
+        Returns
+        -------
+        Xtal | None
+            The currently loaded sample if available, otherwise None.
         """
         with get_redis_connection(decode_response=True) as redis_connection:
             response = redis_connection.get("current_drop_location")
@@ -453,7 +447,7 @@ class PlateManipulator(AbstractSampleChanger):
                 return smp
         return None
 
-    def _load_sample(self, sample_location: str | None = None, sample_str=None):
+    def _do_load(self, sample_location: str | None = None, sample_str=None):
         """
         Descript. : function to move to plate location.
                     Location is estimated by sample location and reference positions.
@@ -526,14 +520,22 @@ class PlateManipulator(AbstractSampleChanger):
 
         return loaded_sample
 
-    def _do_unload(self, sample_slot=None):
+    def _do_unload(self, sample_slot=None) -> None:
         """
         Descript. :
         """
         self._reset_loaded_sample()
         self._trigger_loaded_sample_changed_event(None)
 
-    def _reset_loaded_sample(self):
+    def _reset_loaded_sample(self) -> None:
+        """
+        Resets the loaded sample state for all samples in the tray
+        and deletes the current drop location from redis.
+
+        Returns
+        -------
+        None
+        """
         for smp in self.get_sample_list():
             smp._set_loaded(False)
 
@@ -598,31 +600,26 @@ class PlateManipulator(AbstractSampleChanger):
 
 
 
-    def _do_update_info(self):
+    def _do_update_info(self)-> None:
         """
-        Descript. :
+        Updates plate info and sample list and sample changer state.
+        This function is called every second
+        
+        Returns
+        -------
+        None
         """
         self._update_loaded_sample()
         self._update_sample_changer_state()
 
-    def update_info(self):
+    def _update_loaded_sample(self) -> None:
         """
-        Update sample changer sample information, currently loaded sample
-        and emits infoChanged and loadedSampleChanged when loaded sample
-        have changed
+        Updates the loaded sample based on the current drop location
+        
+        Returns
+        -------
+        None
         """
-        former_loaded = self.get_loaded_sample()
-        self._do_update_info()
-        if self._is_dirty():
-            self._trigger_info_changed_event()
-
-        loaded = self.get_loaded_sample()
-        if loaded != former_loaded:
-            self._trigger_loaded_sample_changed_event(loaded)
-            self._reset_dirty()
-
-    def _update_loaded_sample(self):
-        """Updates plate location"""
         sample_list = self.get_sample_list()
 
         with get_redis_connection(decode_response=True) as redis_connection:
@@ -632,7 +629,6 @@ class PlateManipulator(AbstractSampleChanger):
             for sample in sample_list:
                 sample: Xtal
                 sample._set_loaded(loaded=False, has_been_loaded=False)
-                # sample._set_info(present=False, id=None, scanned=False)
             return
 
         for sample in sample_list:
@@ -659,9 +655,14 @@ class PlateManipulator(AbstractSampleChanger):
             )
             return drop.get_sample()
 
-    def get_sample_list(self):
+    def get_sample_list(self) -> list[Xtal]:
         """
-        Descript. : This is ugly
+        Returns a list of all samples in the plate.
+
+        Returns
+        -------
+        list[Xtal]
+            A list of Sample objects representing the samples in the plate.
         """
         sample_list = []
         for basket in self.get_components():
@@ -669,6 +670,7 @@ class PlateManipulator(AbstractSampleChanger):
                 for cell in basket.get_components():
                     if isinstance(cell, Cell):
                         for drop in cell.get_components():
+                            drop: Drop
                             sample_list.append(drop.get_sample())
         return sample_list
 
@@ -707,7 +709,7 @@ class PlateManipulator(AbstractSampleChanger):
 
     def _update_sample_changer_state(self) -> None:
         """
-        Updates the sample changer state
+        Updates the sample changer state based on the md3 state.
 
         Returns
         -------
@@ -737,8 +739,6 @@ class PlateManipulator(AbstractSampleChanger):
             )
 
 
-    def get_room_temperature_mode(self):
-        return True
 
     @lru_cache()
     def get_client(self) -> Client:
@@ -759,6 +759,8 @@ class PlateManipulator(AbstractSampleChanger):
         pass
     def sync_with_crims(self):
         pass
+    def get_room_temperature_mode(self):
+        return True
 class DummyChannel:
     """Only used for SIM mode"""
 
