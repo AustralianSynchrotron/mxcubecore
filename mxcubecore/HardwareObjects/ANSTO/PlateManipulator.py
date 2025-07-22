@@ -60,6 +60,8 @@ from mxcubecore.HardwareObjects.abstract.sample_changer import (
     Crims,
     Sample,
 )
+import re
+
 
 from .redis_utils import get_redis_connection
 
@@ -410,14 +412,27 @@ class PlateManipulator(AbstractSampleChanger):
         """
 
         sample: Xtal = self._resolve_component(sample)
-        coords = sample.get_coords()
         return self._execute_task(
-            SampleChangerState.Loading, wait, self._do_load, coords, sample.address[:-2]
+            SampleChangerState.Loading, wait, self._do_load, sample
         )
 
-    def _parse_plate_address(self, address):
-        import re
+    def _parse_plate_address(self, address: str) -> tuple[int, int, int]:
+        """
+        Parses a plate address in the format 'B7:1' and returns the row, column, 
+        and drop index. The row is an integer which starts from 0 for 'A', 
+        the column is an integer starting from 0 for '1', and the drop index 
+        is an integer starting from 0 for the first drop.
 
+        Parameters
+        ----------
+        address : str
+            The address string to parse, e.g. 'B7:1'.
+        
+        Returns
+        -------
+        tuple[int, int, int]
+            A tuple containing the row index, column index, and drop index.
+        """
         match = re.match(r"([A-Z])(\d+):(\d+)", address)
         if not match:
             raise ValueError("Invalid address format")
@@ -447,33 +462,20 @@ class PlateManipulator(AbstractSampleChanger):
                 return smp
         return None
 
-    def _do_load(self, sample_location: str | None = None, sample_str=None):
+    def _do_load(self, new_sample: Xtal):
         """
         Descript. : function to move to plate location.
                     Location is estimated by sample location and reference positions.
         """
+
+        sample_str = new_sample.address[:-2]  # e.g. 'B7:1'
         row_int, col_int, drop_int = self._parse_plate_address(sample_str)
-        row = sample_location[0] - 1
-        col = int((sample_location[1] - 1) / self.num_drops)
-        drop = sample_location[1] - self.num_drops * col
 
-        # pos_y = float(drop) / (self.num_drops + 1)
-
-        # self.plate_location = [row, col, self.reference_pos_x, pos_y]
-        # col += 1
-        col += 1
-        cell: Cell = self.get_component_by_address("%s%d" % (chr(65 + row), col))
-        drop: Drop = cell.get_component_by_address("%s%d:%d" % (chr(65 + row), col, drop))
-        new_sample = drop.get_sample()
         old_sample = self.get_loaded_sample()
-        new_sample: Xtal = drop.get_sample()
         if old_sample != new_sample:
-            # self.move_plate_to_shelf(row, col, drop)
-            # drop_address = drop.address # in the format e.g. 'F4:1'
-
-            msg = "Moving to position %s:%d" % ((chr(65 + row), col))
+            msg = f"Moving to position {sample_str}"
             logging.getLogger("user_level_log").warning(
-                "Plate Manipulator: %s Please wait..." % msg
+                f"Plate Manipulator: {msg} Please wait..."
             )
             # self.move_plate_to_shelf(col_int, row_int, drop_int)
             with get_redis_connection() as redis_connection:
@@ -484,14 +486,13 @@ class PlateManipulator(AbstractSampleChanger):
             while self.md3_state.get_value().lower() != "ready":
                 gevent.sleep(0.1)
 
-            if old_sample != new_sample:
-                if old_sample is not None:
-                    old_sample._set_loaded(False, True)
-                    self._trigger_loaded_sample_changed_event(old_sample)
-                    gevent.sleep(0.01)
-                if new_sample is not None:
-                    new_sample._set_loaded(True, True)
-                    self._trigger_loaded_sample_changed_event(new_sample)
+            if old_sample is not None:
+                old_sample._set_loaded(False, True)
+                self._trigger_loaded_sample_changed_event(old_sample)
+                gevent.sleep(0.01)
+            if new_sample is not None:
+                new_sample._set_loaded(True, True)
+                self._trigger_loaded_sample_changed_event(new_sample)
 
             self.update_info()
             self.emit("progressStop", ())
