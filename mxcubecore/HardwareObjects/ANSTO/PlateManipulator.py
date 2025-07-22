@@ -1,55 +1,10 @@
-#  Project: MXCuBE
-#  https://github.com/mxcube
-#
-#  This file is part of MXCuBE software.
-#
-#  MXCuBE is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU Lesser General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  MXCuBE is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU Lesser General Public License for more details.
-#
-#  You should have received a copy of the GNU Lesser General Public License
-#  along with MXCuBE. If not, see <http://www.gnu.org/licenses/>.
-
-"""
-[Name] PlateManipulatorMockup
-
-[Description]
-Plate manipulator hardware object is used to use diffractometer in plate mode.
-It is compatable with md2, md3 diffractometers. Class is based on
-SampleChanger, so it has all the sample changed functionalities, like
-mount, unmount sample (in this case move to plate position).
-Plate is organized in rows and columns. Each cell (Cell) contains drop (Drop).
-Each drop could contain several crystals (Xtal). If CRIMS is available then
-each drop could have several crystals.
-
-[Channels]
-
-[Commands]
-
-[Emited signals]
-
- - emited signals defined in SampleChanger class
-
-[Included Hardware Objects]
------------------------------------------------------------------------
-| name            | signals          | functions
------------------------------------------------------------------------
------------------------------------------------------------------------
-"""
-
 import logging
+import re
 from functools import lru_cache
 
 import gevent
 from mx_robot_library.client import Client
 
-from mxcubecore.BaseHardwareObjects import HardwareObjectState
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
     SampleChanger as AbstractSampleChanger,
@@ -57,14 +12,10 @@ from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import SampleChangerState
 from mxcubecore.HardwareObjects.abstract.sample_changer import (
     Container,
-    Crims,
     Sample,
 )
-import re
-
 
 from .redis_utils import get_redis_connection
-
 
 
 class Xtal(Sample.Sample):
@@ -214,46 +165,23 @@ class Cell(Container.Container):
 
 
 class PlateManipulator(AbstractSampleChanger):
-    """ """
+    """This class is based on the mxcubecore Plate manipulator class."""
 
     __TYPE__ = "PlateManipulator"
 
     def __init__(self, *args, **kwargs):
         super().__init__(self.__TYPE__, False, *args, **kwargs)
 
-        self.plate_label = None
-        self.num_cols = None
-        self.num_rows = None
-        self.num_drops = None
-        self.current_phase = None
-        self.reference_pos_x = None
-        self.timeout = 3  # default timeout
-        self.plate_location = None
-        self.crims_url = None
-        self.crims_user_agent = None
-        self.plate_barcode = None
-        self.harvester_key = None
-        self.exporter_addr = settings.EXPORTER_ADDRESS
-
     def init(self):
-        """
-        Descript. :
-        """
         self.num_cols = self.get_property("numCols")
         self.num_rows = self.get_property("numRows")
         self.num_drops = self.get_property("numDrops")
-        self.crims_url = self.get_property("crimsWsRoot")
-        self.crims_user_agent = self.get_property("crimsUserAgent")
-        self.plate_barcode = self.get_property("PlateBarcode")
-        self.plate_label = self.get_property("plateLabel")
-        self.harvester_key = self.get_property("harvesterKey")
-        self.reference_pos_x = self.get_property("referencePosX")
 
         if settings.BL_ACTIVE:
             self.chan_drop_location = self.add_channel(
                 {
                     "type": "exporter",
-                    "exporter_address": self.exporter_addr,
+                    "exporter_address": settings.EXPORTER_ADDRESS,
                     "name": "get_md3_head_type",
                 },
                 "DropLocation",
@@ -261,7 +189,7 @@ class PlateManipulator(AbstractSampleChanger):
             self.move_plate_to_shelf = self.add_command(
                 {
                     "type": "exporter",
-                    "exporter_address": self.exporter_addr,
+                    "exporter_address": settings.EXPORTER_ADDRESS,
                     "name": "move_plate_to_shelf",
                 },
                 "startMovePlateToShelf",
@@ -275,7 +203,7 @@ class PlateManipulator(AbstractSampleChanger):
         self.md3_state = self.add_channel(
             {
                 "type": "exporter",
-                "exporter_address": self.exporter_addr,
+                "exporter_address": settings.EXPORTER_ADDRESS,
                 "name": "state",
             },
             "State",
@@ -283,14 +211,11 @@ class PlateManipulator(AbstractSampleChanger):
         self.md3_phase = self.add_channel(
             {
                 "type": "exporter",
-                "exporter_address": self.exporter_addr,
+                "exporter_address": settings.EXPORTER_ADDRESS,
                 "name": "phase",
             },
             "CurrentPhase",
         )
-
-        if not self.reference_pos_x:
-            self.reference_pos_x = 0.5
 
         self._init_sc_contents()
 
@@ -298,17 +223,13 @@ class PlateManipulator(AbstractSampleChanger):
 
         self.update_info()
 
-
-
-    def _read_state(self):
-        return "ready"
-
-    def _ready(self):
-        return True
-
-    def _init_sc_contents(self):
+    def _init_sc_contents(self) -> None:
         """
-        Descript. : Initializes content of plate.
+        Initializes the sample changer contents by creating a grid of baskets, cells, and drops.
+
+        Returns
+        -------
+        None
         """
         if self.num_rows is None:
             return
@@ -328,22 +249,18 @@ class PlateManipulator(AbstractSampleChanger):
                 basket._add_component(cell)
         self._set_state(SampleChangerState.Ready)
 
-
-
- 
-
     def _parse_plate_address(self, address: str) -> tuple[int, int, int]:
         """
-        Parses a plate address in the format 'B7:1' and returns the row, column, 
-        and drop index. The row is an integer which starts from 0 for 'A', 
-        the column is an integer starting from 0 for '1', and the drop index 
+        Parses a plate address in the format 'B7:1' and returns the row, column,
+        and drop index. The row is an integer which starts from 0 for 'A',
+        the column is an integer starting from 0 for '1', and the drop index
         is an integer starting from 0 for the first drop.
 
         Parameters
         ----------
         address : str
             The address string to parse, e.g. 'B7:1'.
-        
+
         Returns
         -------
         tuple[int, int, int]
@@ -378,7 +295,12 @@ class PlateManipulator(AbstractSampleChanger):
                 return smp
         return None
 
-    def load(self, sample: str | None = None, sample_order: list | None=None, wait: bool=True) -> None:
+    def load(
+        self,
+        sample: str | None = None,
+        sample_order: list | None = None,
+        wait: bool = True,
+    ) -> None:
         """
         Load a sample.
 
@@ -402,7 +324,7 @@ class PlateManipulator(AbstractSampleChanger):
         )
 
     def assert_not_charging(self) -> None:
-        """ 
+        """
         Checks if the sample changer is not currently charging or moving.
         If it is, an exception is raised.
 
@@ -469,8 +391,7 @@ class PlateManipulator(AbstractSampleChanger):
             )
             raise e
 
-
-    def _do_unload(self, sample_slot: Xtal | None=None) -> None:
+    def _do_unload(self, sample_slot: Xtal | None = None) -> None:
         """
         Resets the loaded sample state and deletes the current drop location from redis
 
@@ -502,16 +423,11 @@ class PlateManipulator(AbstractSampleChanger):
             redis_connection.delete("current_drop_location")
         self._trigger_loaded_sample_changed_event(None)
 
-
-
-
-
-
-    def _do_update_info(self)-> None:
+    def _do_update_info(self) -> None:
         """
         Updates plate info and sample list and sample changer state.
         This function is called every second
-        
+
         Returns
         -------
         None
@@ -522,7 +438,7 @@ class PlateManipulator(AbstractSampleChanger):
     def _update_loaded_sample(self) -> None:
         """
         Updates the loaded sample based on the current drop location
-        
+
         Returns
         -------
         None
@@ -542,8 +458,7 @@ class PlateManipulator(AbstractSampleChanger):
             sample: Xtal
             if sample.address[:-2] == drop_location:
                 sample._set_loaded(loaded=True, has_been_loaded=True)
-                sample._set_info(
-                    present=True, id=sample.id, scanned=False)
+                sample._set_info(present=True, id=sample.id, scanned=False)
             else:
                 sample._set_loaded(loaded=False, has_been_loaded=False)
 
@@ -588,22 +503,24 @@ class PlateManipulator(AbstractSampleChanger):
         # return client.status.state.goni_plate() is not None
         return True
 
-    def get_plate_info(self):
+    def get_plate_info(self) -> dict:
         """
-        Descript. : returns dict with plate info
+        Returns a dictionary with plate information. The label and barcode are not used
+        and are set to empty strings.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the plate information
         """
         plate_info_dict = {}
         plate_info_dict["num_cols"] = self.num_cols
         plate_info_dict["num_rows"] = self.num_rows
         plate_info_dict["num_drops"] = self.num_drops
-        plate_info_dict["plate_label"] = self.plate_label or "Demo plate label"
-        plate_info_dict["plate_barcode"] = self.plate_barcode or ""
+        plate_info_dict["plate_label"] = ""
+        plate_info_dict["plate_barcode"] = ""
 
         return plate_info_dict
-
-
-
-
 
     def move_to_crystal_position(self, crystal_uuid):
         """
@@ -625,7 +542,7 @@ class PlateManipulator(AbstractSampleChanger):
         md3_state = self.md3_state.get_value()
         current_phase = self.md3_phase.get_value()
         _state: int = SampleChangerState.Unknown
-        if md3_state =="Ready":
+        if md3_state == "Ready":
             _state = SampleChangerState.Ready
         elif md3_state == "Fault":
             _state = SampleChangerState.Moving
@@ -649,31 +566,41 @@ class PlateManipulator(AbstractSampleChanger):
                 status=SampleChangerState.tostring(_state),
             )
 
-
-
     @lru_cache()
     def get_client(self) -> Client:
         """Cache the client, this allows the client to be used in dependencies and
         for overwriting in tests
         """
         return Client(host=settings.ROBOT_HOST, readonly=False)
-    
-    # Not implemented
+
+    def _read_state(self):
+        return "ready"
+
+    def _ready(self):
+        return True
+
+    # Not implemented methods
     def _do_reset(self):
         pass
+
     def _do_scan(self, component, recursive):
         pass
+
     def _do_abort(self):
         pass
 
     def _do_change_mode(self, mode):
         pass
+
     def sync_with_crims(self):
         pass
+
     def get_room_temperature_mode(self):
         return True
+
     def _do_select(self, component):
         pass
+
 
 class DummyChannel:
     """Only used for SIM mode"""
