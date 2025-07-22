@@ -360,7 +360,7 @@ class PlateManipulator(AbstractSampleChanger):
 
     def get_loaded_sample(self) -> Xtal | None:
         """
-        Returns the currently loaded sample based on the current drop location stored in Redis.
+        Gets the currently loaded sample based on the current drop location stored in redis.
 
         Returns
         -------
@@ -470,27 +470,6 @@ class PlateManipulator(AbstractSampleChanger):
             raise e
 
 
-    def get_loaded_sample(self) -> Xtal | None:
-        """
-        Returns:
-            (Sample) Currently loaded sample
-        """
-        with get_redis_connection() as redis_connection:
-            response = redis_connection.get("current_drop_location")
-            if response is None:
-                return
-
-        smp: Xtal | None = None
-        loaded_sample: Xtal | None = None
-        for smp in self.get_sample_list():
-            if smp.address[:-2] == response:
-                smp._set_loaded(True, True)
-                loaded_sample = smp
-            else:
-                smp._set_loaded(False, False)
-
-        return loaded_sample
-
     def _do_unload(self, sample_slot: Xtal | None=None) -> None:
         """
         Resets the loaded sample state and deletes the current drop location from redis
@@ -525,58 +504,6 @@ class PlateManipulator(AbstractSampleChanger):
 
 
 
-    def _do_select(self, component):
-        """
-        Descript. :
-        """
-        pos_x = self.reference_pos_x
-        pos_y = 0.5
-
-        if isinstance(component, Xtal):
-            self._select_sample(
-                component.get_cell().get_row_index(),
-                component.get_cell().get_col() - 1,
-                component.get_drop().get_well_no() - 1,
-            )
-            self._set_selected_sample(component)
-            component.get_container()._set_selected(True)
-            component.get_container().get_container()._set_selected(True)
-        elif isinstance(component, Crims.CrimsXtal):
-            col = component.Column - 1
-            row = ord(component.Row.upper()) - ord("A")
-            pos_x = component.offsetX
-            pos_y = component.offsetY
-            cell = self.get_component_by_address(
-                Cell._get_cell_address(component.Row, component.Column)
-            )
-            drop = self.get_component_by_address(
-                Drop._get_drop_address(cell, component.Shelf)
-            )
-            drop._set_selected(True)
-            drop.get_container()._set_selected(True)
-        elif isinstance(component, Drop):
-            self._select_sample(
-                component.get_cell().get_row_index(),
-                component.get_cell().get_col() - 1,
-                component.get_well_no() - 1,
-            )
-            component._set_selected(True)
-            component.get_container().get_container()._set_selected(True)
-        elif isinstance(component, Cell):
-            self._select_sample(component.get_row_index(), component.get_col() - 1, 0)
-            component._set_selected(True)
-        elif isinstance(component, list):
-            row = component[0]
-            col = component[1]
-            if len(component > 2):
-                pos_x = component[2]
-                pos_y = component[3]
-            cell = self.get_component_by_address(Cell._get_cell_address(row, col))
-            cell._set_selected(True)
-        else:
-            raise Exception("Invalid selection")
-        self._reset_loaded_sample()
-        self._wait_device_ready()
 
 
 
@@ -745,6 +672,9 @@ class PlateManipulator(AbstractSampleChanger):
         pass
     def get_room_temperature_mode(self):
         return True
+    def _do_select(self, component):
+        pass
+
 class DummyChannel:
     """Only used for SIM mode"""
 
