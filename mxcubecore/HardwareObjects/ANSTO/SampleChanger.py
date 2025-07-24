@@ -356,14 +356,14 @@ class SampleChanger(AbstractSampleChanger):
             self._update_sample_changer_state(robot_state)
 
         except Exception as ex:
-            ex
+            self._update_sample_changer_state(None)
 
     def _update_mxcube_pin_info(
         self,
         robot_puck: RobotPuck,
         puck_location: int,
         port: int,
-        robot_state: StateResponse,
+        robot_state: StateResponse | None,
         puck_list: list[dict],
     ):
         """
@@ -377,7 +377,7 @@ class SampleChanger(AbstractSampleChanger):
             The puck location in the dewar
         port : int
             The pin position in the puck
-        robot_state : StateResponse
+        robot_state : StateResponse | None
             The state from the robot as reported by the mx-robot-library
         puck_list : list[dict]
             A list of pucks from the data layer API, each puck is a dictionary
@@ -427,44 +427,48 @@ class SampleChanger(AbstractSampleChanger):
             )
             mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
-    def _update_sample_changer_state(self, robot_state: StateResponse) -> None:
+    def _update_sample_changer_state(self, robot_state: StateResponse | None) -> None:
         """
         Updates the sample changer state
 
         Parameters
         ----------
-        robot_state : StateResponse
-            The Isara robot state response
+        robot_state : StateResponse | None
+            The Isara robot state response, or None if the robot state could not be
+            retrieved.
 
         Returns
         -------
         None
         """
-        _is_enabled = robot_state.power and robot_state.remote_mode
-        _is_normal_state = _is_enabled and not robot_state.fault_or_stopped
-        _state: int = SampleChangerState.Unknown
-        if not _is_enabled:
-            _state = SampleChangerState.Disabled
-        elif robot_state.fault_or_stopped:
-            _state = SampleChangerState.Fault
-        elif robot_state.error is not None:
-            # Might need to modify this to read binary alarms set in robot status.
-            _state = SampleChangerState.Alarm
-        elif robot_state.path.name != "":
-            if robot_state.path.name in ("put", "getput", "putht", "getputht"):
-                _state = SampleChangerState.Loading
-            elif robot_state.path.name in ("get", "getht"):
-                _state = SampleChangerState.Unloading
-            elif robot_state.path.name == "pick":
-                _state = SampleChangerState.Selecting
-            elif robot_state.path.name == "datamatrix":
-                _state = SampleChangerState.Scanning
-            else:
-                _state = SampleChangerState.Moving
-        elif robot_state.goni_pin is not None:
-            _state = SampleChangerState.Loaded
-        elif _is_normal_state and robot_state.path.name == "":
-            _state = SampleChangerState.Ready
+        if robot_state is None:
+            _state = SampleChangerState.Unknown
+        else:
+            _is_enabled = robot_state.power and robot_state.remote_mode
+            _is_normal_state = _is_enabled and not robot_state.fault_or_stopped
+            _state: int = SampleChangerState.Unknown
+            if not _is_enabled:
+                _state = SampleChangerState.Disabled
+            elif robot_state.fault_or_stopped:
+                _state = SampleChangerState.Fault
+            elif robot_state.error is not None:
+                # Might need to modify this to read binary alarms set in robot status.
+                _state = SampleChangerState.Alarm
+            elif robot_state.path.name != "":
+                if robot_state.path.name in ("put", "getput", "putht", "getputht"):
+                    _state = SampleChangerState.Loading
+                elif robot_state.path.name in ("get", "getht"):
+                    _state = SampleChangerState.Unloading
+                elif robot_state.path.name == "pick":
+                    _state = SampleChangerState.Selecting
+                elif robot_state.path.name == "datamatrix":
+                    _state = SampleChangerState.Scanning
+                else:
+                    _state = SampleChangerState.Moving
+            elif robot_state.goni_pin is not None:
+                _state = SampleChangerState.Loaded
+            elif _is_normal_state and robot_state.path.name == "":
+                _state = SampleChangerState.Ready
 
         _last_state = self.state
         if _state != _last_state:
@@ -550,13 +554,21 @@ class SampleChanger(AbstractSampleChanger):
         """
         _client = self.get_client()
 
+        try:
+            state = _client.status.state
+        except Exception as e:
+            logging.getLogger("user_level_log").error(
+                f"Failed to get robot state: {str(e)}"
+            )
+            raise RuntimeError(f"Failed to get robot state: {str(e)}") from e
+
         # Check position is currently SOAK
-        if _client.status.state.position != RobotPositions.SOAK:
+        if state.position != RobotPositions.SOAK:
             _client.trajectory.soak(wait=False)
 
             # Wait for robot to start running the path
             _start_time_timeout = time() + 15
-            while _client.status.state.path != RobotPaths.SOAK:
+            while state.path != RobotPaths.SOAK:
                 # Timeout after 15 seconds if path not started
                 if time() >= _start_time_timeout:
                     logging.getLogger("user_level_log").error(
@@ -567,7 +579,7 @@ class SampleChanger(AbstractSampleChanger):
 
             # Wait for robot to finish running the path
             _end_time_timeout = time() + 120
-            while _client.status.state.path != RobotPaths.UNDEFINED:
+            while state.path != RobotPaths.UNDEFINED:
                 # Timeout after 120 seconds if path not finished
                 if time() >= _end_time_timeout:
                     logging.getLogger("user_level_log").error(
@@ -576,19 +588,19 @@ class SampleChanger(AbstractSampleChanger):
                     raise PathTimeout()
                 sleep(0.5)
 
-            if _client.status.state.position != RobotPositions.SOAK:
+            if state.position != RobotPositions.SOAK:
                 logging.getLogger("user_level_log").error(
                     "Failed to load sample. Robot could not change position to SOAK"
                 )
                 raise PositionError()
 
         # Check double gripper tool mounted
-        if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
+        if state.tool != RobotTools.DOUBLE_GRIPPER:
             _client.trajectory.change_tool(tool=RobotTools.DOUBLE_GRIPPER, wait=False)
 
             # Wait for robot to start running the path
             _start_time_timeout = time() + 15
-            while _client.status.state.path != RobotPaths.CHANGE_TOOL:
+            while state.path != RobotPaths.CHANGE_TOOL:
                 # Timeout after 15 seconds if path not started
                 if time() >= _start_time_timeout:
                     raise PathTimeout()
@@ -596,13 +608,13 @@ class SampleChanger(AbstractSampleChanger):
 
             # Wait for robot to finish running the path
             _end_time_timeout = time() + 240
-            while _client.status.state.path != RobotPaths.UNDEFINED:
+            while state.path != RobotPaths.UNDEFINED:
                 # Timeout after 240 seconds if path not finished
                 if time() >= _end_time_timeout:
                     raise PathTimeout()
                 sleep(0.5)
 
-            if _client.status.state.tool != RobotTools.DOUBLE_GRIPPER:
+            if state.tool != RobotTools.DOUBLE_GRIPPER:
                 raise ToolError()
 
     def chained_load(self, sample_to_unload, sample_to_load):
@@ -659,7 +671,15 @@ class SampleChanger(AbstractSampleChanger):
 
     def is_powered(self) -> bool:
         _client = self.get_client()
-        return _client.status.state.power
+        try:
+            _is_powered = _client.status.state.power
+        except Exception as e:
+            logging.getLogger("user_level_log").error(
+                f"Failed to get robot power state: {str(e)}"
+            )
+            _is_powered = False
+
+        return _is_powered
 
     def get_sample_by_barcode_and_port(
         self, puck_list: list[dict], port: int, barcode: str
