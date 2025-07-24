@@ -1,5 +1,4 @@
 import logging
-from functools import lru_cache
 
 import gevent
 from mx_robot_library.client import Client
@@ -18,6 +17,7 @@ from .mockup.channels import (
     SimMd3Phase,
     SimMd3State,
 )
+from .mockup.robot import SimRobot
 from .redis_utils import get_redis_connection
 
 
@@ -201,9 +201,12 @@ class PlateManipulator(AbstractSampleChanger):
                 },
                 "CurrentPhase",
             )
+            self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
+
         else:
             self.md3_state = SimMd3State()
             self.md3_phase = SimMd3Phase()
+            self.robot_client = SimRobot()
 
         self._init_sc_contents()
 
@@ -436,12 +439,25 @@ class PlateManipulator(AbstractSampleChanger):
                             sample_list.append(drop.get_sample())
         return sample_list
 
-    def is_mounted_sample(self, sample_location):
-        # TODO
-        client = self.get_client()
+    def is_mounted_sample(self, sample_location) -> bool:
+        """Checks if a sample is currently mounted in the sample changer.
 
-        # return client.status.state.goni_plate() is not None
-        return True
+        Parameters
+        ----------
+        sample_location : str
+            The address of the sample to check, in the format 'B7:1-0'
+
+        Returns
+        -------
+        bool
+            True if the sample is mounted, False otherwise.
+        """
+        if (
+            self.robot_client.status.state.goni_plate() is not None
+            and self.get_loaded_sample() is not None
+        ):
+            return True
+        return False
 
     def get_plate_info(self) -> dict:
         """
@@ -505,13 +521,6 @@ class PlateManipulator(AbstractSampleChanger):
                 state=_state,
                 status=SampleChangerState.tostring(_state),
             )
-
-    @lru_cache()
-    def get_client(self) -> Client:
-        """Cache the client, this allows the client to be used in dependencies and
-        for overwriting in tests
-        """
-        return Client(host=settings.ROBOT_HOST, readonly=False)
 
     def _read_state(self):
         return "ready"
