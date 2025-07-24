@@ -56,9 +56,10 @@ class OneShotFlow(AbstractPrefectWorkflow):
         )
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
-            pin = self.get_pin_model_of_mounted_sample_from_db()
-            logging.getLogger("HWR").info(f"Mounted pin: {pin}")
-            sample_id = pin.id
+            logging.getLogger("HWR").info("Getting sample from the data layer...")
+            sample_id = self.get_sample_id_of_mounted_sample()
+            logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
+
         else:
             logging.getLogger("HWR").warning(
                 "A dummy pin will be added to the database. NOTE that this should "

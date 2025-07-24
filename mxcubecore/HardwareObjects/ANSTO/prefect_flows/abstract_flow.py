@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from abc import (
     ABC,
     abstractmethod,
@@ -25,6 +26,8 @@ from scipy.constants import (
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
+from ..mockup.robot import SimRobot
+from ..redis_utils import get_redis_connection
 from ..Resolution import Resolution
 from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
@@ -69,7 +72,10 @@ class AbstractPrefectWorkflow(ABC):
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
 
-        self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
+        if settings.BL_ACTIVE:
+            self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
+        else:
+            self.robot_client = SimRobot()
 
         try:
             self.loaded_pucks = self.robot_client.status.get_loaded_pucks()
@@ -209,16 +215,9 @@ class AbstractPrefectWorkflow(ABC):
         )
         port, barcode = self._get_barcode_and_port_of_mounted_pin()
 
-        with redis.StrictRedis(
-            host=settings.MXCUBE_REDIS_HOST,
-            port=settings.MXCUBE_REDIS_PORT,
-            username=settings.MXCUBE_REDIS_USERNAME,
-            password=settings.MXCUBE_REDIS_PASSWORD,
-            db=settings.MXCUBE_REDIS_DB,
-        ) as redis_connection:
-
-            epn_value: bytes | None = redis_connection.get("epn")
-            if epn_value is None:
+        with get_redis_connection(decode_response=True) as redis_connection:
+            epn_string: str | None = redis_connection.get("epn")
+            if epn_string is None:
                 logging.getLogger("user_level_log").error(
                     "epn redis key does not exist"
                 )
@@ -226,8 +225,6 @@ class AbstractPrefectWorkflow(ABC):
                     f"epn redis key does not exist",
                     self,
                 )
-
-            epn_string = epn_value.decode("utf-8")
 
         logging.getLogger("HWR").info(
             f"Getting pin id from the mx-data-layer-api for port {port}, "
@@ -495,3 +492,180 @@ class AbstractPrefectWorkflow(ABC):
             raise ValueError("mxcube:md3_head_type is not set in redis")
 
         return head_type
+
+    # Database tray related methods
+    def _get_barcode_of_mounted_tray(self) -> str:
+        """
+        Gets the barcode of the mounted tray using the mx-robot-library.
+        Attempts to get the mounted tray up to 3 times, with a 0.5 second delay
+
+        Returns
+        -------
+        str
+            The barcode of the mounted tray
+
+        Raises
+        ------
+        QueueExecutionException
+            An exception if the tray cannot be read from the robot library
+        """
+        for attempt in range(3):
+            try:
+                loaded_trays = self.robot_client.status.get_loaded_trays()
+                mounted_tray = self.robot_client.status.state.goni_plate
+                break
+            except Exception:
+                if attempt < 2:
+                    msg = "Failed to get loaded trays or mounted tray using the robot library, retrying in 0.5 seconds."
+                    logging.getLogger("HWR").warning(msg)
+                    sleep(0.5)
+                else:
+                    msg = "Failed to get loaded trays or mounted tray using the robot library"
+                    logging.getLogger("HWR").error(msg)
+                    raise QueueExecutionException(msg, self)
+        barcode = None
+        if mounted_tray is not None:
+            for tray in loaded_trays:
+                if tray[0] == mounted_tray.id:
+                    # NOTE: The robot returns the barcode as e.g ASP-3018,
+                    # but the data layer expects the format ASP3018
+                    barcode = tray[1].replace("-", "")
+        else:
+            msg = "No tray mounted on the goni"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
+
+        if barcode is None:
+            msg = "No barcode found for the mounted tray"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
+        return barcode
+
+    def get_well_id_of_mounted_tray(self) -> int:
+        """Gets the well id from the mx-data-layer-api
+
+        Returns
+        -------
+        int
+            The well id
+
+        Raises
+        ------
+        QueueExecutionException
+            An exception if Tray cannot be read from the data layer
+        """
+        logging.getLogger("HWR").info(
+            "Getting barcode from mounted tray using the mx-robot-api"
+        )
+        barcode = self._get_barcode_of_mounted_tray()
+
+        with get_redis_connection(decode_response=True) as redis_connection:
+            epn_string: str | None = redis_connection.get("epn")
+            if epn_string is None:
+                logging.getLogger("user_level_log").error(
+                    "epn redis key does not exist"
+                )
+                raise QueueExecutionException(
+                    f"epn redis key does not exist",
+                    self,
+                )
+
+            current_drop_location = redis_connection.get("current_drop_location")
+            if current_drop_location is None:
+                msg = "current_drop_location redis key does not exist"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+
+        # TODO
+        column = 1
+        row = "A"
+        drop = "left"
+        logging.getLogger("HWR").info(
+            f"Getting well id for barcode {barcode}, epn_string {epn_string}, column {column}, row {row}, and drop {drop}"
+        )
+        r = httpx.get(
+            urljoin(
+                settings.DATA_LAYER_API,
+                f"/samples/wells?filter_by_tray_barcode={barcode}&filter_by_visit_identifier={epn_string}&filter_by_column={column}&filter_by_row={row}&filter_by_drop={drop}",
+            )
+        )
+        if r.status_code == HTTPStatus.OK:
+            response = r.json()
+            if len(response) == 1:
+                return response[0]["id"]
+            elif len(response) > 1:
+                msg = f"There are multiple ({len(response)}) wells with the same barcode {barcode}, epn {epn_string}, column {column}, row {row}, and drop {drop}"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(
+                    msg,
+                    self,
+                )
+            elif len(response) == 0:
+                msg = f"Failed to get well by barcode {barcode}, epn {epn_string}, column {column}, row {row}, and drop {drop}"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(
+                    msg,
+                    self,
+                )
+
+        else:
+            msg = f"Failed to get well by barcode {barcode}, epn {epn_string}, column {column}, row {row}, and drop {drop}"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(
+                msg,
+                self,
+            )
+
+    def _parse_plate_address(self, address: str) -> tuple[int, int, int]:
+        """
+        Parses a plate address in the format 'B7:1' and returns the row, column,
+        and drop index. The row is an integer which starts from 0 for 'A',
+        the column is an integer starting from 0 for '1', and the drop index
+        is an integer starting from 0 for the first drop.
+
+        Parameters
+        ----------
+        address : str
+            The address string to parse, e.g. 'B7:1'.
+
+        Returns
+        -------
+        tuple[int, int, int]
+            A tuple containing the row index, column index, and drop index.
+        """
+        match = re.match(r"([A-Z])(\d+):(\d+)", address)
+        if not match:
+            raise ValueError("Invalid address format")
+        row_chr, col_str, drop_str = match.groups()
+        row = ord(row_chr.upper()) - ord("A")
+        col = int(col_str) - 1
+        drop = int(drop_str) - 1
+        return row, col, drop
+
+    def get_sample_id_of_mounted_sample(self) -> int:
+        """
+        Gets the sample id of the mounted sample. The sample id is either the pin id
+        or the well id, depending on the head type.
+
+        Returns
+        -------
+        int
+            The sample id of the mounted sample.
+
+        Raises
+        ------
+        QueueExecutionException
+            If the head type is not implemented for getting the sample id.
+        """
+        head_type = self.get_head_type()
+
+        if head_type == "SmartMagnet":
+            sample_id = self.get_pin_model_of_mounted_sample_from_db().id
+        elif head_type == "Plate":
+            sample_id = self.get_well_id_of_mounted_tray()
+        else:
+            raise QueueExecutionException(
+                f"Head type {head_type} is not implemented for getting sample id",
+                self,
+            )
+        return sample_id

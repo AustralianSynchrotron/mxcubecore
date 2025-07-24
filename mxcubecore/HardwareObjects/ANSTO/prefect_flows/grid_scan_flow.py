@@ -71,12 +71,13 @@ class GridScanFlow(AbstractPrefectWorkflow):
         height = round(grid.height)
 
         dialog_box_model = GridScanDialogBox.model_validate(dialog_box_parameters)
+        head_type = self.get_head_type()
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
-            logging.getLogger("HWR").info("Getting pin from the data layer...")
-            pin = self.get_pin_model_of_mounted_sample_from_db()
-            logging.getLogger("HWR").info(f"Mounted pin: {pin}")
-            sample_id = pin.id
+            logging.getLogger("HWR").info("Getting sample from the data layer...")
+            sample_id = self.get_sample_id_of_mounted_sample()
+            logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
+
         else:
             logging.getLogger("HWR").warning(
                 "SIM mode! The sample id will not be obtained from the data layer. "
@@ -104,7 +105,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
         )
 
-        head_type = self.get_head_type()
         if head_type == "Plate":
             use_centring_table = False
         else:
