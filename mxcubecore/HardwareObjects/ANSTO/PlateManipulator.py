@@ -1,5 +1,4 @@
 import logging
-import re
 from functools import lru_cache
 
 import gevent
@@ -186,23 +185,6 @@ class PlateManipulator(AbstractSampleChanger):
         self.num_drops = self.get_property("numDrops")
 
         if settings.BL_ACTIVE:
-            # TODO: use in-house code to mode plate to shelf
-            # self.chan_drop_location = self.add_channel(
-            #     {
-            #         "type": "exporter",
-            #         "exporter_address": settings.EXPORTER_ADDRESS,
-            #         "name": "get_md3_head_type",
-            #     },
-            #     "DropLocation",
-            # )
-            # self.move_plate_to_shelf = self.add_command(
-            #     {
-            #         "type": "exporter",
-            #         "exporter_address": settings.EXPORTER_ADDRESS,
-            #         "name": "move_plate_to_shelf",
-            #     },
-            #     "startMovePlateToShelf",
-            # )
             self.md3_state = self.add_channel(
                 {
                     "type": "exporter",
@@ -255,32 +237,6 @@ class PlateManipulator(AbstractSampleChanger):
                 basket._add_component(cell)
         self._set_state(SampleChangerState.Ready)
 
-    def _parse_plate_address(self, address: str) -> tuple[int, int, int]:
-        """
-        Parses a plate address in the format 'B7:1' and returns the row, column,
-        and drop index. The row is an integer which starts from 0 for 'A',
-        the column is an integer starting from 0 for '1', and the drop index
-        is an integer starting from 0 for the first drop.
-
-        Parameters
-        ----------
-        address : str
-            The address string to parse, e.g. 'B7:1'.
-
-        Returns
-        -------
-        tuple[int, int, int]
-            A tuple containing the row index, column index, and drop index.
-        """
-        match = re.match(r"([A-Z])(\d+):(\d+)", address)
-        if not match:
-            raise ValueError("Invalid address format")
-        row_chr, col_str, drop_str = match.groups()
-        row = ord(row_chr.upper()) - ord("A")
-        col = int(col_str) - 1
-        drop = int(drop_str) - 1
-        return row, col, drop
-
     def get_loaded_sample(self) -> Xtal | None:
         """
         Gets the currently loaded sample based on the current drop location stored in redis.
@@ -290,11 +246,6 @@ class PlateManipulator(AbstractSampleChanger):
         Xtal | None
             The currently loaded sample if available, otherwise None.
         """
-        with get_redis_connection(decode_response=True) as redis_connection:
-            response = redis_connection.get("current_drop_location")
-            if response is None:
-                return
-
         for smp in self.get_sample_list():
             smp: Xtal
             if smp.is_loaded():
@@ -368,12 +319,10 @@ class PlateManipulator(AbstractSampleChanger):
         try:
             sample_str = new_sample.address[:-2]  # e.g. 'B7:1'
 
-            # TODO: we're not moving the plate yet
-            row_int, col_int, drop_int = self._parse_plate_address(sample_str)
-
             old_sample = self.get_loaded_sample()
             if old_sample != new_sample:
-                # self.move_plate_to_shelf(col_int, row_int, drop_int)
+                # TODO: we're not moving the tray yet, but this is where we would do it
+                # based on sample_str
                 with get_redis_connection() as redis_connection:
                     redis_connection.set("current_drop_location", sample_str)
 
