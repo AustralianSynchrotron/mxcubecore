@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import re
 from abc import (
@@ -6,10 +5,7 @@ from abc import (
     abstractmethod,
 )
 from http import HTTPStatus
-from time import (
-    perf_counter,
-    sleep,
-)
+from time import sleep
 from typing import Literal
 from urllib.parse import urljoin
 
@@ -197,7 +193,27 @@ class AbstractPrefectWorkflow(ABC):
         """
         self._state = new_state
 
-    def get_pin_model_of_mounted_sample_from_db(self) -> PinRead:
+    def _get_epn_string(self) -> str:
+        """
+        Gets the EPN string from Redis
+
+        Returns
+        -------
+        str
+            The EPN string
+
+        Raises
+        ------
+        QueueExecutionException
+            An exception if the EPN string is not set in Redis
+        """
+        with get_redis_connection() as redis_connection:
+            epn_string: str | None = redis_connection.get("epn")
+            if epn_string is None:
+                raise QueueExecutionException("EPN string is not set in Redis", self)
+            return epn_string
+
+    def _get_pin_model_of_mounted_sample_from_db(self) -> PinRead:
         """Gets the pin model from the mx-data-layer-api
 
         Returns
@@ -215,16 +231,7 @@ class AbstractPrefectWorkflow(ABC):
         )
         port, barcode = self._get_barcode_and_port_of_mounted_pin()
 
-        with get_redis_connection(decode_response=True) as redis_connection:
-            epn_string: str | None = redis_connection.get("epn")
-            if epn_string is None:
-                logging.getLogger("user_level_log").error(
-                    "epn redis key does not exist"
-                )
-                raise QueueExecutionException(
-                    f"epn redis key does not exist",
-                    self,
-                )
+        epn_string = self._get_epn_string()
 
         logging.getLogger("HWR").info(
             f"Getting pin id from the mx-data-layer-api for port {port}, "
@@ -239,25 +246,22 @@ class AbstractPrefectWorkflow(ABC):
                 )
             )
             if r.status_code == HTTPStatus.OK:
-                if len(r.json()) == 1:
+                response = r.json()
+                if len(response) == 1:
                     return PinRead.model_validate(r.json()[0])
-                else:
-                    logging.getLogger("user_level_log").error(
-                        f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string}"
-                    )
-                    raise QueueExecutionException(
-                        f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
-                        self,
-                    )
+                elif len(response) > 1:
+                    msg = f"There are multiple ({len(response)}) pins with the same barcode {barcode}, port {port}, and epn {epn_string}"
+                    logging.getLogger("user_level_log").error(msg)
+                    raise QueueExecutionException(msg, self)
+                elif len(response) == 0:
+                    msg = f"No pin found with barcode {barcode}, port {port}, and epn {epn_string}"
+                    logging.getLogger("user_level_log").error(msg)
+                    raise QueueExecutionException(msg, self)
 
             else:
-                logging.getLogger("user_level_log").error(
-                    f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string}"
-                )
-                raise QueueExecutionException(
-                    f"Could not get pin by barcode, port, and epn from the data layer API: {r.content}",
-                    self,
-                )
+                msg = f"Failed to get pin by barcode {barcode}, port {port}, and epn {epn_string} from the data layer API"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
 
     def _get_barcode_and_port_of_mounted_pin(self) -> tuple[int, str]:
         """
@@ -286,51 +290,6 @@ class AbstractPrefectWorkflow(ABC):
             logging.getLogger("user_level_log").error("No pin mounted on the goni")
             raise QueueExecutionException("No pin mounted on the goni", self)
 
-    def _get_asyncio_event_loop(self, timeout: float = 30):
-        """
-        Gets the asyncio event loop. If a loop is still running,
-        waits until the loop is complete.
-
-        Parameters
-        ----------
-        timeout : float, optional
-            The timeout in seconds, by default 30
-
-        Raises
-        ------
-        QueueExecutionException
-            Raises an exception if the timeout is exceeded
-        """
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            logging.getLogger("HWR").warning(
-                f"Loop is still running, waiting for {timeout} s to complete"
-            )
-            t = perf_counter()
-            while loop.is_running():
-                gevent.sleep(1)
-                logging.getLogger("HWR").warning(f"Loop is still running")
-                if perf_counter() > t + timeout:
-                    raise QueueExecutionException("Asyncio Loop is still running", self)
-        return loop
-
-    def _get_redis_connection(self) -> redis.StrictRedis:
-        """Create and return a Redis connection.
-
-        Returns
-        -------
-        redis.StrictRedis
-            A redis connection
-        """
-        return redis.StrictRedis(
-            host=settings.MXCUBE_REDIS_HOST,
-            port=settings.MXCUBE_REDIS_PORT,
-            username=settings.MXCUBE_REDIS_USERNAME,
-            password=settings.MXCUBE_REDIS_PASSWORD,
-            db=settings.MXCUBE_REDIS_DB,
-            decode_responses=True,
-        )
-
     def _save_dialog_box_params_to_redis(
         self,
         dialog_box: (
@@ -348,8 +307,8 @@ class AbstractPrefectWorkflow(ABC):
         dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox | OneShotDialogBox
             A dialog box pydantic model
         """
-        with self._get_redis_connection() as redis_connection:
-            for key, value in dialog_box.dict(exclude_none=True).items():
+        with get_redis_connection() as redis_connection:
+            for key, value in dialog_box.model_dump(exclude_none=True).items():
                 redis_connection.set(f"{self._collection_type}:{key}", value)
 
     def _get_dialog_box_param(
@@ -389,7 +348,7 @@ class AbstractPrefectWorkflow(ABC):
         str | int | float
             The last value set in redis for a given parameter
         """
-        with self._get_redis_connection() as redis_connection:
+        with get_redis_connection() as redis_connection:
             return redis_connection.get(f"{self._collection_type}:{parameter}")
 
     def _resolution_to_distance(self, resolution: float, energy: float) -> float:
@@ -485,7 +444,7 @@ class AbstractPrefectWorkflow(ABC):
         -------
         None
         """
-        with self._get_redis_connection() as redis_connection:
+        with get_redis_connection() as redis_connection:
             head_type = redis_connection.get("mxcube:md3_head_type")
 
         if head_type is None:
@@ -541,7 +500,7 @@ class AbstractPrefectWorkflow(ABC):
             raise QueueExecutionException(msg, self)
         return barcode
 
-    def get_well_id_of_mounted_tray(self) -> int:
+    def _get_well_id_of_mounted_tray(self) -> int:
         """Gets the well id from the mx-data-layer-api
 
         Returns
@@ -559,27 +518,25 @@ class AbstractPrefectWorkflow(ABC):
         )
         barcode = self._get_barcode_of_mounted_tray()
 
-        with get_redis_connection(decode_response=True) as redis_connection:
-            epn_string: str | None = redis_connection.get("epn")
-            if epn_string is None:
-                logging.getLogger("user_level_log").error(
-                    "epn redis key does not exist"
-                )
-                raise QueueExecutionException(
-                    f"epn redis key does not exist",
-                    self,
-                )
+        epn_string = self._get_epn_string()
 
+        with get_redis_connection() as redis_connection:
             current_drop_location = redis_connection.get("current_drop_location")
             if current_drop_location is None:
                 msg = "current_drop_location redis key does not exist"
                 logging.getLogger("user_level_log").error(msg)
                 raise QueueExecutionException(msg, self)
 
-        # TODO
-        column = 1
-        row = "A"
-        drop = "left"
+        row, column, drop = self._parse_plate_address(current_drop_location)
+
+        # FIXME: This will be changed to numbers in the data layer
+        if drop == 1:
+            drop = "left"
+        elif drop == 2:
+            drop = "right"
+        elif drop == 3:
+            drop = "middle"
+
         logging.getLogger("HWR").info(
             f"Getting well id for barcode {barcode}, epn_string {epn_string}, column {column}, row {row}, and drop {drop}"
         )
@@ -601,7 +558,8 @@ class AbstractPrefectWorkflow(ABC):
                     self,
                 )
             elif len(response) == 0:
-                msg = f"Failed to get well by barcode {barcode}, epn {epn_string}, column {column}, row {row}, and drop {drop}"
+                # TODO: Add samples on the fly
+                msg = f"No well found with barcode {barcode}, epn {epn_string}, column {column}, row {row}, and drop {drop}"
                 logging.getLogger("user_level_log").error(msg)
                 raise QueueExecutionException(
                     msg,
@@ -616,12 +574,10 @@ class AbstractPrefectWorkflow(ABC):
                 self,
             )
 
-    def _parse_plate_address(self, address: str) -> tuple[int, int, int]:
+    def _parse_plate_address(self, address: str) -> tuple[str, int, int]:
         """
-        Parses a plate address in the format 'B7:1' and returns the row, column,
-        and drop index. The row is an integer which starts from 0 for 'A',
-        the column is an integer starting from 0 for '1', and the drop index
-        is an integer starting from 0 for the first drop.
+        Parses a plate address in the format 'B7:1' and returns the row letter,
+        column (starting from 1), and drop (starting from 1).
 
         Parameters
         ----------
@@ -630,16 +586,16 @@ class AbstractPrefectWorkflow(ABC):
 
         Returns
         -------
-        tuple[int, int, int]
-            A tuple containing the row index, column index, and drop index.
+        tuple[str, int, int]
+            A tuple containing the row letter, column (from 1), and drop (from 1).
         """
         match = re.match(r"([A-Z])(\d+):(\d+)", address)
         if not match:
             raise ValueError("Invalid address format")
         row_chr, col_str, drop_str = match.groups()
-        row = ord(row_chr.upper()) - ord("A")
-        col = int(col_str) - 1
-        drop = int(drop_str) - 1
+        row = row_chr.upper()
+        col = int(col_str)
+        drop = int(drop_str)
         return row, col, drop
 
     def get_sample_id_of_mounted_sample(self) -> int:
@@ -660,12 +616,11 @@ class AbstractPrefectWorkflow(ABC):
         head_type = self.get_head_type()
 
         if head_type == "SmartMagnet":
-            sample_id = self.get_pin_model_of_mounted_sample_from_db().id
+            sample_id = self._get_pin_model_of_mounted_sample_from_db().id
         elif head_type == "Plate":
-            sample_id = self.get_well_id_of_mounted_tray()
+            sample_id = self._get_well_id_of_mounted_tray()
         else:
-            raise QueueExecutionException(
-                f"Head type {head_type} is not implemented for getting sample id",
-                self,
-            )
+            msg = f"Head type {head_type} is not implemented for getting sample id"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
         return sample_id
