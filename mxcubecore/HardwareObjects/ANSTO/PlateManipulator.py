@@ -1,6 +1,7 @@
 import logging
 
 import gevent
+from gevent import sleep
 from mx_robot_library.client import Client
 
 from mxcubecore.configuration.ansto.config import settings
@@ -461,8 +462,8 @@ class PlateManipulator(AbstractSampleChanger):
 
     def get_plate_info(self) -> dict:
         """
-        Returns a dictionary with plate information. The label and barcode are not used
-        and are set to empty strings.
+        Returns a dictionary with plate information. Some of this information
+        is shown in the plate manipulator maintenance tab.
 
         Returns
         -------
@@ -474,7 +475,7 @@ class PlateManipulator(AbstractSampleChanger):
         plate_info_dict["num_rows"] = self.num_rows
         plate_info_dict["num_drops"] = self.num_drops
         plate_info_dict["plate_label"] = ""
-        plate_info_dict["plate_barcode"] = ""
+        plate_info_dict["plate_barcode"] = self._get_barcode_of_mounted_tray()
 
         return plate_info_dict
 
@@ -527,6 +528,47 @@ class PlateManipulator(AbstractSampleChanger):
 
     def _ready(self):
         return True
+
+    def _get_barcode_of_mounted_tray(self) -> str:
+        """
+        Gets the barcode of the mounted tray using the mx-robot-library.
+        Attempts to get the mounted tray up to 3 times, with a 0.5 second delay
+
+        Returns
+        -------
+        str
+            The barcode of the mounted tray
+
+        Raises
+        ------
+        QueueExecutionException
+            An exception if the tray cannot be read from the robot library
+        """
+        for attempt in range(3):
+            try:
+                loaded_trays = self.robot_client.status.get_loaded_trays()
+                mounted_tray = self.robot_client.status.state.goni_plate
+                break
+            except Exception:
+                if attempt < 2:
+                    msg = "Failed to get loaded trays or mounted tray using the robot library, retrying in 0.5 seconds."
+                    logging.getLogger("HWR").warning(msg)
+                    sleep(0.5)
+                else:
+                    return "No barcode foundy"
+        barcode = None
+        if mounted_tray is not None:
+            for tray in loaded_trays:
+                if tray[0] == mounted_tray.id:
+                    # NOTE: The robot returns the barcode as e.g ASP-3018,
+                    # but the data layer expects the format ASP3018
+                    barcode = tray[1].replace("-", "")
+        else:
+            return "No barcode found"
+
+        if barcode is None:
+            return "No barcode found"
+        return barcode
 
     # Not implemented methods
     def _do_reset(self):
