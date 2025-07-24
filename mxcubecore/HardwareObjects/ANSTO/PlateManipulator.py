@@ -555,7 +555,7 @@ class PlateManipulator(AbstractSampleChanger):
                     logging.getLogger("HWR").warning(msg)
                     sleep(0.5)
                 else:
-                    return "No barcode foundy"
+                    return "No barcode found"
         barcode = None
         if mounted_tray is not None:
             for tray in loaded_trays:
