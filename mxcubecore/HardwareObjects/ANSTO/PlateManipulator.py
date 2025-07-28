@@ -570,14 +570,14 @@ class PlateManipulator(AbstractSampleChanger):
             return "No barcode found"
         return barcode
 
+    def _do_abort(self):
+        self.robot_client.common.abort()
+
     # Not implemented methods
     def _do_reset(self):
         pass
 
     def _do_scan(self, component, recursive):
-        pass
-
-    def _do_abort(self):
         pass
 
     def _do_change_mode(self, mode):
