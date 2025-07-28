@@ -365,6 +365,8 @@ class PlateManipulator(AbstractSampleChanger):
         """
         self._reset_loaded_sample()
         self._trigger_loaded_sample_changed_event(None)
+        # TODO replace with prefect flow
+        self.robot_client.trajectory.plate.unmount(wait=True)
 
     def _reset_loaded_sample(self) -> None:
         """

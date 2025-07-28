@@ -12,6 +12,11 @@ class MockPlateTrajectory:
         print(f"Mock mount called with plate: {plate}, wait: {wait}")
         sleep(2)
 
+    def unmount(self, wait=True):
+        print(f"Mock unmount called with wait: {wait}")
+        sleep(2)
+        return True
+
 
 class MockTrajectory:
     def __init__(self):
@@ -67,5 +72,6 @@ if __name__ == "__main__":
     print(robot.status.get_loaded_pucks())
     print(robot.status.state.goni_pin)
     print(robot.trajectory.plate.mount(Plate(id=1)))
+    print(robot.trajectory.plate.unmount(wait=True))
     print(robot.status.state.path)
     robot.common.abort()
