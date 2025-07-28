@@ -147,6 +147,8 @@ class PlateManipulatorMaint(HardwareObject):
         if cmdname == "abort":
             self._do_abort()
         elif cmdname == "setPlateBarcode":
+            # Note that we have modified the setPlateBarcode method to
+            # mount trays (in addition to setting the barcode).
             self._mount_tray(args)
 
         return True
@@ -168,10 +170,24 @@ class PlateManipulatorMaint(HardwareObject):
         self._message = f"Mounting tray {args}. Please wait..."
         self._update_global_state()
 
+        loaded_trays = self.plate_manipulator.robot_client.status.get_loaded_trays()
+
+        plate_id = None
+        for tray in loaded_trays:
+            if tray[1].replace("-", "") == args:
+                plate_id = tray[0]
+                break
+
+        if plate_id is None:
+            logging.getLogger("user_level_log").error(f"Tray {args} not found.")
+            self._running = False
+            self._message = f"Tray id for barcode {args} not found."
+            self._update_global_state()
+            return
         try:
             # TODO: Replace with prefect flow
             self.plate_manipulator.robot_client.trajectory.plate.mount(
-                plate=Plate(id=1), wait=True
+                plate=Plate(id=plate_id), wait=True
             )
         except Exception as e:
             self._running = False
