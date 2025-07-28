@@ -1,7 +1,3 @@
-"""
-Plate Manipulator maintenance.
-"""
-
 import logging
 from typing import Literal
 
@@ -18,8 +14,8 @@ class PlateManipulatorMaint(HardwareObject):
     __TYPE__ = "PlateManipulatorMaintenance"
 
     """
-    Implementation of the Plate Manipulator MAINTENANCE,
-    COMMANDS ONLY. Note that the UI also adds a component to mount trays
+    Implementation of the Plate Manipulator maintenance object.
+    (commands only). Note that we've also added a component in the UI to mount trays
     which is not included in the get_cmd_info method, as this
     requires a barcode to be passed as an argument. Any method that requires
     input from the user should be implemented in the UI.
