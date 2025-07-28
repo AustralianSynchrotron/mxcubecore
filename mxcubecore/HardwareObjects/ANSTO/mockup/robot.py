@@ -1,3 +1,5 @@
+from gevent import sleep
+from mx_robot_library.schemas.common.position import RobotPositions
 from mx_robot_library.schemas.common.sample import (
     Pin,
     Plate,
@@ -5,10 +7,27 @@ from mx_robot_library.schemas.common.sample import (
 )
 
 
+class MockPlateTrajectory:
+    def mount(self, plate, wait=True):
+        print(f"Mock mount called with plate: {plate}, wait: {wait}")
+        sleep(2)
+
+    def unmount(self, wait=True):
+        print(f"Mock unmount called with wait: {wait}")
+        sleep(2)
+        return True
+
+
+class MockTrajectory:
+    def __init__(self):
+        self.plate = MockPlateTrajectory()
+
+
 class SimState:
     def __init__(self):
         self.goni_plate = None
         self.goni_pin = None
+        self.path = RobotPositions.SOAK
 
 
 class SimStatus:
@@ -32,9 +51,17 @@ class SimStatus:
         )
 
 
+class MockCommon:
+    def abort(self):
+        print("Mock abort called")
+        return True
+
+
 class SimRobot:
     def __init__(self):
         self.status = SimStatus()
+        self.trajectory = MockTrajectory()
+        self.common = MockCommon()
 
 
 if __name__ == "__main__":
@@ -44,3 +71,7 @@ if __name__ == "__main__":
     print(robot.status.state.goni_plate)
     print(robot.status.get_loaded_pucks())
     print(robot.status.state.goni_pin)
+    print(robot.trajectory.plate.mount(Plate(id=1)))
+    print(robot.trajectory.plate.unmount(wait=True))
+    print(robot.status.state.path)
+    robot.common.abort()

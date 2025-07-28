@@ -365,6 +365,8 @@ class PlateManipulator(AbstractSampleChanger):
         """
         self._reset_loaded_sample()
         self._trigger_loaded_sample_changed_event(None)
+        # TODO replace with prefect flow
+        self.robot_client.trajectory.plate.unmount(wait=True)
 
     def _reset_loaded_sample(self) -> None:
         """
@@ -570,14 +572,14 @@ class PlateManipulator(AbstractSampleChanger):
             return "No barcode found"
         return barcode
 
+    def _do_abort(self):
+        self.robot_client.common.abort()
+
     # Not implemented methods
     def _do_reset(self):
         pass
 
     def _do_scan(self, component, recursive):
-        pass
-
-    def _do_abort(self):
         pass
 
     def _do_change_mode(self, mode):
