@@ -169,8 +169,16 @@ class PlateManipulatorMaint(HardwareObject):
         self._running = True
         self._message = f"Mounting tray {args}. Please wait..."
         self._update_global_state()
-
-        loaded_trays = self.plate_manipulator.robot_client.status.get_loaded_trays()
+        try:
+            loaded_trays = self.plate_manipulator.robot_client.status.get_loaded_trays()
+        except Exception as e:
+            logging.getLogger("user_level_log").error(
+                f"Failed to get loaded trays: {e}"
+            )
+            self._running = False
+            self._message = f"Failed to get loaded trays: {e}"
+            self._update_global_state()
+            return
 
         plate_id = None
         for tray in loaded_trays:
