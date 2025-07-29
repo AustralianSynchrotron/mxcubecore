@@ -146,9 +146,6 @@ class MicrodiffCamera(HardwareObject):
         int
             Returns -1 for error and 0 for success
         """
-        self.imgArray = self.cam.get_frame()
-        self.height = self.imgArray.height
-        self.width = self.imgArray.width
 
         if self.refreshing:
             logging.getLogger("user_level_log").info("Camera was refreshed!")
@@ -156,12 +153,36 @@ class MicrodiffCamera(HardwareObject):
             self.refreshing = False
 
         try:
-            img_rgb = self.imgArray.convert("RGB")
-            # Get binary image
-            with BytesIO() as f:
-                img_rgb.save(f, format="JPEG")
-                f.seek(0)
-                img_bin_str = f.getvalue()
+            # Max attempts with an interval of 0.1 seconds (10 seconds total)
+            max_attempts = 100
+            for attempt in range(max_attempts):
+                try:
+                    # Get camera image
+                    self.imgArray = self.cam.get_frame()
+                    self.height = self.imgArray.height
+                    self.width = self.imgArray.width
+
+                    img_rgb = self.imgArray
+                    if img_rgb.mode != "RGB":
+                        img_rgb = img_rgb.convert("RGB")
+                    with BytesIO() as f:
+                        img_rgb.save(f, format="JPEG")
+                        f.seek(0)
+                        img_bin_str = f.getvalue()
+                    break
+                except Exception as ex:
+                    logging.getLogger("HWR").error(
+                        f"Error while getting camera image: {ex}"
+                    )
+                    if attempt < max_attempts - 1:
+                        logging.getLogger("HWR").info("Retrying to get camera image...")
+                        gevent.sleep(0.1)
+                    else:
+                        logging.getLogger("HWR").error(
+                            "Failed to get camera image after 10 attempts."
+                        )
+                        return -1
+
             # Sent image to gui
             self.emit("imageReceived", img_bin_str, self.height, self.width)
             # logging.getLogger("HWR").debug('Got camera image: ' + \
@@ -176,7 +197,8 @@ class MicrodiffCamera(HardwareObject):
                 self._print_cam_error_size = True
                 self._print_cam_error_format = True
             return 0
-        except Exception:
+        except Exception as ex:
+            logging.getLogger("HWR").error(f"Error while getting camera image: {ex}")
             if self._print_cam_error_format:
                 logging.getLogger("HWR").error("Error while formatting camera image")
 
@@ -184,7 +206,7 @@ class MicrodiffCamera(HardwareObject):
                 self._print_cam_error_null = True
                 self._print_cam_error_size = True
                 self._print_cam_error_format = False
-            return -1
+            return 0
 
     def read_depth(self) -> float:
         """Get the depth of the camera image
@@ -342,143 +364,7 @@ class MicrodiffCamera(HardwareObject):
         bool
             Returns True
         """
-        return True
-
-    @property
-    def gain(self) -> float:
-        """Get camera gain.
-
-        Returns
-        -------
-        float
-            Gain of the camera.
-        """
-        gain = None
-
-        try:
-            gain = self.cam.gain_rbv.get()
-        except Exception:
-            logging.getLogger("HWR").error("Error getting gain of camera.")
-
-        return gain
-
-    @gain.setter
-    def gain(self, gain: float) -> None:
-        """Set the camera gain
-
-        Parameters
-        ----------
-        gain : float
-            Gain of the camera
-
-        Returns
-        -------
-        None
-        """
-        try:
-            self.cam.gain.put(gain)
-        except Exception:
-            logging.getLogger("HWR").error("Error setting gain of camera.")
-
-    @property
-    def gain_auto(self) -> float:
-        """Get camera auto-gain.
-
-        Returns
-        -------
-        float
-            Aut-gain of the camera.
-        """
-        auto = None
-
-        try:
-            auto = self.cam.gain_auto_rbv.get()
-        except Exception:
-            logging.getLogger("HWR").error("Error getting auto-gain of camera.")
-
-        return auto
-
-    @gain_auto.setter
-    def gain_auto(self, gain_auto: float) -> None:
-        """Set camera auto-gain.
-
-        Parameters
-        ----------
-        gain_auto : float
-            Auto-gain of the camera
-
-        Returns
-        -------
-        None
-        """
-        try:
-            self.cam.gain_auto.put(gain_auto)
-        except Exception:
-            logging.getLogger("HWR").error("Error setting auto-gain of camera.")
-
-    @property
-    def exposure_time(self) -> int:
-        """Get camera exposure time
-
-        Returns
-        -------
-        int
-            Exposure time of the camera.
-        """
-        exp = None
-
-        try:
-            exp = self.cam.acquire_time_rbv.get()
-        except Exception:
-            logging.getLogger("HWR").error("Error getting exposure time of camera.")
-
-        return exp
-
-    @exposure_time.setter
-    def exposure_time(self, exp: int) -> None:
-        """Set the exposure time of the camera.
-
-        Parameters
-        ----------
-        exp : int
-            Exposure time
-
-        Returns
-        -------
-        None
-        """
-        try:
-            self.cam.acquire_time.put(exp)
-        except Exception:
-            logging.getLogger("HWR").error("Error setting gain of camera.")
-
-    def start_camera(self) -> None:
-        """Start the camera and it's associated plugins.
-
-        Returns
-        -------
-        None
-        """
-        try:
-            self.cam.array_callbacks.put(1)  # ArrayCallbacks
-            self.cam.enable.put(1)  # EnableCallbacks
-            self.cam.acquire.put(0)  # Stop the acquisition
-            self.cam.acquire.put(1)  # Start the acquisition
-        except Exception as e:
-            logging.getLogger("HWR").error(e)
-
-    def stop_camera(self) -> None:
-        """Stop the camera.
-
-        Returns
-        -------
-        None
-        """
-        try:
-            self.cam.acquire.put(0)
-            self.cam.acquire.put(1)
-        except Exception as e:
-            logging.getLogger("HWR").error(e)
+        return False
 
     def refresh_camera_procedure(self) -> None:
         """Refresh camera procedure by starting the camera
@@ -495,7 +381,6 @@ class MicrodiffCamera(HardwareObject):
         # Wait a while
         gevent.sleep(0.2)
         # Set PVs to start
-        self.start_camera()
         # (Re)start camera image acquisition
         self.set_live(True)
 
