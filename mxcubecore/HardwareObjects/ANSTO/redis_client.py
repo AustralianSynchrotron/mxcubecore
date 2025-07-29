@@ -3,14 +3,12 @@ import os
 import random
 import struct
 import time
-from typing import Union
+import logging
+from typing import Union, Any, Optional
 
 import numpy as np
 import redis
-from PIL import (
-    Image,
-    ImageOps,
-)
+from PIL import Image, ImageOps
 
 from mxcubecore.configuration.ansto.config import settings
 
@@ -90,30 +88,30 @@ class RedisClient(redis.Redis):
     post_header = " #"
     # ------------------
 
-    def __init__(self, args):
-        redis.Redis.__init__(self, host=args["host"], port=args["port"], db=0)
-        self.__cameras = [args["hybrid"], args["first"], args["second"]]
-        self.__capture = args["capture"]
-        self.__write_image = args["write_image"]
-        self.__zoomLevels = None
-        self.__attrSub = None
-        self.__imgSub = None
+    def __init__(self, args: dict):
+        super().__init__(host=args["host"], port=args["port"], db=0)
+        self._cameras = [args["hybrid"], args["first"], args["second"]]
+        self._capture = args["capture"]
+        self._write_image = args["write_image"]
+        self._zoom_levels = None
+        self._attr_sub = None
+        self._img_sub = None
 
-        self.width: int = None
-        self.heigh: int = None
-        self.depth: int = None
+        self.width: int | None = None
+        self.height: int | None = None
+        self.depth: int | None = None
 
-        img = self.get_frame()
-        try:
-            self.width, self.height, self.depth = np.array(img).shape
-        except ValueError:
-            self.depth = None
-            self.width, self.height = np.array(img).shape
+        if self._initialize():
+            img = self.get_frame()
+            try:
+                self.width, self.height, self.depth = np.array(img).shape
+            except ValueError:
+                self.depth = None
+                self.width, self.height = np.array(img).shape
 
-    def __init(self) -> bool:
+    def _initialize(self) -> bool:
         """
-        This function initializes the test client (ping to check connection, read cameras
-        zoom levels & prepare image and attribute listeners)
+        Initialize the test client (ping, zoom levels, subscriptions).
 
         Returns
         -------
@@ -124,24 +122,29 @@ class RedisClient(redis.Redis):
         try:
             self.ping()
         except redis.exceptions.ConnectionError as e:
-            print(e)
+            logging.error(f"Redis connection error: {e}")
             return False
+
         # Read cameras' zoom levels
-        self.__zoomLevels = [
-            self.__read_attribute("video_zoom_list"),
-            self.__read_attribute("video_zoom_list", 1),
-            self.__read_attribute("video_zoom_list", 2),
+        self._zoom_levels = [
+            self._read_attribute("video_zoom_list"),
+            self._read_attribute("video_zoom_list", 1),
+            self._read_attribute("video_zoom_list", 2),
         ]
         # Create clients to listen to attribute and image channels
-        self.__attrSub = self.pubsub()
-        self.__imgSub = self.pubsub()
+        self._attr_sub = self.pubsub()
+        self._img_sub = self.pubsub()
         # Start listening on attributes channel
-        self.__attrSub.psubscribe("*:ATTR:*")
-        while self.__attrSub.get_message() is None:  # get the subscription message
-            continue
+        self._attr_sub.psubscribe("*:ATTR:*")
+        start = time.time()
+        while self._attr_sub.get_message() is None:
+            if time.time() - start > 5:
+                logging.warning("Timeout waiting for attribute subscription.")
+                return False
+            time.sleep(0.1)
         return True
 
-    def __read_attribute(
+    def _read_attribute(
         self, name: str, cam_idx: int = 0
     ) -> Union[str, int, float, list]:
         """
@@ -159,8 +162,8 @@ class RedisClient(redis.Redis):
         Union[str, int, float, list]
             Attribute's value
         """
-        attr_name = name if cam_idx == 0 else self.__cameras[cam_idx] + "::" + name
-        [attr_type, is_range] = RedisClient.attributes[name][: IS_RANGE_IDX + 1]
+        attr_name = name if cam_idx == 0 else self._cameras[cam_idx] + "::" + name
+        attr_type, is_range = RedisClient.attributes[name][: IS_RANGE_IDX + 1]
         parser = parsers[attr_type]
         if not is_range:
             res = self.get(attr_name)
@@ -176,7 +179,7 @@ class RedisClient(redis.Redis):
                     res = [parser(res_el) for res_el in res]
         return res
 
-    def __write_attribute(
+    def _write_attribute(
         self, name: str, value: Union[str, int, float], cam_idx: int = 0
     ) -> bool:
         """
@@ -196,21 +199,22 @@ class RedisClient(redis.Redis):
         bool
             True if write successful, false otherwise
         """
-        cmd_channel = self.__cameras[cam_idx] + ":SET:" + name
-        attr_channel = self.__cameras[cam_idx] + ":ATTR:" + name
+        cmd_channel = self._cameras[cam_idx] + ":SET:" + name
+        attr_channel = self._cameras[cam_idx] + ":ATTR:" + name
         rep = None
         self.publish(cmd_channel, value)
         start_time = time.perf_counter()
         while (rep is None or rep["channel"].decode("utf-8") != attr_channel) and (
             time.perf_counter() - start_time < 2
         ):
-            rep = self.__attrSub.get_message()
+            rep = self._attr_sub.get_message()
+            time.sleep(0.01)
         return (
             True if rep is not None and rep["data"].decode("utf-8") == "OK" else False
         )
 
     @staticmethod
-    def __output(line: str) -> None:
+    def _output(line: str) -> None:
         """
         This function logs some information from the test running. Text is printed in
         Terminal and in log file.
@@ -224,13 +228,12 @@ class RedisClient(redis.Redis):
         -------
         None
         """
-        print(line)
+        logging.info(line)
         with open(RedisClient.log_file, "a") as out:
             out.write(line + "\n")
-            out.close()
 
     @staticmethod
-    def __generate_header(txt: str) -> str:
+    def _generate_header(txt: str) -> str:
         """
         This function decorates text to be displayed as a header.
 
@@ -256,7 +259,7 @@ class RedisClient(redis.Redis):
             + "\n"
         )
 
-    def __time_tag(self, tag: str) -> None:
+    def _time_tag(self, tag: str) -> None:
         """
         This function displays a time tag in the log file of this test.
         Mainly used to indicate start and end of test.
@@ -273,15 +276,15 @@ class RedisClient(redis.Redis):
         time_tag = (
             "\n"
             + "#" * 5
-            + " {} :: ".format(tag)
+            + f" {tag} :: "
             + datetime.datetime.now().strftime("%c")
             + "  VideoServer tests with Redis  "
             + "#" * 5
             + "\n"
         )
-        self.__output(time_tag)
+        self._output(time_tag)
 
-    def __change_camera(self):
+    def _change_camera(self) -> int:
         """
         This function changes the camera pointed to by the hybrid camera.
 
@@ -290,19 +293,19 @@ class RedisClient(redis.Redis):
         int
             Index of the camera pointed to by the hybrid camera after change is performed
         """
-        cam = self.__read_attribute("camera_name")
-        old_idx = self.__cameras.index(cam)
+        cam = self._read_attribute("camera_name")
+        old_idx = self._cameras.index(cam)
         new_idx = 2 - old_idx + 1
-        if len(self.__zoomLevels[new_idx]) < 2:
+        if len(self._zoom_levels[new_idx]) < 2:
             return old_idx
-        a, b = self.__zoomLevels[new_idx][0], self.__zoomLevels[new_idx][1]
+        a, b = self._zoom_levels[new_idx][0], self._zoom_levels[new_idx][1]
         zoom_level = random.uniform(a, b)
-        assert self.__write_attribute("video_zoom_percent", zoom_level)
-        new_cam = self.__read_attribute("camera_name")
+        assert self._write_attribute("video_zoom_percent", zoom_level)
+        new_cam = self._read_attribute("camera_name")
         assert cam != new_cam
         return new_idx
 
-    def __check_attribute(self, name: str) -> None:
+    def _check_attribute(self, name: str) -> None:
         """
         The check performed on writable attributes consists in writing an attribute and
         reading back its value. The test values are written in RedisClient.attributes.
@@ -319,41 +322,33 @@ class RedisClient(redis.Redis):
         """
         val = RedisClient.attributes[name][TEST_VALUES_IDX]
         if RedisClient.attributes[name][IS_GLOBAL_IDX]:
-            init_value = self.__read_attribute(name)  # store initial value
+            init_value = self._read_attribute(name)  # store initial value
             ok = (
                 "OK"
-                if self.__write_attribute(name, val)
-                and self.__read_attribute(name) == val
+                if self._write_attribute(name, val)
+                and self._read_attribute(name) == val
                 else "NOK"
             )
-            self.__write_attribute(name, init_value)  # restore initial value
-            line = "Set attribute %s to value %s %s" % (name, val, ok)
-            self.__output(line)
+            self._write_attribute(name, init_value)  # restore initial value
+            line = f"Set attribute {name} to value {val} {ok}"
+            self._output(line)
         else:
             assert isinstance(val, list)
             for i, test_val in enumerate(val):
-                prefix = (self.__cameras[i] + "::") if i != 0 else ""
-                init_value = self.__read_attribute(
-                    name, cam_idx=i
-                )  # store initial value
+                prefix = (self._cameras[i] + "::") if i != 0 else ""
+                init_value = self._read_attribute(name, cam_idx=i)  # store initial value
                 ok = (
                     "OK"
-                    if self.__write_attribute(name, test_val, cam_idx=i)
-                    and self.__read_attribute(name, cam_idx=i) == test_val
+                    if self._write_attribute(name, test_val, cam_idx=i)
+                    and self._read_attribute(name, cam_idx=i) == test_val
                     else "NOK"
                 )
                 # restore initial value
-                self.__write_attribute(name, init_value, cam_idx=i)
-                line = "Set attribute %s%s to value %s %s" % (
-                    prefix,
-                    name,
-                    test_val,
-                    ok,
-                )
-                self.__output(line)
-        return
+                self._write_attribute(name, init_value, cam_idx=i)
+                line = f"Set attribute {prefix}{name} to value {test_val} {ok}"
+                self._output(line)
 
-    def __poll_image(self) -> tuple[bytes, int, int, int]:
+    def _poll_image(self) -> tuple[bytes, int, int, int]:
         """
         This function is used to retrieve one image from the Redis video server.
 
@@ -363,19 +358,23 @@ class RedisClient(redis.Redis):
             The raw data in bytes format, width, height and frame number
         """
         msg = None
+        start = time.time()
         while msg is None or isinstance(msg["data"], int):
             try:
-                msg = self.__imgSub.get_message()
+                msg = self._img_sub.get_message()
             except redis.exceptions.ConnectionError:
-                print("Reconnection")
-                self.__imgSub.subscribe(self.__cameras[0] + "RAW")
+                logging.warning("Reconnection")
+                self._img_sub.subscribe(self._cameras[0] + "RAW")
+            if time.time() - start > 5:
+                raise TimeoutError("Timeout polling image from Redis server")
+            time.sleep(0.01)
         _, width, height, _, _, frame_number, _ = struct.unpack(
             RedisClient.header_format, msg["data"][: RedisClient.header_size]
         )
         raw = msg["data"][RedisClient.header_size :]
         return raw, width, height, frame_number
 
-    def __log_all_attributes(self) -> None:
+    def _log_all_attributes(self) -> None:
         """
         This function reads all attributes available in the Redis video server
         and displays them with their values.
@@ -385,24 +384,22 @@ class RedisClient(redis.Redis):
         None
         """
         # Generate header
-        self.__output(self.__generate_header("Logging all attributes"))
+        self._output(self._generate_header("Logging all attributes"))
         for attr in RedisClient.attributes:
-            self.__output(RedisClient.separator)
-            lines = ["%s = %s" % (attr, self.__read_attribute(attr))]
+            self._output(RedisClient.separator)
+            lines = [f"{attr} = {self._read_attribute(attr)}"]
             if not RedisClient.attributes[attr][IS_GLOBAL_IDX]:
                 lines.append(
-                    "%s::%s = %s"
-                    % (self.__cameras[1], attr, self.__read_attribute(attr, 1))
+                    f"{self._cameras[1]}::{attr} = {self._read_attribute(attr, 1)}"
                 )
                 lines.append(
-                    "%s::%s = %s"
-                    % (self.__cameras[2], attr, self.__read_attribute(attr, 2))
+                    f"{self._cameras[2]}::{attr} = {self._read_attribute(attr, 2)}"
                 )
             for line in lines:
-                self.__output(line)
-        self.__output("\n")
+                self._output(line)
+        self._output("\n")
 
-    def __test_attributes(self) -> None:
+    def _test_attributes(self) -> None:
         """
         This function is used to test all writable attributes. Tests are better
         described in self.__check_attribute().
@@ -412,7 +409,7 @@ class RedisClient(redis.Redis):
         None
         """
         # Generate header
-        self.__output(self.__generate_header("Testing writable attributes"))
+        self._output(self._generate_header("Testing writable attributes"))
         # Start testing
         for attr in RedisClient.attributes:
             if (
@@ -420,11 +417,11 @@ class RedisClient(redis.Redis):
                 and "magnification_ratio" not in attr
             ):
                 # magnification ratios are not checked because they reinitialize zoom
-                self.__output(RedisClient.separator)
-                self.__check_attribute(attr)
-        self.__output("\n")
+                self._output(RedisClient.separator)
+                self._check_attribute(attr)
+        self._output("\n")
 
-    def __test_images(self) -> None:
+    def _test_images(self) -> None:
         """
         This function is used to test image retrieval from the video server.
         Based on the capture and write_image options, images will be polled and
@@ -434,23 +431,27 @@ class RedisClient(redis.Redis):
         -------
         None
         """
-        if not self.__capture:
-            self.__output(self.__generate_header("No image capture."))
+        if not self._capture:
+            self._output(self._generate_header("No image capture."))
             return
-        self.__output(self.__generate_header("Testing video streamer"))
+        self._output(self._generate_header("Testing video streamer"))
         # Set video live
-        self.__write_attribute("video_live", 1)
+        self._write_attribute("video_live", 1)
         # Subscribe to image channel
-        img_channel = self.__cameras[0] + ":RAW"
-        self.__imgSub.subscribe(img_channel)
-        while self.__imgSub.get_message() is None:  # get subscription message
-            continue
+        img_channel = self._cameras[0] + ":RAW"
+        self._img_sub.subscribe(img_channel)
+        start = time.time()
+        while self._img_sub.get_message() is None:  # get subscription message
+            if time.time() - start > 5:
+                logging.warning("Timeout waiting for image subscription.")
+                return
+            time.sleep(0.1)
         # Prepare image tab and time counters
         last_img_time = time.perf_counter()
         img_counter = 0
         img_tab = [None] * RedisClient.num_acq
-        while self.__capture and img_counter < RedisClient.num_acq:
-            raw, width, height, frame_number = self.__poll_image()
+        while self._capture and img_counter < RedisClient.num_acq:
+            raw, width, height, frame_number = self._poll_image()
             try:
                 img_tab[img_counter] = Image.frombytes(
                     mode="RGB", size=(width, height), data=raw
@@ -463,20 +464,19 @@ class RedisClient(redis.Redis):
             current_time = time.perf_counter()
             process_time = current_time - last_img_time
             last_img_time = current_time
-            fps = self.__read_attribute("video_fps")
+            fps = self._read_attribute("video_fps")
             fps_calc = float(1.0 / process_time)
             line = (
-                "Image number: %2d,  Frame number: %d,  FPS: %6.3f,  "
-                "Server FPS: %6.3f,  Process Time: %6.3fms"
-                % (img_counter, frame_number, fps_calc, fps, process_time * 1000)
+                f"Image number: {img_counter:2d},  Frame number: {frame_number},  FPS: {fps_calc:6.3f},  "
+                f"Server FPS: {fps:6.3f},  Process Time: {process_time * 1000:6.3f}ms"
             )
-            self.__output(line)
+            self._output(line)
         # Create image directory
-        if self.__write_image:
+        if self._write_image:
             if not os.path.exists(RedisClient.img_dir):
                 os.mkdir(RedisClient.img_dir)
             for i, img in enumerate(img_tab[: RedisClient.num_write_img]):
-                img.save("./%s/image%d.bmp" % (RedisClient.img_dir, i))
+                img.save(f"./{RedisClient.img_dir}/image{i}.bmp")
 
     def run(self) -> None:
         """
@@ -486,16 +486,16 @@ class RedisClient(redis.Redis):
         -------
         None
         """
-        if not self.__init():
-            print("Test client could not be initialized, test is aborted.")
+        if not self._initialize():
+            logging.error("Test client could not be initialized, test is aborted.")
             return
-        self.__time_tag("Start")
-        self.__log_all_attributes()
-        # self.__test_attributes()
-        self.__test_images()
-        self.__time_tag("End")
+        self._time_tag("Start")
+        self._log_all_attributes()
+        # self._test_attributes()
+        self._test_images()
+        self._time_tag("End")
 
-    def get_frame(self) -> Image:
+    def get_frame(self) -> Optional[Image.Image]:
         """
         Gets a frame from the MD3 redis server.
 
@@ -504,26 +504,25 @@ class RedisClient(redis.Redis):
         Image
             An image object
         """
-        if not self.__init():
-            print("Test client could not be initialized, test is aborted.")
-            return
+        if not self._initialize():
+            logging.error("Test client could not be initialized, test is aborted.")
+            return None
 
-        self.__write_attribute("video_live", 1)
+        self._write_attribute("video_live", 1)
         # Subscribe to image channel
-        img_channel = self.__cameras[0] + ":RAW"
-        self.__imgSub.subscribe(img_channel)
-        while self.__imgSub.get_message() is None:  # get subscription message
-            continue
-
-        raw, self.width, self.height, frame_number = self.__poll_image()
+        img_channel = self._cameras[0] + ":RAW"
+        self._img_sub.subscribe(img_channel)
+        start = time.time()
+        while self._img_sub.get_message() is None:  # get subscription message
+            if time.time() - start > 5:
+                logging.warning("Timeout waiting for image subscription.")
+                return None
+            time.sleep(0.1)
+        raw, self.width, self.height, frame_number = self._poll_image()
         try:
             img = Image.frombytes(mode="RGB", size=(self.width, self.height), data=raw)
         except ValueError:
-            # black and white image
             img = Image.frombytes(mode="L", size=(self.width, self.height), data=raw)
-
-        # NOTE: The MD3 redis server returns mirrored images, therefore we mirror them back
-        # this is a test to see if docker cp worked
         return ImageOps.mirror(img)
 
 
