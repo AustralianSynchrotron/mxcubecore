@@ -508,7 +508,8 @@ class RedisClient(redis.Redis):
             print("Test client could not be initialized, test is aborted.")
             return
 
-        self.__write_attribute("video_live", 1)
+        if self.__read_attribute("video_live") != 1:
+            self.__write_attribute("video_live", 1)
         # Subscribe to image channel
         img_channel = self.__cameras[0] + ":RAW"
         self.__imgSub.subscribe(img_channel)
