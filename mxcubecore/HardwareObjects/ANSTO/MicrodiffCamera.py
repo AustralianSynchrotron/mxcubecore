@@ -171,12 +171,12 @@ class MicrodiffCamera(HardwareObject):
                         img_bin_str = f.getvalue()
                     break
                 except Exception as ex:
-                    if attempt % 20 == 0:
-                        # only log every 20 attempts (2 seconds)
-                        logging.getLogger("HWR").error(
-                            f"Error while getting camera image (attempt {attempt}), retrying...: {ex}"
-                        )
                     if attempt < max_attempts - 1:
+                        if attempt % 20 == 0:
+                            # only log every 20 attempts (2 seconds)
+                            logging.getLogger("HWR").error(
+                                f"Error while getting camera image (attempt {attempt}), retrying...: {ex}"
+                            )
                         gevent.sleep(0.1)
                     else:
                         logging.getLogger("HWR").error(
