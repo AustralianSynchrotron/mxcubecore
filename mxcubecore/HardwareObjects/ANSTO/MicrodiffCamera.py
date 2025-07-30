@@ -153,8 +153,8 @@ class MicrodiffCamera(HardwareObject):
             self.refreshing = False
 
         try:
-            # Max attempts with an interval of 0.1 seconds (10 seconds total)
-            max_attempts = 100
+            # Max attempts with an interval of 0.1 seconds (60 seconds total)
+            max_attempts = 600
             for attempt in range(max_attempts):
                 try:
                     # Get camera image
@@ -171,15 +171,16 @@ class MicrodiffCamera(HardwareObject):
                         img_bin_str = f.getvalue()
                     break
                 except Exception as ex:
-                    logging.getLogger("HWR").error(
-                        f"Error while getting camera image: {ex}"
-                    )
+                    if attempt % 20 == 0:
+                        # only log every 20 attempts (2 seconds)
+                        logging.getLogger("HWR").error(
+                            f"Error while getting camera image (attempt {attempt}), retrying...: {ex}"
+                        )
                     if attempt < max_attempts - 1:
-                        logging.getLogger("HWR").info("Retrying to get camera image...")
                         gevent.sleep(0.1)
                     else:
                         logging.getLogger("HWR").error(
-                            "Failed to get camera image after 10 attempts."
+                            "Failed to get camera image after 600 attempts."
                         )
                         return -1
 
