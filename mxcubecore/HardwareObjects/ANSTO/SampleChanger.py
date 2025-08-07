@@ -483,6 +483,21 @@ class SampleChanger(AbstractSampleChanger):
     def _do_scan(self, component, recursive) -> None:
         raise NotImplementedError
 
+    def assert_can_execute_task(self):
+        """
+        Logs an error at the user level if the state is not ready
+
+        Raises
+        ------
+        Exception
+            If the robot is not in a state that allows executing tasks.
+            The error message will be logged at the user level.
+        """
+        if not self.is_ready():
+            msg = f"Cannot execute task: the robot is currently in state {SampleChangerState.tostring(self.state)}. "
+            logging.getLogger("user_level_log").error(msg)
+            raise Exception(msg)
+
     def _do_load(
         self,
         sample: str | MxcubePin,
@@ -525,12 +540,9 @@ class SampleChanger(AbstractSampleChanger):
 
             response = _prefect_mount_client.trigger_flow(wait=True)
             if response.state.type != StateType.COMPLETED:
-                logging.getLogger("user_level_log").error(
-                    f"Failed to mount sample. Please check the status of the robot."
-                )
-                raise RuntimeError(
-                    "Failed to mount sample. Please check the status of the robot."
-                )
+                msg = f"Failed to mount sample. {response.state.message}"
+                logging.getLogger("user_level_log").error(msg)
+                raise RuntimeError(msg)
 
         except Exception:
             logging.getLogger("user_level_log").error(
@@ -651,12 +663,9 @@ class SampleChanger(AbstractSampleChanger):
 
             response = _prefect_unmount_client.trigger_flow(wait=True)
             if response.state.type != StateType.COMPLETED:
-                logging.getLogger("user_level_log").error(
-                    "Failed to mount sample. Please check the status of the robot."
-                )
-                raise RuntimeError(
-                    "Failed to mount sample. Please check the status of the robot."
-                )
+                msg = f"Failed to unmount sample. {response.state.message}"
+                logging.getLogger("user_level_log").error(msg)
+                raise RuntimeError(msg)
 
         except Exception:
             logging.getLogger("user_level_log").error(
