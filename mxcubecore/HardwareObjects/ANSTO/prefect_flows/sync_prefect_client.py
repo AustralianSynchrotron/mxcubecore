@@ -6,6 +6,7 @@ import redis
 from gevent import sleep
 
 from mxcubecore.configuration.ansto.config import settings
+from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 try:
     # NOTE: State must be imported first,
@@ -135,6 +136,28 @@ class MX3SyncPrefectClient:
                 flow_status = self.redis_connection.get(
                     f"mxcube_scan_state:{sample_id}"
                 )
+            flow_run = client.read_flow_run(self.flow_run_id)
+            flow_state = flow_run.state
+            if flow_state and flow_state.type == StateType.FAILED:
+                logging.getLogger("user_level_log").error(flow_state.message)
+                raise QueueExecutionException(flow_state.message, self)
+
+    def check_flow_state(self) -> None:
+        """
+        Checks the state of the flow run and raises an exception
+        containing the prefect flow run error message if the flow has failed.
+
+        Raises
+        ------
+        QueueExecutionException
+            If the flow run has failed
+        """
+        with get_client(sync_client=True) as client:
+            flow_run = client.read_flow_run(self.flow_run_id)
+            flow_state = flow_run.state
+            if flow_state and flow_state.type == StateType.FAILED:
+                logging.getLogger("user_level_log").error(flow_state.message)
+                raise QueueExecutionException(flow_state.message, self)
 
     def trigger_grid_scan(self) -> FlowRun:
         """
@@ -157,16 +180,16 @@ class MX3SyncPrefectClient:
 
             deployment_id = client.read_deployment_by_name(self.name).id
 
-            flow_run_id = client.create_flow_run_from_deployment(
+            self.flow_run_id = client.create_flow_run_from_deployment(
                 deployment_id, parameters=self.parameters
             ).id
 
-            state = self.get_flow_run_state(flow_run_id, client)
+            state = self.get_flow_run_state(self.flow_run_id, client)
             while (
                 state.type == StateType.SCHEDULED  # noqa
                 or state.type == StateType.PENDING  # noqa
             ):
-                state = self.get_flow_run_state(flow_run_id, client)
+                state = self.get_flow_run_state(self.flow_run_id, client)
                 sleep(1)
 
     def get_flow_run_state(self, flow_run_id: UUID, client: PrefectClient) -> State:

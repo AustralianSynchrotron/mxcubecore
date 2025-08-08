@@ -2,11 +2,13 @@ import logging
 from typing import Literal
 
 from mx_robot_library.schemas.common.path import RobotPaths
-from mx_robot_library.schemas.common.sample import Plate
+from prefect.server.schemas.states import StateType
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.configuration.ansto.config import settings
 
 from .PlateManipulator import PlateManipulator
+from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 
 
 class PlateManipulatorMaint(HardwareObject):
@@ -193,10 +195,16 @@ class PlateManipulatorMaint(HardwareObject):
             self._update_global_state()
             return
         try:
-            # TODO: Replace with prefect flow
-            self.plate_manipulator.robot_client.trajectory.plate.mount(
-                plate=Plate(id=plate_id), wait=True
+            prefect_client = MX3SyncPrefectClient(
+                name=settings.MOUNT_TRAY_DEPLOYMENT_NAME,
+                parameters={
+                    "tray_location": plate_id,
+                },
             )
+
+            response = prefect_client.trigger_flow(wait=True)
+            if response.state.type != StateType.COMPLETED:
+                raise RuntimeError(response.state.message)
         except Exception as e:
             self._running = False
             logging.getLogger("user_level_log").error(f"Failed to mount tray: {e}")

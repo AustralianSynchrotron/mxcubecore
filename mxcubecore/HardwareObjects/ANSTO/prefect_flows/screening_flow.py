@@ -101,9 +101,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
         try:
             screening_flow.trigger_data_collection(sample_id)
-            logging.getLogger("HWR").info(
-                "Screening complete. Data processing results will be displayed "
-                "in MX-PRISM shortly"
+            logging.getLogger("user_level_log").info(
+                "Screening completed successfully."
             )
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False

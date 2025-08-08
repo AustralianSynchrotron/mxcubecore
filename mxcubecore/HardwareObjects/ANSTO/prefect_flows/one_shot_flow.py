@@ -87,7 +87,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
 
         try:
             one_shot_flow.trigger_data_collection(sample_id)
-            logging.getLogger("HWR").info("One-shot flow complete")
+            logging.getLogger("user_level_log").info("One-shot completed successfully.")
         except Exception as ex:
             raise QueueExecutionException(str(ex), self) from ex
 

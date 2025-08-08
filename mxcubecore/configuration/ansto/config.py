@@ -8,6 +8,12 @@ from pydantic_settings import BaseSettings
 
 class PrefectSettings(BaseSettings):
     PREFECT_URI: str = Field("http://localhost:4200", env="PREFECT_URI")
+    MOUNT_TRAY_DEPLOYMENT_NAME: str = Field(
+        "mount-tray-plan/mount_tray", env="MOUNT_TRAY_DEPLOYMENT_NAME"
+    )
+    UNMOUNT_TRAY_DEPLOYMENT_NAME: str = Field(
+        "unmount-tray-plan/unmount_tray", env="UNMOUNT_TRAY_DEPLOYMENT_NAME"
+    )
     ONE_SHOT_DEPLOYMENT_NAME: str = Field(
         "mxcube-one-shot/plans", env="ONE_SHOT_DEPLOYMENT_NAME"
     )

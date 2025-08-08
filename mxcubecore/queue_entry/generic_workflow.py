@@ -94,7 +94,7 @@ class GenericWorkflowQueueEntry(BaseQueueEntry):
             self.workflow_started = True
         elif state == "OPEN":
             msg = "Workflow waiting for input, verify parameters and press continue."
-            logging.getLogger("user_level_log").warning(msg)
+            logging.getLogger("HWR").warning(msg)
             self.get_queue_controller().show_workflow_tab()
 
     def pre_execute(self):

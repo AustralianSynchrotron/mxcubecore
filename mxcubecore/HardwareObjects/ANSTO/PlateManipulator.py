@@ -3,6 +3,7 @@ import logging
 import gevent
 from gevent import sleep
 from mx_robot_library.client import Client
+from prefect.server.schemas.states import StateType
 
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractSampleChanger import (
@@ -19,6 +20,7 @@ from .mockup.channels import (
     SimMd3State,
 )
 from .mockup.robot import SimRobot
+from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 from .redis_utils import get_redis_connection
 
 
@@ -363,10 +365,19 @@ class PlateManipulator(AbstractSampleChanger):
         -------
         None
         """
+        prefect_client = MX3SyncPrefectClient(
+            name=settings.UNMOUNT_TRAY_DEPLOYMENT_NAME,
+            parameters={},
+        )
+
+        response = prefect_client.trigger_flow(wait=True)
+        if response.state.type != StateType.COMPLETED:
+            logging.getLogger("user_level_log").error(
+                f"Failed to unmount tray: {response.state.message}"
+            )
+            raise RuntimeError(response.state.message)
         self._reset_loaded_sample()
         self._trigger_loaded_sample_changed_event(None)
-        # TODO replace with prefect flow
-        self.robot_client.trajectory.plate.unmount(wait=True)
 
     def _reset_loaded_sample(self) -> None:
         """
