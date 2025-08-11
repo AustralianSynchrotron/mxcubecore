@@ -61,7 +61,7 @@ class MicrodiffZoom(ExporterNState):
         # NOTE: In principle adding here `self.emit("pixelsPerMmChanged", (pixels_per_mm))`
         # should update the pixels per mm values in the UI when the zoom level is changed
         # externally, but this does not work.
-        # However modifying the SampleView in component in mxcubeweb works
+        # However modifying the SampleView component in mxcubeweb works
 
     def update_limits(self, limits: tuple[int, int] = None) -> None:
         """
