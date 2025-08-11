@@ -1,4 +1,7 @@
+import logging
 from enum import Enum
+
+from mxcubecore.configuration.ansto.config import settings
 
 from .ExporterNState import ExporterNState
 
@@ -9,18 +12,16 @@ class MicrodiffZoom(ExporterNState):
     def init(self):
         """Initialize the zoom"""
         super().init()
+        try:
+            _low, _high = self._exporter.execute("getZoomRange")
+            self.set_limits((_low, _high))
+        except Exception as e:
+            logging.getLogger("HWR").warning(
+                f"Failed to get zoom range. Defaulting to (1, 7): {e}"
+            )
+            self.set_limits((1, 7))
 
-        # check if we have values other that UNKNOWN
-        _len = len(self.VALUES) - 1
-        if _len > 0:
-            # we can only assume that the values are consecutive integers
-            # so the limits correspond to the keys.
-            limits = (0, _len - 1)
-            self.set_limits(limits)
-        else:
-            # no values in the config file, initialise from the hardware.
-            self.set_limits(self._get_range())
-            self._initialise_values()
+        self._initialise_values()
 
     def set_limits(self, limits: tuple[int, int] = (None, None)) -> None:
         """
@@ -37,18 +38,25 @@ class MicrodiffZoom(ExporterNState):
         """
         self._nominal_limits = limits
 
-    def update_value(self, value=None) -> None:
+    def update_value(self, value: int | Enum | None = None) -> None:
         """
-        Check if the value has changed. Emits signal valueChanged.
+        Updates the zoom value.
+
+        Parameters
+        ----------
+        value : int | Enum | None, optional
+            The new zoom value. If the value is an integer,
+            we emit the corresponding enum value.
 
         Returns
         -------
         None
         """
-        # Make sure that update value of super class always is passed value=None
-        # so that _get_value is called to get the Enum value and not the numeric
-        # value passed by underlying event data.
-        super().update_value()
+        if value is not None:
+            if isinstance(value, int):
+                self.emit("valueChanged", (getattr(self.VALUES, f"LEVEL{value}"),))
+            elif isinstance(value, Enum):
+                self.emit("valueChanged", (value,))
 
     def update_limits(self, limits: tuple[int, int] = None) -> None:
         """
@@ -85,26 +93,3 @@ class MicrodiffZoom(ExporterNState):
             "ValueEnum",
             dict(values, **{item.name: item.value for item in self.VALUES}),
         )
-
-    def _get_range(self) -> tuple[int, int]:
-        """
-        Get the zoom range.
-
-        Returns
-        -------
-        tuple[int, int]
-            The min and max zoom values
-        """
-        try:
-            _low, _high = self._exporter.execute("getZoomRange")
-        except (AttributeError, ValueError):
-            _low, _high = 1, 10
-
-        # inf is a problematic value
-        if _low == float("-inf"):
-            _low = 1
-
-        if _high == float("inf"):
-            _high = 10
-
-        return _low, _high
