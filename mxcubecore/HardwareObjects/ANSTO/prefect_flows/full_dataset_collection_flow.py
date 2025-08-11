@@ -99,9 +99,8 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
 
         try:
             full_dataset_flow.trigger_data_collection(sample_id)
-            logging.getLogger("HWR").info(
-                "Full dataset collection complete. Data processing results will be displayed "
-                "in MX-PRISM shortly"
+            logging.getLogger("user_level_log").info(
+                "Dataset collection completed successfully."
             )
         except Exception as ex:
             raise QueueExecutionException(str(ex), self) from ex

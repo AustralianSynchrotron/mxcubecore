@@ -139,22 +139,13 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         # Remember the collection params for the next collection
         self._save_dialog_box_params_to_redis(dialog_box_model)
-
-        try:
-            self.start_prefect_flow_and_get_results_from_redis(
-                prefect_parameters=prefect_parameters,
-                num_cols=num_cols,
-                num_rows=num_rows,
-                grid_id=sid,
-            )
-        except Exception as ex:
-            logging.getLogger("HWR").info(f"Failed to execute raster flow: {str(ex)}")
-            self._state.value = "ON"
-            self.mxcubecore_workflow_aborted = False
-            logging.getLogger("user_level_log").warning(
-                "Grid scan flow was not successful"
-            )
-            raise QueueExecutionException(str(ex), self) from ex
+        self.start_prefect_flow_and_get_results_from_redis(
+            prefect_parameters=prefect_parameters,
+            num_cols=num_cols,
+            num_rows=num_rows,
+            grid_id=sid,
+        )
+        logging.getLogger("user_level_log").info("Grid scan completed successfully.")
 
     def start_prefect_flow_and_get_results_from_redis(
         self,
@@ -172,7 +163,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         ----------
         prefect_parameters : GridScanParams
             The prefect grid scan parameters
-        num_cols : int)
+        num_cols : int
             The number of columns of the grid
         num_rows : int
             The number of rows of the grid
@@ -182,65 +173,88 @@ class GridScanFlow(AbstractPrefectWorkflow):
         Returns
         -------
         None
+
+        Raises
+        ------
+        QueueExecutionException
+            If an exception occurs, we first check if the flow state is `FAILED`
+            and in this case we raise a QueueExecutionException with the flow run error message
+            (this will most likely occur because of hardware errors).
+            However if the flow is not `FAILED`, and an exception still occurs,
+            then we raise a QueueExecutionException
+            with the exception message.
         """
 
         grid_scan_flow = MX3SyncPrefectClient(
             name=settings.GRID_SCAN_DEPLOYMENT_NAME,
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
+        try:
+            grid_scan_flow.trigger_grid_scan()
 
-        grid_scan_flow.trigger_grid_scan()
-
-        logging.getLogger("HWR").info("Getting spotfinder results from redis...")
-        logging.getLogger("HWR").info(
-            f"Expected number of columns and rows: {num_cols}, {num_rows}"
-        )
-
-        if not self.mxcubecore_workflow_aborted:
-            last_id = 0
-            numer_of_frames = num_cols * num_rows
-            score_array = np.zeros((num_rows, num_cols))
-            with redis.StrictRedis(
-                host=settings.MXCUBE_REDIS_HOST,
-                port=settings.MXCUBE_REDIS_PORT,
-                username=settings.MXCUBE_REDIS_USERNAME,
-                password=settings.MXCUBE_REDIS_PASSWORD,
-                db=settings.MXCUBE_REDIS_DB,
-            ) as redis_client:
-                for _ in range(numer_of_frames):
-                    data, last_id = self.read_message_from_redis_streams(
-                        topic=f"spotfinder:sample_{prefect_parameters.sample_id}:grid_scan_{prefect_parameters.grid_scan_id}",  # noqa
-                        id=last_id,
-                        redis_client=redis_client,
-                    )
-                    heatmap_coordinate = (
-                        int(data[b"heatmap_coordinate_x"]),
-                        int(data[b"heatmap_coordinate_y"]),
-                    )
-                    score_array[heatmap_coordinate[1], heatmap_coordinate[0]] = float(
-                        data[b"score"]
-                    )
-
-            logging.getLogger("HWR").debug(f"score_list: {score_array}")
-            logging.getLogger("HWR").info(f"Creating heatmap...")
-
-            heatmap_array = self.create_heatmap(
-                num_cols=num_cols,
-                num_rows=num_rows,
-                score_array=score_array,
+            logging.getLogger("HWR").info("Getting spotfinder results from redis...")
+            logging.getLogger("HWR").info(
+                f"Expected number of columns and rows: {num_cols}, {num_rows}"
             )
 
-            heatmap = {
-                i: [i, list(heatmap_array[i - 1])]
-                for i in range(1, num_rows * num_cols + 1)
-            }
+            if not self.mxcubecore_workflow_aborted:
+                last_id = 0
+                numer_of_frames = num_cols * num_rows
+                score_array = np.zeros((num_rows, num_cols))
+                with redis.StrictRedis(
+                    host=settings.MXCUBE_REDIS_HOST,
+                    port=settings.MXCUBE_REDIS_PORT,
+                    username=settings.MXCUBE_REDIS_USERNAME,
+                    password=settings.MXCUBE_REDIS_PASSWORD,
+                    db=settings.MXCUBE_REDIS_DB,
+                ) as redis_client:
+                    for _ in range(numer_of_frames):
+                        data, last_id = self.read_message_from_redis_streams(
+                            topic=f"spotfinder:sample_{prefect_parameters.sample_id}:grid_scan_{prefect_parameters.grid_scan_id}",  # noqa
+                            id=last_id,
+                            redis_client=redis_client,
+                        )
+                        heatmap_coordinate = (
+                            int(data[b"heatmap_coordinate_x"]),
+                            int(data[b"heatmap_coordinate_y"]),
+                        )
+                        score_array[heatmap_coordinate[1], heatmap_coordinate[0]] = (
+                            float(data[b"score"])
+                        )
 
-            heatmap_dict = {"heatmap": heatmap}
+                logging.getLogger("HWR").debug(f"score_list: {score_array}")
+                logging.getLogger("HWR").info(f"Creating heatmap...")
 
-            self.sample_view.set_grid_data(grid_id, heatmap_dict, data_file_path=None)
+                heatmap_array = self.create_heatmap(
+                    num_cols=num_cols,
+                    num_rows=num_rows,
+                    score_array=score_array,
+                )
 
-        self._state.value = "ON"
-        self.mxcubecore_workflow_aborted = False
+                heatmap = {
+                    i: [i, list(heatmap_array[i - 1])]
+                    for i in range(1, num_rows * num_cols + 1)
+                }
+
+                heatmap_dict = {"heatmap": heatmap}
+
+                self.sample_view.set_grid_data(
+                    grid_id, heatmap_dict, data_file_path=None
+                )
+
+            self._state.value = "ON"
+            self.mxcubecore_workflow_aborted = False
+
+        except Exception as ex:
+            self._state.value = "ON"
+            self.mxcubecore_workflow_aborted = False
+
+            grid_scan_flow.check_flow_state()
+
+            logging.getLogger("HWR").error(
+                f"Grid scan flow was not successful: {str(ex)}"
+            )
+            raise QueueExecutionException(str(ex), self) from ex
 
     def read_message_from_redis_streams(
         self, topic: str, id: Union[bytes, int], redis_client: redis.StrictRedis
