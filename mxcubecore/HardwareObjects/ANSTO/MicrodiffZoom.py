@@ -1,8 +1,6 @@
 import logging
 from enum import Enum
 
-from mxcubecore.configuration.ansto.config import settings
-
 from .ExporterNState import ExporterNState
 
 
