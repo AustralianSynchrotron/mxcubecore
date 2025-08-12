@@ -38,6 +38,6 @@
 
   <phase_list>["Transfer", "Centring", "DataCollection"]</phase_list>
   <headType>MiniKappa</headType>
-  <exports>["abort", "status"]</exports>
+  <exports>["abort", "status", "park_goniometer"]</exports>
   <chip_definition_file>chip_definition.json</chip_definition_file>
 </object>

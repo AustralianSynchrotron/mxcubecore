@@ -65,6 +65,7 @@ class Diffractometer(GenericDiffractometer):
             self.motor_hwobj_dict["zoom"] = self.get_object_by_role("zoom")
         if "focus" not in self.motor_hwobj_dict.keys():
             self.motor_hwobj_dict["focus"] = self.get_object_by_role("focus")
+        self.backlight_switch = self.get_object_by_role("backlightswitch")
 
         calibration_x = self.motor_hwobj_dict["zoom"].get_property("pixels_per_mm_x")
         calibration_y = self.motor_hwobj_dict["zoom"].get_property("pixels_per_mm_y")
@@ -187,6 +188,41 @@ class Diffractometer(GenericDiffractometer):
         )
 
         self._save_head_type_to_redis()
+
+        self.capillary_position = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "capillary_position",
+            },
+            "CapillaryPosition",
+        )
+
+        self.beamstop_position = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "beamstop_position",
+            },
+            "BeamstopPosition",
+        )
+
+        self.aperture_position = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "aperture_position",
+            },
+            "AperturePosition",
+        )
+        self.scintillator_position = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "scintillator_position",
+            },
+            "ScintillatorPosition",
+        )
 
     def _update_phase_value(self, value: str = None) -> None:
         """
@@ -885,6 +921,73 @@ class Diffractometer(GenericDiffractometer):
         except Exception as e:
             state = "Unknown"
         return state
+
+    def park_goniometer(self) -> str:
+        """
+        Parks the goniometer by moving the capillary, beamstop, aperture,
+        scintillator and backlight to their PARK positions.
+
+        Returns
+        -------
+        str
+            The result of the parking operation. This is displayed in the UI
+        """
+        logging.getLogger("user_level_log").info("Parking the goniometer...")
+        try:
+            capillary_pos = self.capillary_position.get_value()
+            if capillary_pos != "PARK":
+                logging.getLogger("HWR").info(f"capillary_pos {capillary_pos}")
+        except Exception as e:
+            msg = f"Failed to park the capillary: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+
+        try:
+            beamstop_pos = self.beamstop_position.get_value()
+            if beamstop_pos != "PARK":
+                logging.getLogger("HWR").info(f"beamstop_pos {beamstop_pos}")
+        except Exception as e:
+            msg = f"Failed to park the beamstop: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+
+        try:
+            aperture_pos = self.aperture_position.get_value()
+            if aperture_pos != "PARK":
+                logging.getLogger("HWR").info(f"aperture_pos {aperture_pos}")
+        except Exception as e:
+            msg = f"Failed to park the aperture: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+
+        try:
+            scintillator_pos = self.scintillator_position.get_value()
+            if scintillator_pos != "PARK":
+                logging.getLogger("HWR").info(f"scintillator_pos {scintillator_pos}")
+        except Exception as e:
+            msg = f"Failed to park the scintillator: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+
+        try:
+            backlight_switch_pos = self.backlight_switch.get_value()
+            if backlight_switch_pos.value:
+                logging.getLogger("HWR").info(f"Turning off backlight switch")
+                self.backlight_switch.set_value(False)
+        except Exception as e:
+            msg = f"Failed to turn off backlight switch: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+        try:
+            self.wait_device_ready()
+        except Exception as e:
+            msg = f"Goni did not finish parking: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+
+        msg = "Goniometer parked successfully"
+        logging.getLogger("user_level_log").info(msg)
+        return msg
 
     # Note extra functions can be added as long as they are also
     # added in the xml config. The UI will automatically
