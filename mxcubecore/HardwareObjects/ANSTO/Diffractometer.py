@@ -65,7 +65,6 @@ class Diffractometer(GenericDiffractometer):
             self.motor_hwobj_dict["zoom"] = self.get_object_by_role("zoom")
         if "focus" not in self.motor_hwobj_dict.keys():
             self.motor_hwobj_dict["focus"] = self.get_object_by_role("focus")
-        self.backlight_switch = self.get_object_by_role("backlightswitch")
 
         calibration_x = self.motor_hwobj_dict["zoom"].get_property("pixels_per_mm_x")
         calibration_y = self.motor_hwobj_dict["zoom"].get_property("pixels_per_mm_y")
@@ -193,7 +192,7 @@ class Diffractometer(GenericDiffractometer):
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
-                "name": "capillary_position",
+                "name": "capillary",
             },
             "CapillaryPosition",
         )
@@ -202,7 +201,7 @@ class Diffractometer(GenericDiffractometer):
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
-                "name": "beamstop_position",
+                "name": "beamstop",
             },
             "BeamstopPosition",
         )
@@ -211,7 +210,7 @@ class Diffractometer(GenericDiffractometer):
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
-                "name": "aperture_position",
+                "name": "aperture",
             },
             "AperturePosition",
         )
@@ -219,9 +218,17 @@ class Diffractometer(GenericDiffractometer):
             {
                 "type": "exporter",
                 "exporter_address": self.exporter_addr,
-                "name": "scintillator_position",
+                "name": "scintillator",
             },
             "ScintillatorPosition",
+        )
+        self.backlight_switch = self.add_channel(
+            {
+                "type": "exporter",
+                "exporter_address": self.exporter_addr,
+                "name": "backlight_switch",
+            },
+            "BackLightIsOn",
         )
 
     def _update_phase_value(self, value: str = None) -> None:
@@ -933,55 +940,53 @@ class Diffractometer(GenericDiffractometer):
             The result of the parking operation. This is displayed in the UI
         """
         logging.getLogger("user_level_log").info("Parking the goniometer...")
-        try:
-            capillary_pos = self.capillary_position.get_value()
-            if capillary_pos != "PARK":
-                logging.getLogger("HWR").info(f"capillary_pos {capillary_pos}")
-        except Exception as e:
-            msg = f"Failed to park the capillary: {e}"
-            logging.getLogger("user_level_log").error(msg)
-            return msg
+        hardware_objects = [
+            self.capillary_position,
+            self.beamstop_position,
+            self.aperture_position,
+            self.scintillator_position,
+        ]
 
-        try:
-            beamstop_pos = self.beamstop_position.get_value()
-            if beamstop_pos != "PARK":
-                logging.getLogger("HWR").info(f"beamstop_pos {beamstop_pos}")
-        except Exception as e:
-            msg = f"Failed to park the beamstop: {e}"
-            logging.getLogger("user_level_log").error(msg)
-            return msg
+        for hw_obj in hardware_objects:
+            try:
+                pos = hw_obj.get_value()
+                if pos != "PARK":
+                    logging.getLogger("HWR").info(f"Parking {hw_obj.name()}...")
+            except Exception as e:
+                msg = f"Failed to park {hw_obj.name()}: {e}"
+                logging.getLogger("user_level_log").error(msg)
+                return msg
 
-        try:
-            aperture_pos = self.aperture_position.get_value()
-            if aperture_pos != "PARK":
-                logging.getLogger("HWR").info(f"aperture_pos {aperture_pos}")
-        except Exception as e:
-            msg = f"Failed to park the aperture: {e}"
-            logging.getLogger("user_level_log").error(msg)
-            return msg
-
-        try:
-            scintillator_pos = self.scintillator_position.get_value()
-            if scintillator_pos != "PARK":
-                logging.getLogger("HWR").info(f"scintillator_pos {scintillator_pos}")
-        except Exception as e:
-            msg = f"Failed to park the scintillator: {e}"
-            logging.getLogger("user_level_log").error(msg)
-            return msg
-
+        # Backlight case is different, we need to turn it off
         try:
             backlight_switch_pos = self.backlight_switch.get_value()
-            if backlight_switch_pos.value:
+            if backlight_switch_pos:
                 logging.getLogger("HWR").info(f"Turning off backlight switch")
                 self.backlight_switch.set_value(False)
         except Exception as e:
             msg = f"Failed to turn off backlight switch: {e}"
             logging.getLogger("user_level_log").error(msg)
             return msg
+
         try:
             self.wait_device_ready()
         except Exception as e:
             msg = f"Goni did not finish parking: {e}"
+            logging.getLogger("user_level_log").error(msg)
+            return msg
+
+        # Ensure all positions are in PARK state
+        non_park_state_list = []
+        for hw_obj in hardware_objects:
+            if hw_obj.get_value() != "PARK":
+                non_park_state_list.append(hw_obj.name())
+
+        if self.backlight_switch.get_value():
+            non_park_state_list.append(self.backlight_switch.name())
+
+        if len(non_park_state_list) > 0:
+            msg = "Failed to park the goniometer. The following hardware objects "
+            msg += f"are not in PARK position: {non_park_state_list}"
             logging.getLogger("user_level_log").error(msg)
             return msg
 
