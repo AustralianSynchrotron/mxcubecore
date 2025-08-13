@@ -940,4 +940,4 @@ class Diffractometer(GenericDiffractometer):
             timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
         ):
             while self.get_md3_state() != "Ready":
-                time.sleep(0.5)
+                time.sleep(0.1)
