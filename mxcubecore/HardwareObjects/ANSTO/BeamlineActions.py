@@ -279,6 +279,15 @@ class ParkGoni(HardwareObject):
                 },
                 "BackLightIsOn",
             )
+
+            self.front_light_switch = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "front_light_switch",
+                },
+                "FrontLightIsOn",
+            )
             self.state = self.add_channel(
                 {
                     "type": "exporter",
@@ -326,14 +335,17 @@ class ParkGoni(HardwareObject):
             self.move_phase("Transfer")
             gevent.sleep(0.5)
             while self.state.get_value() != "Ready":
-                logging.getLogger("HWR").debug(
-                    "Waiting for goniometer to finish moving..."
-                )
                 gevent.sleep(0.5)
         except Exception as e:
             msg = f"Failed to set phase to Transfer: {e}"
             logging.getLogger("user_level_log").error(msg)
             return msg
+
+        if self.front_light_switch.get_value():
+            try:
+                self.front_light_switch.set_value(0)
+            except Exception as e:
+                logging.getLogger("user_level_log").error(f"Failed to turn off front light: {e}")
 
         channel_objects = [
             self.capillary_position,
@@ -356,7 +368,6 @@ class ParkGoni(HardwareObject):
                 return msg
         gevent.sleep(0.5)
         while self.state.get_value() != "Ready":
-            logging.getLogger("HWR").debug("Waiting for goniometer to finish moving...")
             gevent.sleep(0.5)
 
         # Ensure all positions are in PARK state
