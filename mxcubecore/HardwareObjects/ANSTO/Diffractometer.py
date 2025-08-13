@@ -13,7 +13,6 @@ from scipy import optimize
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
-from mxcubecore.CommandContainer import ChannelObject
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.GenericDiffractometer import (
     GenericDiffractometer,
