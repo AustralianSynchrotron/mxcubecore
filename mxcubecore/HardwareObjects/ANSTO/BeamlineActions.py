@@ -10,11 +10,11 @@ from mx_robot_library.schemas.common.position import RobotPositions
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.CommandContainer import ChannelObject
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.BeamlineActions import BeamlineActions as BeamlineActionsBase
-
-from .mockup.channels import (
-    SimChannel,
+from mxcubecore.HardwareObjects.BeamlineActions import (
+    BeamlineActions as BeamlineActionsBase,
 )
+
+from .mockup.channels import SimChannel
 
 
 class BeamlineActions(BeamlineActionsBase):
@@ -345,7 +345,9 @@ class ParkGoni(HardwareObject):
             try:
                 self.front_light_switch.set_value(0)
             except Exception as e:
-                logging.getLogger("user_level_log").error(f"Failed to turn off front light: {e}")
+                logging.getLogger("user_level_log").error(
+                    f"Failed to turn off front light: {e}"
+                )
 
         channel_objects = [
             self.capillary_position,
