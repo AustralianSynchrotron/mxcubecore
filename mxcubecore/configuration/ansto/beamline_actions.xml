@@ -3,6 +3,7 @@
       {"type": "controller", "name": "Park Robot", "command": "HardwareObjects.ANSTO.BeamlineActions.ParkRobot"},
       {"type": "controller", "name": "Detector Back", "command": "HardwareObjects.ANSTO.BeamlineActions.DetectorBack"},
       {"type": "controller", "name": "Enter Hutch", "command": "HardwareObjects.ANSTO.BeamlineActions.EnterHutch"},
+      {"type": "controller", "name": "Park Goni", "command": "HardwareObjects.ANSTO.BeamlineActions.ParkGoni"},
     ]
     </commands>
 </object>
