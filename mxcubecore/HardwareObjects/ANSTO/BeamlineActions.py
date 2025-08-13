@@ -330,23 +330,24 @@ class ParkGoni(HardwareObject):
             # Set the phase to transfer to park the backlight. This seems
             # more reliable than directly turning off the backlight as it
             # ensures other components of the md3 are also in the correct position,
-            # otherwise parking the backlight directly sometimes fails
+            # otherwise turning off the backlight directly sometimes fails
             logging.getLogger("user_level_log").info("Setting phase to Transfer")
             self.move_phase("Transfer")
             gevent.sleep(0.5)
             while self.state.get_value() != "Ready":
                 gevent.sleep(0.5)
         except Exception as e:
-            msg = f"Failed to set phase to Transfer: {e}"
-            logging.getLogger("user_level_log").error(msg)
-            return msg
+            logging.getLogger("user_level_log").error(
+                f"Failed to set phase to Transfer: {e}"
+            )
+            return
 
         if self.front_light_switch.get_value():
             try:
                 self.front_light_switch.set_value(0)
             except Exception as e:
-                logging.getLogger("user_level_log").error(
-                    f"Failed to turn off front light: {e}"
+                logging.getLogger("user_level_log").warning(
+                    f"Warning: Failed to turn off the front light: {e}"
                 )
 
         channel_objects = [
@@ -365,9 +366,10 @@ class ParkGoni(HardwareObject):
                     )
                     channel.set_value("PARK")
             except Exception as e:
-                msg = f"Failed to park {channel.name()}: {e}"
-                logging.getLogger("user_level_log").error(msg)
-                return msg
+                logging.getLogger("user_level_log").error(
+                    f"Failed to park {channel.name()}: {e}"
+                )
+                return
         gevent.sleep(0.5)
         while self.state.get_value() != "Ready":
             gevent.sleep(0.5)
@@ -375,19 +377,16 @@ class ParkGoni(HardwareObject):
         # Ensure all positions are in PARK state
         timeout = 30  # seconds
         start_time = perf_counter()
-        logging.getLogger("user_level_log").info("Waiting for goniometer to park...")
         while True:
             non_park_state_list = self._all_parked(channel_objects)
             if not non_park_state_list:
                 break
             if perf_counter() - start_time > timeout:
-                msg = (
-                    "Timeout while waiting for goniometer to park. "
+                logging.getLogger("user_level_log").error(
+                    f"Timeout while waiting for goniometer to park. "
                     f"Still not parked: {non_park_state_list}"
                 )
-                logging.getLogger("user_level_log").error(msg)
-                return msg
-            logging.getLogger("HWR").debug("Waiting for goniometer to finish moving...")
+                return
             gevent.sleep(1)
 
         logging.getLogger("user_level_log").info("Goniometer parked successfully")
