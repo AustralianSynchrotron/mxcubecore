@@ -7,11 +7,17 @@ from mx_robot_library.client.client import Client
 from mx_robot_library.schemas.common.path import RobotPaths
 from mx_robot_library.schemas.common.position import RobotPositions
 
+from mxcubecore.BaseHardwareObjects import HardwareObject
+from mxcubecore.CommandContainer import ChannelObject
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.BeamlineActions import BeamlineActions
+from mxcubecore.HardwareObjects.BeamlineActions import (
+    BeamlineActions as BeamlineActionsBase,
+)
+
+from .mockup.channels import SimChannel
 
 
-class BeamlineActions(BeamlineActions):
+class BeamlineActions(BeamlineActionsBase):
     # For more examples, check the BeamlineActionsMockup class
     def __init__(self, *args):
         super().__init__(*args)
@@ -224,3 +230,184 @@ class RobotTrajectory:
             gevent.sleep(0.5)
             if perf_counter() >= _timeout:
                 raise ValueError(f"Could not change robot path after {timeout} seconds")
+
+
+class ParkGoni(HardwareObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(rootName="ParkGoni", *args, **kwargs)
+
+        if settings.BL_ACTIVE:
+            self.capillary_position = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "capillary",
+                },
+                "CapillaryPosition",
+            )
+
+            self.beamstop_position = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "beamstop",
+                },
+                "BeamstopPosition",
+            )
+
+            self.aperture_position = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "aperture",
+                },
+                "AperturePosition",
+            )
+            self.scintillator_position = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "scintillator",
+                },
+                "ScintillatorPosition",
+            )
+            self.backlight_switch = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "backlight_switch",
+                },
+                "BackLightIsOn",
+            )
+
+            self.front_light_switch = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "front_light_switch",
+                },
+                "FrontLightIsOn",
+            )
+            self.state = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "state",
+                },
+                "State",
+            )
+            self.move_phase = self.add_command(
+                {
+                    "type": "exporter",
+                    "exporter_address": settings.EXPORTER_ADDRESS,
+                    "name": "move_to_phase",
+                },
+                "startSetPhase",
+            )
+        else:
+            self.capillary_position = SimChannel("capillary", initial_value="BEAM")
+            self.beamstop_position = SimChannel("beamstop", initial_value="BEAM")
+            self.aperture_position = SimChannel("aperture", initial_value="BEAM")
+            self.scintillator_position = SimChannel(
+                "scintillator", initial_value="BEAM"
+            )
+            self.backlight_switch = SimChannel("backlight", initial_value=0)
+            self.state = SimChannel("state", initial_value="Ready")
+            self.move_phase = SimChannel("move_phase")
+            self.front_light_switch = SimChannel("front_light", initial_value=0)
+
+    def __call__(self, *args, **kw) -> None:
+        """
+        First sets the md3 phase to Transfer to park the backlight,
+        Then asynchronously turns off the frontlight, and sets the positions of
+        the capillary, beamstop, aperture and scintillator to their PARK positions.
+
+        Returns
+        -------
+        None
+        """
+        logging.getLogger("user_level_log").info("Parking the goniometer...")
+
+        try:
+            # Set the md3 phase to `Transfer` to park the backlight. This seems
+            # more reliable than directly turning off the backlight as it
+            # ensures other components of the md3 are also in the correct position,
+            # otherwise turning off the backlight directly sometimes fails
+            # depending on the initial state of the md3
+            logging.getLogger("user_level_log").info("Setting phase to Transfer")
+            self.move_phase("Transfer")
+            gevent.sleep(0.5)
+            while self.state.get_value() != "Ready":
+                gevent.sleep(0.5)
+        except Exception as e:
+            logging.getLogger("user_level_log").error(
+                f"Failed to set phase to Transfer: {e}"
+            )
+            return
+
+        if self.front_light_switch.get_value():
+            try:
+                self.front_light_switch.set_value(0)
+            except Exception as e:
+                logging.getLogger("user_level_log").warning(
+                    f"Warning: Failed to turn off the front light: {e}"
+                )
+
+        channel_objects = [
+            self.capillary_position,
+            self.beamstop_position,
+            self.aperture_position,
+            self.scintillator_position,
+        ]
+
+        for channel in channel_objects:
+            try:
+                pos = channel.get_value()
+                if pos != "PARK":
+                    logging.getLogger("user_level_log").info(
+                        f"Parking {channel.name()}..."
+                    )
+                    channel.set_value("PARK")
+            except Exception as e:
+                logging.getLogger("user_level_log").error(
+                    f"Failed to park {channel.name()}: {e}"
+                )
+                return
+        gevent.sleep(0.5)
+        while self.state.get_value() != "Ready":
+            gevent.sleep(0.5)
+
+        # Ensure all positions are in PARK state
+        timeout = 30  # seconds
+        start_time = perf_counter()
+        while True:
+            non_park_state_list = self._all_parked(channel_objects)
+            if not non_park_state_list:
+                break
+            if perf_counter() - start_time > timeout:
+                logging.getLogger("user_level_log").error(
+                    f"Timeout while waiting for goniometer to park. "
+                    f"Still not parked: {non_park_state_list}"
+                )
+                return
+            gevent.sleep(1)
+
+        logging.getLogger("user_level_log").info("Goniometer parked successfully")
+
+    def _all_parked(self, channel_objects: list[ChannelObject]) -> list[str]:
+        """
+        Checks if all channel objects are in the PARK state.
+        If not, returns a list of those that are not.
+
+        Returns
+        -------
+        list[str]
+            A list of channel object names that are not in the PARK state.
+        """
+        non_park_state_list = []
+        for channel in channel_objects:
+            if channel.get_value() != "PARK":
+                non_park_state_list.append(channel.name())
+        if self.backlight_switch.get_value():
+            non_park_state_list.append(self.backlight_switch.name())
+        return non_park_state_list

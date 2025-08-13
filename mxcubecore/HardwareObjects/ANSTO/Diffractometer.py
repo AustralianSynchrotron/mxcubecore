@@ -915,3 +915,28 @@ class Diffractometer(GenericDiffractometer):
         """
         self.get_zoom_calibration()
         return (self.pixels_per_mm_x, self.pixels_per_mm_y)
+
+    def _wait_ready(self, timeout: float = None) -> None:
+        """
+        Waits until the MD3 is ready
+
+        Parameters
+        ----------
+        timeout : float, optional
+            None means infinite timeout, <=0 means default timeout (30s)
+
+        Returns
+        -------
+        None
+        """
+
+        if timeout is not None and timeout <= 0:
+            logging.getLogger("HWR").warning(
+                "DEBUG: Strange timeout value passed %s" % str(timeout)
+            )
+            timeout = 30
+        with gevent.Timeout(
+            timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
+        ):
+            while self.get_md3_state() != "Ready":
+                time.sleep(0.1)
