@@ -314,6 +314,7 @@ class ParkGoni(HardwareObject):
             self.backlight_switch = SimChannel("backlight", initial_value=0)
             self.state = SimChannel("state", initial_value="Ready")
             self.move_phase = SimChannel("move_phase")
+            self.front_light_switch = SimChannel("front_light", initial_value=0)
 
     def __call__(self, *args, **kw) -> None:
         """
