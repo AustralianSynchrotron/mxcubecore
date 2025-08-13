@@ -317,8 +317,9 @@ class ParkGoni(HardwareObject):
 
     def __call__(self, *args, **kw) -> None:
         """
-        Parks the goniometer by moving the capillary, beamstop, aperture,
-        scintillator and backlight to their PARK positions.
+        First sets the md3 phase to Transfer to park the backlight,
+        Then asynchronously turns off the frontlight, and sets the positions of
+        the capillary, beamstop, aperture and scintillator to their PARK positions.
 
         Returns
         -------
@@ -327,10 +328,11 @@ class ParkGoni(HardwareObject):
         logging.getLogger("user_level_log").info("Parking the goniometer...")
 
         try:
-            # Set the phase to transfer to park the backlight. This seems
+            # Set the md3 phase to `Transfer` to park the backlight. This seems
             # more reliable than directly turning off the backlight as it
             # ensures other components of the md3 are also in the correct position,
             # otherwise turning off the backlight directly sometimes fails
+            # depending on the initial state of the md3
             logging.getLogger("user_level_log").info("Setting phase to Transfer")
             self.move_phase("Transfer")
             gevent.sleep(0.5)
