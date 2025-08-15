@@ -194,16 +194,23 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             for projects in projects_and_labs_names:
                 project_names.append(projects[0])
 
+            default_project = self._get_dialog_box_param("project_name")
+
+            project_field = {
+                "title": "Project Name",
+                "type": "string",
+                "enum": project_names,
+                "widget": "select",
+            }
+            # Only set default if it’s defined and valid
+            if default_project is not None and default_project in project_names:
+                project_field["default"] = default_project
+
             conditional_project = {
                 "if": {"properties": {"auto_create_well": {"const": True}}},
                 "then": {
                     "properties": {
-                        "project_name": {
-                            "title": "Project Name",
-                            "type": "string",
-                            "enum": project_names,
-                            "widget": "select",
-                        }
+                        "project_name": project_field
                     },
                     "required": ["project_name"],
                 },
