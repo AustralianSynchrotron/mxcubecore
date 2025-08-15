@@ -146,6 +146,12 @@ class OneShotFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             }
 
+        plate_conditional: dict | None = None
+        if self.get_head_type() == "Plate":
+            plate_props, plate_conditional = self._build_plate_dialog_schema()
+            properties.update(plate_props)
+
+
         dialog = {
             "properties": properties,
             "required": [
@@ -156,5 +162,8 @@ class OneShotFlow(AbstractPrefectWorkflow):
             ],
             "dialogName": "One Shot Parameters",
         }
+
+        if plate_conditional:
+            dialog.update(plate_conditional)
 
         return dialog

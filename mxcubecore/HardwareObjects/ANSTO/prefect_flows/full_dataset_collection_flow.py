@@ -179,6 +179,11 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
                 "default": 1,
                 "widget": "textarea",
             }
+        plate_conditional: dict | None = None
+        if self.get_head_type() == "Plate":
+            plate_props, plate_conditional = self._build_plate_dialog_schema()
+            properties.update(plate_props)
+
 
         dialog = {
             "properties": properties,
@@ -193,5 +198,8 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             ],
             "dialogName": "Dataset Parameters",
         }
+
+        if plate_conditional:
+            dialog.update(plate_conditional)
 
         return dialog

@@ -338,8 +338,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
-        dialog = {
-            "properties": {
+        properties = {
                 "md3_alignment_y_speed": {
                     "title": "Alignment Y Speed [mm/s]",
                     "type": "number",
@@ -358,12 +357,22 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     "default": float(self._get_dialog_box_param("transmission")),
                     "widget": "textarea",
                 },
-            },
+            }
+        plate_conditional: dict | None = None
+        if self.get_head_type() == "Plate":
+            plate_props, plate_conditional = self._build_plate_dialog_schema()
+            properties.update(plate_props)
+
+        dialog = {
+            "properties": properties,
             "required": [
                 "md3_alignment_y_speed",
                 "transmission",
             ],
             "dialogName": "Grid Scan Parameters",
         }
+
+        if plate_conditional:
+            dialog.update(plate_conditional)
 
         return dialog
