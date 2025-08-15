@@ -18,6 +18,7 @@ screening:
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)
   transmission: 0.5  # Percentage
+  auto_create_well: False # Only used for trays
 
 
 grid_scan:

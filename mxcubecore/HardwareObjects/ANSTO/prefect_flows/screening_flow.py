@@ -58,7 +58,13 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample()
+
+            if dialog_box_model.auto_create_well is not None and dialog_box_model.auto_create_well:
+                project_name = dialog_box_model.project_name
+            else:
+                project_name = None
+
+            sample_id = self.get_sample_id_of_mounted_sample(project_name)
             logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
 
         else:
@@ -176,6 +182,33 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             }
 
+        if self.get_head_type() == "Plate":
+            properties["auto_create_well"] = {
+                "title": "Auto Create Well",
+                "type": "boolean",
+                "default": self._get_dialog_box_param("auto_create_well"),
+                "widget": "textarea",
+            }
+            projects_and_labs_names = self.get_project_and_lab_names()
+            project_names = []
+            for projects in projects_and_labs_names:
+                project_names.append(projects[0])
+
+            conditional_project = {
+                "if": {"properties": {"auto_create_well": {"const": True}}},
+                "then": {
+                    "properties": {
+                        "project_name": {
+                            "title": "Project Name",
+                            "type": "string",
+                            "enum": project_names,
+                            "widget": "select",
+                        }
+                    },
+                    "required": ["project_name"],
+                },
+            }
+
         dialog = {
             "properties": properties,
             "required": [
@@ -188,5 +221,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             ],
             "dialogName": "Screening Parameters",
         }
+
+        if self.get_head_type() == "Plate":
+            dialog.setdefault("allOf", []).append(conditional_project)
 
         return dialog

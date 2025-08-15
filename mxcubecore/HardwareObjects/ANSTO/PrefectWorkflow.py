@@ -500,16 +500,24 @@ class PrefectWorkflow(HardwareObject):
 
         collection_type = "full_dataset"
         for key, value in default_params[collection_type].items():
+            if isinstance(value, bool):
+                value = 1 if value else 0
             self.redis_connection.set(f"{collection_type}:{key}", value)
 
         collection_type = "screening"
         for key, value in default_params[collection_type].items():
+            if isinstance(value, bool):
+                value = 1 if value else 0
             self.redis_connection.set(f"{collection_type}:{key}", value)
 
         collection_type = "grid_scan"
         for key, value in default_params[collection_type].items():
+            if isinstance(value, bool):
+                value = 1 if value else 0
             self.redis_connection.set(f"{collection_type}:{key}", value)
 
         collection_type = "one_shot"
         for key, value in default_params[collection_type].items():
+            if isinstance(value, bool):
+                value = 1 if value else 0
             self.redis_connection.set(f"{collection_type}:{key}", value)

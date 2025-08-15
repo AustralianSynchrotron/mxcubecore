@@ -17,6 +17,14 @@ class DataCollectionDialogBoxBase(BaseModel):
     # photon_energy: float = Field(description="Photon energy in keV")
     transmission: float = Field(description="Measured in percentage")
     sample_id: int | None = None
+    auto_create_well: bool = Field(
+        default=False, description="If True, a well will be added to the db automatically "
+        "if it does not exist (only used for trays, not pins)"
+    )
+    project_name: str | None = Field(
+        default=None, description="The name of the project and the lab in the format "
+        "<project_name> (Lab: <lab_name>). Only used if auto_create_well=True"
+    )
 
 
 class DataCollectionBase(BaseModel):
