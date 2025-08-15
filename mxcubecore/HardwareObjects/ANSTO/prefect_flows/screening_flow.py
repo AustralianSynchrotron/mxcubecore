@@ -182,39 +182,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             }
 
+        plate_conditional: dict | None = None
         if self.get_head_type() == "Plate":
-            properties["auto_create_well"] = {
-                "title": "Auto Create Well",
-                "type": "boolean",
-                "default": self._get_dialog_box_param("auto_create_well"),
-                "widget": "textarea",
-            }
-            projects_and_labs_names = self.get_project_and_lab_names()
-            project_names = []
-            for projects in projects_and_labs_names:
-                project_names.append(projects[0])
-
-            default_project = self._get_dialog_box_param("project_name")
-
-            project_field = {
-                "title": "Project Name",
-                "type": "string",
-                "enum": project_names,
-                "widget": "select",
-            }
-            # Only set default if it’s defined and valid
-            if default_project is not None and default_project in project_names:
-                project_field["default"] = default_project
-
-            conditional_project = {
-                "if": {"properties": {"auto_create_well": {"const": True}}},
-                "then": {
-                    "properties": {
-                        "project_name": project_field
-                    },
-                    "required": ["project_name"],
-                },
-            }
+            plate_props, plate_conditional = self._build_plate_dialog_schema()
+            properties.update(plate_props)
 
         dialog = {
             "properties": properties,
@@ -229,7 +200,52 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "dialogName": "Screening Parameters",
         }
 
-        if self.get_head_type() == "Plate":
-            dialog.setdefault("allOf", []).append(conditional_project)
+        if plate_conditional:
+            dialog.update(plate_conditional)
 
         return dialog
+
+    def _build_plate_dialog_schema(self) -> tuple[dict, dict]:
+        """
+        Returns plate fields for the dialog schema.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            The properties dict which can be added to the dialog schema,
+            and the conditional dict for the project name.
+        """
+        properties: dict = {
+            "auto_create_well": {
+                "title": "Auto Create Well",
+                "type": "boolean",
+                "default": self._get_dialog_box_param("auto_create_well"),
+                "widget": "textarea",
+            }
+        }
+
+        projects_and_labs_names = self.get_project_and_lab_names()
+        project_names = []
+        for projects in projects_and_labs_names:
+            project_names.append(projects[0])
+
+        default_project = self._get_dialog_box_param("project_name")
+
+        project_field: dict = {
+            "title": "Project Name",
+            "type": "string",
+            "enum": project_names,
+            "widget": "select",
+        }
+        if default_project is not None and default_project in project_names:
+            project_field["default"] = default_project
+
+        conditional_project = {
+            "if": {"properties": {"auto_create_well": {"const": True}}},
+            "then": {
+                "properties": {"project_name": project_field},
+                "required": ["project_name"],
+            },
+        }
+
+        return properties, conditional_project

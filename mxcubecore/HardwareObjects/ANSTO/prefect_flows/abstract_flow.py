@@ -357,7 +357,7 @@ class AbstractPrefectWorkflow(ABC):
             value =  redis_connection.get(f"{self._collection_type}:{parameter}")
 
             if parameter == "auto_create_well":
-                return bool(value)
+                return bool(int(value))
             else:
                 return value
 
