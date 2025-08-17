@@ -16,6 +16,7 @@ from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+from typing import Literal
 
 from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
@@ -23,6 +24,8 @@ from .prefect_flows.one_shot_flow import OneShotFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
 from .Resolution import Resolution
+from .redis_utils import get_redis_connection
+from mx3_beamline_library.devices.motors import md3
 
 
 class State(object):
@@ -492,8 +495,16 @@ class PrefectWorkflow(HardwareObject):
         -------
         None
         """
+        head_type = self.get_head_type()
+        if head_type == "SmartMagnet":
+            filename = "default_params_pins.yml"
+        elif head_type == "Plate":
+            filename = "default_params_trays.yml"
+        else:
+            raise NotImplementedError(f"Head type {head_type} not supported")
+
         default_params_path = path.join(
-            path.dirname(__file__), "prefect_flows", "default_params.yml"
+            path.dirname(__file__), "prefect_flows", "config", filename
         )
         with open(default_params_path) as config:
             default_params = yaml.safe_load(config)
@@ -521,3 +532,25 @@ class PrefectWorkflow(HardwareObject):
             if isinstance(value, bool):
                 value = 1 if value else 0
             self.redis_connection.set(f"{collection_type}:{key}", value)
+
+    def get_head_type(
+        self,
+    ) -> Literal["SmartMagnet", "MiniKappa", "Plate", "Permanent", "Unknown"]:
+        """
+        Get the md3 head type from the md3. In simulation mode,
+        get it from redis.
+
+        Returns
+        -------
+        None
+        """
+        # if settings.BL_ACTIVE:
+        #     head_type = md3.get_head_type()
+        # else:
+        with get_redis_connection() as redis_connection:
+            head_type = redis_connection.get("mxcube:md3_head_type")
+
+        if head_type is None:
+            raise ValueError("mxcube:md3_head_type is not set in redis")
+
+        return head_type

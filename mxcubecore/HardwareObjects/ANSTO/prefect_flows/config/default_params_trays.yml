@@ -1,0 +1,40 @@
+---
+full_dataset:
+  exposure_time: 9.0  # Total exposure time, seconds
+  omega_range: 20.0  # Degrees
+  number_of_frames: 1800
+  processing_pipeline: "fast_dp"  # can be fast_dp, dials, or dials_and_fast_dp
+  crystal_counter: 0  # a.k.a. crystal id
+  photon_energy: 13.0  # keV
+  resolution: 2.0  # Ångström (16M)
+  transmission: 0.5  # Percentage
+  auto_create_well: False # Only used for trays
+
+screening:
+  exposure_time: 2.0  # Total exposure time, seconds
+  omega_range: 10.0  # Degrees
+  number_of_frames: 400
+  processing_pipeline: "fast_dp"  # can be fast_dp, dials, or dials_and_fast_dp
+  crystal_counter: 0  # a.k.a. crystal id
+  photon_energy: 13.0  # keV
+  resolution: 2.0  # Ångström (16M)
+  transmission: 0.5  # Percentage
+  auto_create_well: False # Only used for trays
+
+
+grid_scan:
+  md3_alignment_y_speed: 1.0  # mm/s
+  omega_range: 0.0  # Degrees
+  photon_energy: 13.0  # keV
+  resolution: 1.5  # Ångström (16M)
+  transmission: 1.0  # Percentage
+  auto_create_well: False # Only used for trays
+
+one_shot:
+  exposure_time: 0.5  # Total exposure time, seconds
+  omega_range: 1.0  # Degrees
+  number_of_frames: 1
+  photon_energy: 13.0  # keV
+  resolution: 2.0  # Ångström (16M)
+  transmission: 0.5  # Percentage
+  auto_create_well: False # Only used for trays

@@ -8,7 +8,6 @@ full_dataset:
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)
   transmission: 0.5  # Percentage
-  auto_create_well: False # Only used for trays
 
 screening:
   exposure_time: 2.0  # Total exposure time, seconds
@@ -19,7 +18,6 @@ screening:
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)
   transmission: 0.5  # Percentage
-  auto_create_well: False # Only used for trays
 
 
 grid_scan:
@@ -28,7 +26,6 @@ grid_scan:
   photon_energy: 13.0  # keV
   resolution: 1.5  # Ångström (16M)
   transmission: 1.0  # Percentage
-  auto_create_well: False # Only used for trays
 
 one_shot:
   exposure_time: 0.5  # Total exposure time, seconds
@@ -37,4 +34,3 @@ one_shot:
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)
   transmission: 0.5  # Percentage
-  auto_create_well: False # Only used for trays
