@@ -802,27 +802,45 @@ class AbstractPrefectWorkflow(ABC):
         labs_with_projects = self.get_labs_with_projects()
         lab_names = sorted(labs_with_projects.keys())
 
+        # Fetch saved defaults (if any)
+        default_lab = self._get_dialog_box_param("lab_name")
+        default_project = self._get_dialog_box_param("project_name")
+
         lab_field: dict = {
             "title": "Lab",
             "type": "string",
             "enum": lab_names,
             "widget": "select",
         }
+        # Set default lab if valid
+        if default_lab is not None and default_lab in lab_names:
+            lab_field["default"] = default_lab
 
         # Build lab-dependent branches: when a specific lab is selected, show its projects
         lab_dependencies_oneof = []
         for lab_name in lab_names:
             project_names = [name for name, _pid in labs_with_projects[lab_name]]
+
+            project_field: dict = {
+                "title": "Project Name",
+                "type": "string",
+                "enum": project_names,
+                "widget": "select",
+            }
+            # Set default project if it matches the selected default lab and is valid
+            if (
+                default_lab is not None
+                and default_lab == lab_name
+                and default_project is not None
+                and default_project in project_names
+            ):
+                project_field["default"] = default_project
+
             lab_dependencies_oneof.append(
                 {
                     "properties": {
                         "lab_name": {"const": lab_name},
-                        "project_name": {
-                            "title": "Project Name",
-                            "type": "string",
-                            "enum": project_names,
-                            "widget": "select",
-                        },
+                        "project_name": project_field,
                     },
                     "required": ["project_name"],
                 }
