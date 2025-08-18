@@ -886,9 +886,7 @@ class AbstractPrefectWorkflow(ABC):
         }
 
         labs_with_projects = self.get_labs_with_projects()
-        lab_names = sorted(
-            labs_with_projects.keys(), key=str.casefold
-        )  # case insensitive
+        lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
 
         default_lab = self._get_dialog_box_param("lab_name")
         default_project = self._get_dialog_box_param("project_name")
@@ -902,25 +900,12 @@ class AbstractPrefectWorkflow(ABC):
         if default_lab is not None and default_lab in lab_names:
             lab_field["default"] = default_lab
 
-        # NOTE: the project field is shown when auto_create_well is True,
-        # and the enum depends on the lab conditionals in the allOf field
-        all_project_names = sorted(
-            {name for items in labs_with_projects.values() for name, _ in items},
-            key=str.casefold,  # case insensitive
-        )
-        project_field: dict = {
-            "title": "Project Name",
-            "type": "string",
-            "enum": all_project_names,
-            "widget": "select",
-        }
-
-        # Get projects based on selected lab
+        # Show projects depending on the selected lab
         lab_conditionals = []
         for lab_name in lab_names:
             project_names = sorted(
                 [name for name, _ in labs_with_projects[lab_name]],
-                key=str.casefold,  # case insensitive
+                key=str.casefold,
             )
 
             project_name_schema = {
@@ -935,7 +920,16 @@ class AbstractPrefectWorkflow(ABC):
             lab_conditionals.append(
                 {
                     "if": {"properties": {"lab_name": {"const": lab_name}}},
-                    "then": {"properties": {"project_name": project_name_schema}},
+                    "then": {
+                        "properties": {
+                            "project_name": project_name_schema,
+                            "sample_name": {
+                                "title": "Sample Name (Optional)",
+                                "type": "string",
+                            },
+                        },
+                        "required": ["project_name"],
+                    },
                 }
             )
 
@@ -944,13 +938,8 @@ class AbstractPrefectWorkflow(ABC):
             "then": {
                 "properties": {
                     "lab_name": lab_field,
-                    "project_name": project_field,
-                    "sample_name": {
-                        "title": "Sample Name (Optional)",
-                        "type": "string",
-                    },
                 },
-                "required": ["lab_name", "project_name"],
+                "required": ["lab_name"],
                 "allOf": lab_conditionals,
             },
         }
@@ -979,9 +968,9 @@ class AbstractPrefectWorkflow(ABC):
         for name, project_id in labs.get(lab_name, []):
             if name == project_name:
                 logging.getLogger("HWR").debug(
-                    f"Found project ID {project_id} for lab {lab_name} and project {project_name}"
+                    f"Project id for lab {lab_name} and project {project_name}: {project_id}"
                 )
                 return project_id
-        msg = f"Project ID not found for lab '{lab_name}' and project '{project_name}'"
+        msg = f"Project id not found for lab '{lab_name}' and project '{project_name}'"
         logging.getLogger("user_level_log").error(msg)
         raise QueueExecutionException(msg, self)
