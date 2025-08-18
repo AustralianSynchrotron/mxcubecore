@@ -717,7 +717,9 @@ class AbstractPrefectWorkflow(ABC):
 
         if response.status_code == HTTPStatus.CREATED:
             data = response.json()
-            logging.getLogger("HWR").info(f"Well {data['name']} added to the database")
+            logging.getLogger("user_level_log").info(
+                f"Well named `{data['name']}` added to the database"
+            )
             return data["id"]
         else:
             msg = f"Failed to add well to the database: {response.text}"
@@ -726,7 +728,13 @@ class AbstractPrefectWorkflow(ABC):
 
     def get_labs_with_projects(self) -> dict[str, list[tuple[str, int]]]:
         """
-        Returns a mapping of lab name -> list of (project_name, project_id).
+        Call the data layer api to get a dictionary mapping lab names
+        to a list of (project_name, project_id) tuples.
+
+        Returns
+        -------
+        dict[str, list[tuple[str, int]]]
+            A dictionary mapping lab names to a list of (project_name, project_id) tuples.
         """
         with get_redis_connection(decode_response=False) as redis_connection:
             lab_ids = redis_connection.get("lab_ids")
@@ -762,7 +770,18 @@ class AbstractPrefectWorkflow(ABC):
                 ]
         return labs_with_projects
 
-    def _build_plate_dialog_schema(self) -> tuple[dict, dict]:
+    def _build_tray_dialog_schema(self) -> tuple[dict, dict]:
+        """
+        Builds the dialog schema for the tray dialog box.
+        This contains an auto create well entry. If this is set
+        to true, the user can select a lab and project name from
+        the available options which are obtained from the data layer api.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            The properties and conditional schemas for the tray dialog box.
+        """
         properties: dict = {
             "auto_create_well": {
                 "title": "Auto Create Well",
@@ -773,7 +792,7 @@ class AbstractPrefectWorkflow(ABC):
         }
 
         labs_with_projects = self.get_labs_with_projects()
-        lab_names = sorted(labs_with_projects.keys())
+        lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
 
         default_lab = self._get_dialog_box_param("lab_name")
         default_project = self._get_dialog_box_param("project_name")
@@ -787,30 +806,52 @@ class AbstractPrefectWorkflow(ABC):
         if default_lab is not None and default_lab in lab_names:
             lab_field["default"] = default_lab
 
+        # Base project field (shown immediately when auto_create_well is true)
+        # Enum is refined via per-lab conditionals in allOf
+        all_project_names = sorted(
+            {name for items in labs_with_projects.values() for name, _ in items},
+            key=str.casefold,
+        )
+        project_field: dict = {
+            "title": "Project Name",
+            "type": "string",
+            "enum": all_project_names,
+            "widget": "select",
+        }
+        if (
+            default_lab in labs_with_projects
+            and default_project is not None
+            and default_project in [name for name, _ in labs_with_projects[default_lab]]
+        ):
+            project_field["default"] = default_project
+
+        # Refine project enum based on selected lab
         per_lab_conditionals = []
         for lab_name in lab_names:
-            project_names = [name for name, _pid in labs_with_projects[lab_name]]
-
-            project_field: dict = {
-                "title": "Project Name",
-                "type": "string",
-                "enum": project_names,
-                "widget": "select",
-            }
-            if (
-                default_lab is not None
-                and default_lab == lab_name
-                and default_project is not None
-                and default_project in project_names
-            ):
-                project_field["default"] = default_project
-
+            project_names = sorted(
+                [name for name, _ in labs_with_projects[lab_name]],
+                key=str.casefold,
+            )
             per_lab_conditionals.append(
                 {
                     "if": {"properties": {"lab_name": {"const": lab_name}}},
                     "then": {
-                        "properties": {"project_name": project_field},
-                        "required": ["project_name"],
+                        "properties": {
+                            "project_name": {
+                                "title": "Project Name",
+                                "type": "string",
+                                "enum": project_names,
+                                "widget": "select",
+                                **(
+                                    {"default": default_project}
+                                    if (
+                                        default_lab == lab_name
+                                        and default_project in project_names
+                                    )
+                                    else {}
+                                ),
+                            }
+                        }
                     },
                 }
             )
@@ -818,9 +859,12 @@ class AbstractPrefectWorkflow(ABC):
         conditional = {
             "if": {"properties": {"auto_create_well": {"const": True}}},
             "then": {
-                "properties": {"lab_name": lab_field},
-                "required": ["lab_name"],
-                "allOf": per_lab_conditionals,  # project shown only after lab is selected
+                "properties": {
+                    "lab_name": lab_field,
+                    "project_name": project_field,
+                },
+                "required": ["lab_name", "project_name"],
+                "allOf": per_lab_conditionals,
             },
         }
 
@@ -840,7 +884,9 @@ class AbstractPrefectWorkflow(ABC):
         labs = self.get_labs_with_projects()
         for name, project_id in labs.get(lab_name, []):
             if name == project_name:
-                logging.getLogger("HWR").info(f"Found project ID {project_id} for lab '{lab_name}' and project '{project_name}'")
+                logging.getLogger("HWR").debug(
+                    f"Found project ID {project_id} for lab '{lab_name}' and project '{project_name}'"
+                )
                 return project_id
         msg = f"Project ID not found for lab '{lab_name}' and project '{project_name}'"
         logging.getLogger("user_level_log").error(msg)

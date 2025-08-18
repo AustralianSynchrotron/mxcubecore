@@ -58,13 +58,9 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting sample from the data layer...")
-
-            if dialog_box_model.auto_create_well is not None and dialog_box_model.auto_create_well:
-                project_name = dialog_box_model.project_name
-            else:
-                project_name = None
-
-            sample_id = self.get_sample_id_of_mounted_sample(project_name)
+            sample_id = self.get_sample_id_of_mounted_sample(
+                dialog_box_model.project_name, dialog_box_model.lab_name
+            )
             logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
 
         else:
@@ -184,7 +180,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
         plate_conditional: dict | None = None
         if self.get_head_type() == "Plate":
-            plate_props, plate_conditional = self._build_plate_dialog_schema()
+            plate_props, plate_conditional = self._build_tray_dialog_schema()
             properties.update(plate_props)
 
         dialog = {

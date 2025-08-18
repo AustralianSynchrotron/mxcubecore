@@ -75,7 +75,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample()
+            sample_id = self.get_sample_id_of_mounted_sample(
+                dialog_box_model.project_name, dialog_box_model.lab_name
+            )
             logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
 
         else:
@@ -339,28 +341,26 @@ class GridScanFlow(AbstractPrefectWorkflow):
             A dictionary following the JSON schema.
         """
         properties = {
-                "md3_alignment_y_speed": {
-                    "title": "Alignment Y Speed [mm/s]",
-                    "type": "number",
-                    "minimum": 0.1,
-                    "maximum": 14.8,
-                    "default": float(
-                        self._get_dialog_box_param("md3_alignment_y_speed")
-                    ),
-                    "widget": "textarea",
-                },
-                "transmission": {
-                    "title": "Transmission [%]",
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 100,
-                    "default": float(self._get_dialog_box_param("transmission")),
-                    "widget": "textarea",
-                },
-            }
+            "md3_alignment_y_speed": {
+                "title": "Alignment Y Speed [mm/s]",
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 14.8,
+                "default": float(self._get_dialog_box_param("md3_alignment_y_speed")),
+                "widget": "textarea",
+            },
+            "transmission": {
+                "title": "Transmission [%]",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "default": float(self._get_dialog_box_param("transmission")),
+                "widget": "textarea",
+            },
+        }
         plate_conditional: dict | None = None
         if self.get_head_type() == "Plate":
-            plate_props, plate_conditional = self._build_plate_dialog_schema()
+            plate_props, plate_conditional = self._build_tray_dialog_schema()
             properties.update(plate_props)
 
         dialog = {
