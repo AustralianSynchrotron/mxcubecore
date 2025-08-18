@@ -1,4 +1,5 @@
 import logging
+import pickle
 import re
 from abc import (
     ABC,
@@ -19,7 +20,6 @@ from scipy.constants import (
 
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-import pickle
 
 from ..mockup.robot import SimRobot
 from ..redis_utils import get_redis_connection
@@ -324,7 +324,7 @@ class AbstractPrefectWorkflow(ABC):
             "resolution",
             "md3_alignment_y_speed",
             "transmission",
-            "auto_create_well"
+            "auto_create_well",
         ],
     ) -> str | int | float:
         """
@@ -353,8 +353,7 @@ class AbstractPrefectWorkflow(ABC):
         """
         with get_redis_connection() as redis_connection:
 
-            
-            value =  redis_connection.get(f"{self._collection_type}:{parameter}")
+            value = redis_connection.get(f"{self._collection_type}:{parameter}")
 
             if parameter == "auto_create_well":
                 return bool(int(value))
@@ -520,7 +519,9 @@ class AbstractPrefectWorkflow(ABC):
 
         return self._parse_plate_address(current_drop_location)
 
-    def _get_well_id_of_mounted_tray(self, project_name: str|None=None, lab_name:str|None=None) -> int:
+    def _get_well_id_of_mounted_tray(
+        self, project_name: str | None = None, lab_name: str | None = None
+    ) -> int:
         """Gets the well id from the mx-data-layer-api
 
         Returns
@@ -551,13 +552,17 @@ class AbstractPrefectWorkflow(ABC):
             drop = "middle"
 
         if project_name is not None and lab_name is not None:
-            well_id = self._add_well_to_db(barcode, epn_string, column, row, drop, project_name, lab_name)
+            well_id = self._add_well_to_db(
+                barcode, epn_string, column, row, drop, project_name, lab_name
+            )
         else:
             well_id = self._get_well_id(barcode, epn_string, column, row, drop)
 
         return well_id
 
-    def _get_well_id(self, barcode:str, epn_string: str, column: int, row: str, drop: str) -> int:
+    def _get_well_id(
+        self, barcode: str, epn_string: str, column: int, row: str, drop: str
+    ) -> int:
         logging.getLogger("HWR").info(
             f"Getting well id for barcode {barcode}, epn_string {epn_string}, column {column}, row {row}, and drop {drop}"
         )
@@ -613,14 +618,18 @@ class AbstractPrefectWorkflow(ABC):
         match = re.match(r"([A-Z])(\d+):(\d+)", address)
         if not match:
             raise QueueExecutionException(
-                f"Invalid well address format. Expected format is e.g.'B7:1', not {address}", self)
+                f"Invalid well address format. Expected format is e.g.'B7:1', not {address}",
+                self,
+            )
         row_chr, col_str, drop_str = match.groups()
         row = row_chr.upper()
         col = int(col_str)
         drop = int(drop_str)
         return row, col, drop
 
-    def get_sample_id_of_mounted_sample(self, project_name: str|None=None, lab_name:str|None=None) -> int:
+    def get_sample_id_of_mounted_sample(
+        self, project_name: str | None = None, lab_name: str | None = None
+    ) -> int:
         """
         Gets the sample id of the mounted sample. The sample id is either the pin id
         or the well id, depending on the head type.
@@ -675,7 +684,9 @@ class AbstractPrefectWorkflow(ABC):
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
 
-    def _add_well_to_db(self, barcode, epn_string, column, row, drop, project_name: str, lab_name: str) -> int:
+    def _add_well_to_db(
+        self, barcode, epn_string, column, row, drop, project_name: str, lab_name: str
+    ) -> int:
         """
         Adds a well to the database.
 
@@ -686,21 +697,22 @@ class AbstractPrefectWorkflow(ABC):
         """
         tray_id = self._get_tray_id_of_mounted_tray(barcode, epn_string)
 
-        project_id = self.resolve_project_id_from_selection(lab_name, project_name)
+        project_id = self.get_project_id_from_lab_name_and_project_name(
+            lab_name, project_name
+        )
 
         payload = {
-        "name": "", # The data layer automatically will create a name
-        "description": "",
-        "type": "sample_well",
-        "row": row,
-        "column": column,
-        "drop": drop,
-        "tray_id": tray_id,
-        "project_id": project_id,
+            "name": "",  # The data layer automatically will create a name
+            "description": "",
+            "type": "sample_well",
+            "row": row,
+            "column": column,
+            "drop": drop,
+            "tray_id": tray_id,
+            "project_id": project_id,
         }
         response = httpx.post(
-            urljoin(settings.DATA_LAYER_API, "/samples/wells"),
-            json=payload
+            urljoin(settings.DATA_LAYER_API, "/samples/wells"), json=payload
         )
 
         if response.status_code == HTTPStatus.CREATED:
@@ -711,46 +723,6 @@ class AbstractPrefectWorkflow(ABC):
             msg = f"Failed to add well to the database: {response.text}"
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
-
-
-
-    def get_project_and_lab_names(self) -> list[tuple[str, int]]:
-        """
-        Gets the names and IDs of all projects.
-
-        Returns
-        -------
-        list[tuple[str, int]]
-            A list of tuples containing project names and their IDs.
-        """
-        with get_redis_connection(decode_response=False) as redis_connection:
-            lab_ids = redis_connection.get("lab_ids")
-            if lab_ids is None:
-                logging.getLogger("user_level_log").warning("No lab IDs found in Redis")
-                return []
-            else:
-                lab_ids = pickle.loads(lab_ids)
-
-        project_and_lab_list = []
-        with httpx.Client() as client:
-            for lab in lab_ids:
-                lab_response = client.get(settings.DATA_LAYER_API + f"/labs/{lab}")
-                if lab_response.status_code == HTTPStatus.OK:
-                    lab_name = lab_response.json()["name"]
-                else:
-                    msg = f"Failed to get lab info from the data layer API: {lab_response.text}"
-                    logging.getLogger("user_level_log").warning(msg)
-                    continue
-
-                response = client.get(settings.DATA_LAYER_API + f"/projects?only_active=true&filter_by_lab={lab}")
-                if response.status_code == HTTPStatus.OK:
-                    data = response.json()
-                    if len(data) > 0:
-                        project_and_lab_list.extend([(f"{item['name']} (Lab: {lab_name})", item["id"]) for item in data])
-                else:
-                    msg = f"Failed to get project names from the data layer API: {response.text}"
-                    logging.getLogger("user_level_log").warning(msg)
-        return project_and_lab_list
 
     def get_labs_with_projects(self) -> dict[str, list[tuple[str, int]]]:
         """
@@ -775,7 +747,8 @@ class AbstractPrefectWorkflow(ABC):
                 lab_name = lab_response.json()["name"]
 
                 response = client.get(
-                    settings.DATA_LAYER_API + f"/projects?only_active=true&filter_by_lab={lab}"
+                    settings.DATA_LAYER_API
+                    + f"/projects?only_active=true&filter_by_lab={lab}"
                 )
                 if response.status_code != HTTPStatus.OK:
                     logging.getLogger("user_level_log").warning(
@@ -853,11 +826,22 @@ class AbstractPrefectWorkflow(ABC):
 
         return properties, conditional
 
-    def resolve_project_id_from_selection(self, lab_name: str, project_name: str) -> int:
+    def get_project_id_from_lab_name_and_project_name(
+        self, lab_name: str, project_name: str
+    ) -> int:
+        """
+        Gets the project id from the lab name and project name.
+
+        Returns
+        -------
+        int
+            The project id
+        """
         labs = self.get_labs_with_projects()
-        for name, pid in labs.get(lab_name, []):
+        for name, project_id in labs.get(lab_name, []):
             if name == project_name:
-                return pid
-        raise QueueExecutionException(
-            f"Project ID not found for lab '{lab_name}' and project '{project_name}'", self
-        )
+                logging.getLogger("HWR").info(f"Found project ID {project_id} for lab '{lab_name}' and project '{project_name}'")
+                return project_id
+        msg = f"Project ID not found for lab '{lab_name}' and project '{project_name}'"
+        logging.getLogger("user_level_log").error(msg)
+        raise QueueExecutionException(msg, self)
