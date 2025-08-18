@@ -520,7 +520,7 @@ class AbstractPrefectWorkflow(ABC):
 
         return self._parse_plate_address(current_drop_location)
 
-    def _get_well_id_of_mounted_tray(self, project_name: str|None=None) -> int:
+    def _get_well_id_of_mounted_tray(self, project_name: str|None=None, lab_name:str|None=None) -> int:
         """Gets the well id from the mx-data-layer-api
 
         Returns
@@ -550,8 +550,8 @@ class AbstractPrefectWorkflow(ABC):
         elif drop == 3:
             drop = "middle"
 
-        if project_name is not None:
-            well_id = self._add_well_to_db(barcode, epn_string, column, row, drop, project_name)
+        if project_name is not None and lab_name is not None:
+            well_id = self._add_well_to_db(barcode, epn_string, column, row, drop, project_name, lab_name)
         else:
             well_id = self._get_well_id(barcode, epn_string, column, row, drop)
 
@@ -620,7 +620,7 @@ class AbstractPrefectWorkflow(ABC):
         drop = int(drop_str)
         return row, col, drop
 
-    def get_sample_id_of_mounted_sample(self, project_name: str|None=None) -> int:
+    def get_sample_id_of_mounted_sample(self, project_name: str|None=None, lab_name:str|None=None) -> int:
         """
         Gets the sample id of the mounted sample. The sample id is either the pin id
         or the well id, depending on the head type.
@@ -642,7 +642,7 @@ class AbstractPrefectWorkflow(ABC):
         if head_type == "SmartMagnet":
             sample_id = self._get_pin_model_of_mounted_sample_from_db().id
         elif head_type == "Plate":
-            sample_id = self._get_well_id_of_mounted_tray(project_name)
+            sample_id = self._get_well_id_of_mounted_tray(project_name, lab_name)
         else:
             msg = f"Head type {head_type} is not implemented for getting sample id"
             logging.getLogger("user_level_log").error(msg)
@@ -675,7 +675,7 @@ class AbstractPrefectWorkflow(ABC):
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
 
-    def _add_well_to_db(self, barcode, epn_string, column, row, drop, project_name: str) -> int:
+    def _add_well_to_db(self, barcode, epn_string, column, row, drop, project_name: str, lab_name: str) -> int:
         """
         Adds a well to the database.
 
@@ -686,17 +686,7 @@ class AbstractPrefectWorkflow(ABC):
         """
         tray_id = self._get_tray_id_of_mounted_tray(barcode, epn_string)
 
-        projects = self.get_project_and_lab_names()
-
-        project_id = None
-        for project in projects:
-            if project[0] == project_name:
-                project_id = project[1]
-                break
-        
-        if project_id is None:
-            logging.getLogger("user_level_log").error(f"Project ID not found for project name {project[0]}")
-            raise QueueExecutionException(f"Project ID not found for project name {project[0]}", self)
+        project_id = self.resolve_project_id_from_selection(lab_name, project_name)
 
         payload = {
         "name": "", # The data layer automatically will create a name
@@ -762,16 +752,44 @@ class AbstractPrefectWorkflow(ABC):
                     logging.getLogger("user_level_log").warning(msg)
         return project_and_lab_list
 
-    def _build_plate_dialog_schema(self) -> tuple[dict, dict]:
+    def get_labs_with_projects(self) -> dict[str, list[tuple[str, int]]]:
         """
-        Returns plate fields for the dialog schema.
+        Returns a mapping of lab name -> list of (project_name, project_id).
+        """
+        with get_redis_connection(decode_response=False) as redis_connection:
+            lab_ids = redis_connection.get("lab_ids")
+            if lab_ids is None:
+                logging.getLogger("user_level_log").warning("No lab IDs found in Redis")
+                return {}
+            lab_ids = pickle.loads(lab_ids)
 
-        Returns
-        -------
-        tuple[dict, dict]
-            The properties dict which can be added to the dialog schema,
-            and the conditional dict for the project name.
-        """
+        labs_with_projects: dict[str, list[tuple[str, int]]] = {}
+        with httpx.Client() as client:
+            for lab in lab_ids:
+                lab_response = client.get(settings.DATA_LAYER_API + f"/labs/{lab}")
+                if lab_response.status_code != HTTPStatus.OK:
+                    logging.getLogger("user_level_log").warning(
+                        f"Failed to get lab info from the data layer API: {lab_response.text}"
+                    )
+                    continue
+                lab_name = lab_response.json()["name"]
+
+                response = client.get(
+                    settings.DATA_LAYER_API + f"/projects?only_active=true&filter_by_lab={lab}"
+                )
+                if response.status_code != HTTPStatus.OK:
+                    logging.getLogger("user_level_log").warning(
+                        f"Failed to get project names from the data layer API: {response.text}"
+                    )
+                    continue
+
+                data = response.json()
+                labs_with_projects[lab_name] = [
+                    (item["name"], item["id"]) for item in data
+                ]
+        return labs_with_projects
+
+    def _build_plate_dialog_schema(self) -> tuple[dict, dict]:
         properties: dict = {
             "auto_create_well": {
                 "title": "Auto Create Well",
@@ -781,28 +799,56 @@ class AbstractPrefectWorkflow(ABC):
             }
         }
 
-        projects_and_labs_names = self.get_project_and_lab_names()
-        project_names = []
-        for projects in projects_and_labs_names:
-            project_names.append(projects[0])
+        labs_with_projects = self.get_labs_with_projects()
+        lab_names = sorted(labs_with_projects.keys())
 
-        default_project = self._get_dialog_box_param("project_name")
-
-        project_field: dict = {
-            "title": "Project Name",
+        lab_field: dict = {
+            "title": "Lab",
             "type": "string",
-            "enum": project_names,
+            "enum": lab_names,
             "widget": "select",
         }
-        if default_project is not None and default_project in project_names:
-            project_field["default"] = default_project
 
-        conditional_project = {
+        # Build lab-dependent branches: when a specific lab is selected, show its projects
+        lab_dependencies_oneof = []
+        for lab_name in lab_names:
+            project_names = [name for name, _pid in labs_with_projects[lab_name]]
+            lab_dependencies_oneof.append(
+                {
+                    "properties": {
+                        "lab_name": {"const": lab_name},
+                        "project_name": {
+                            "title": "Project Name",
+                            "type": "string",
+                            "enum": project_names,
+                            "widget": "select",
+                        },
+                    },
+                    "required": ["project_name"],
+                }
+            )
+
+        # Only show lab_name when auto_create_well is true; project_name appears after lab selection
+        conditional = {
             "if": {"properties": {"auto_create_well": {"const": True}}},
             "then": {
-                "properties": {"project_name": project_field},
-                "required": ["project_name"],
+                "properties": {"lab_name": lab_field},
+                "required": ["lab_name"],
+                "dependencies": {
+                    "lab_name": {
+                        "oneOf": lab_dependencies_oneof
+                    }
+                },
             },
         }
 
-        return properties, conditional_project
+        return properties, conditional
+
+    def resolve_project_id_from_selection(self, lab_name: str, project_name: str) -> int:
+        labs = self.get_labs_with_projects()
+        for name, pid in labs.get(lab_name, []):
+            if name == project_name:
+                return pid
+        raise QueueExecutionException(
+            f"Project ID not found for lab '{lab_name}' and project '{project_name}'", self
+        )
