@@ -529,10 +529,13 @@ class PrefectWorkflow(HardwareObject):
     ) -> None:
         if value is None:
             self.redis_connection.delete(f"{collection_type}:{key}")
+            self.redis_connection.delete(f"mxcube_common_params:{key}")
             return
-        if isinstance(value, bool):
+        if key == "auto_create_well":
             value = 1 if value else 0
-        self.redis_connection.set(f"{collection_type}:{key}", value)
+            self.redis_connection.set(f"mxcube_common_params:{key}", value)
+        else:
+            self.redis_connection.set(f"{collection_type}:{key}", value)
 
     def get_head_type(
         self,

@@ -57,11 +57,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample(
-                dialog_box_model.project_name,
-                dialog_box_model.lab_name,
-                dialog_box_model.sample_name,
-            )
+            sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
             logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
 
         else:

@@ -24,6 +24,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 from ..mockup.robot import SimRobot
 from ..redis_utils import get_redis_connection
 from ..Resolution import Resolution
+from .schemas.common import DataCollectionDialogBoxBase
 from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
@@ -310,7 +311,11 @@ class AbstractPrefectWorkflow(ABC):
             for key, value in dialog_box.model_dump(exclude_none=True).items():
                 if isinstance(value, bool):
                     value = 1 if value else 0
-                redis_connection.set(f"{self._collection_type}:{key}", value)
+
+                if key in ["lab_name", "project_name", "auto_create_well"]:
+                    redis_connection.set(f"mxcube_common_params:{key}", value)
+                else:
+                    redis_connection.set(f"{self._collection_type}:{key}", value)
 
     def _get_dialog_box_param(
         self,
@@ -325,8 +330,10 @@ class AbstractPrefectWorkflow(ABC):
             "md3_alignment_y_speed",
             "transmission",
             "auto_create_well",
+            "lab_name",
+            "project_name",
         ],
-    ) -> str | int | float:
+    ) -> str | int | float | None:
         """
         Retrieve a parameter value from Redis.
 
@@ -342,7 +349,9 @@ class AbstractPrefectWorkflow(ABC):
             "resolution",
             "md3_alignment_y_speed",
             "transmission",
-            "auto_create_well"
+            "auto_create_well",
+            "lab_name",
+            "project_name",
         ]
             A parameter saved in redis
 
@@ -352,11 +361,14 @@ class AbstractPrefectWorkflow(ABC):
             The last value set in redis for a given parameter
         """
         with get_redis_connection() as redis_connection:
-
-            value = redis_connection.get(f"{self._collection_type}:{parameter}")
+            if parameter in ["lab_name", "project_name", "auto_create_well"]:
+                value = redis_connection.get(f"mxcube_common_params:{parameter}")
+            else:
+                value = redis_connection.get(f"{self._collection_type}:{parameter}")
 
             if parameter == "auto_create_well":
-                return bool(int(value))
+                if value is not None:
+                    return bool(int(value))
             else:
                 return value
 
@@ -520,10 +532,7 @@ class AbstractPrefectWorkflow(ABC):
         return self._parse_plate_address(current_drop_location)
 
     def _get_well_id_of_mounted_tray(
-        self,
-        project_name: str | None = None,
-        lab_name: str | None = None,
-        sample_name: str | None = None,
+        self, dialog_box_model: DataCollectionDialogBoxBase
     ) -> int:
         """Gets the well id from the mx-data-layer-api
 
@@ -554,16 +563,9 @@ class AbstractPrefectWorkflow(ABC):
         elif drop == 3:
             drop = "middle"
 
-        if project_name is not None and lab_name is not None:
+        if dialog_box_model.auto_create_well:
             well_id = self._add_well_to_db(
-                barcode,
-                epn_string,
-                column,
-                row,
-                drop,
-                project_name,
-                lab_name,
-                sample_name,
+                barcode, epn_string, column, row, drop, dialog_box_model
             )
         else:
             well_id = self._get_well_id(barcode, epn_string, column, row, drop)
@@ -638,10 +640,7 @@ class AbstractPrefectWorkflow(ABC):
         return row, col, drop
 
     def get_sample_id_of_mounted_sample(
-        self,
-        project_name: str | None = None,
-        lab_name: str | None = None,
-        sample_name: str | None = None,
+        self, dialog_box_model: DataCollectionDialogBoxBase
     ) -> int:
         """
         Gets the sample id of the mounted sample. The sample id is either the pin id
@@ -664,9 +663,8 @@ class AbstractPrefectWorkflow(ABC):
         if head_type == "SmartMagnet":
             sample_id = self._get_pin_model_of_mounted_sample_from_db().id
         elif head_type == "Plate":
-            sample_id = self._get_well_id_of_mounted_tray(
-                project_name, lab_name, sample_name
-            )
+
+            sample_id = self._get_well_id_of_mounted_tray(dialog_box_model)
         else:
             msg = f"Head type {head_type} is not implemented for getting sample id"
             logging.getLogger("user_level_log").error(msg)
@@ -706,9 +704,7 @@ class AbstractPrefectWorkflow(ABC):
         column,
         row,
         drop,
-        project_name: str,
-        lab_name: str,
-        sample_name: str | None,
+        dialog_box_model: DataCollectionDialogBoxBase,
     ) -> int:
         """
         Adds a well to the database.
@@ -721,14 +717,16 @@ class AbstractPrefectWorkflow(ABC):
         tray_id = self._get_tray_id_of_mounted_tray(barcode, epn_string)
 
         project_id = self.get_project_id_from_lab_name_and_project_name(
-            lab_name, project_name
+            dialog_box_model.lab_name, dialog_box_model.project_name
         )
 
-        if sample_name is None:
-            sample_name = ""  # The data layer automatically will create a name
+        if dialog_box_model.sample_name is None:
+            dialog_box_model.sample_name = (
+                ""  # The data layer automatically will create a name
+            )
 
         payload = {
-            "name": sample_name,
+            "name": dialog_box_model.sample_name,
             "description": "",
             "type": "sample_well",
             "row": row,
