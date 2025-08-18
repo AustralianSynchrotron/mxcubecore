@@ -771,7 +771,7 @@ class AbstractPrefectWorkflow(ABC):
         """
         tray_id = self._get_tray_id_of_mounted_tray(barcode, epn_string)
 
-        project_id = self.get_project_id_from_lab_name_and_project_name(
+        project_id = self._get_project_id_from_lab_name_and_project_name(
             dialog_box_model.lab_name, dialog_box_model.project_name
         )
 
@@ -805,8 +805,8 @@ class AbstractPrefectWorkflow(ABC):
             data = response.json()
             if dialog_box_model.sample_name is not None:
                 logging.getLogger("user_level_log").warning(
-                    f"Sample already exists for well {row}{column}:{drop} (`{data['name']}`). "
-                    f"The name {dialog_box_model.sample_name} will not used."
+                    f"Using existing sample '{data['name']}' for well {row}{column}:{drop}. "
+                    f"Provided name '{dialog_box_model.sample_name}' is ignored."
                 )
             else:
                 logging.getLogger("user_level_log").info(
@@ -819,7 +819,7 @@ class AbstractPrefectWorkflow(ABC):
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
 
-    def get_labs_with_projects(self) -> dict[str, list[tuple[str, int]]]:
+    def _get_labs_with_projects(self) -> dict[str, list[tuple[str, int]]]:
         """
         Call the data layer api to get a dictionary mapping lab names
         to a list of (project_name, project_id) tuples.
@@ -863,7 +863,7 @@ class AbstractPrefectWorkflow(ABC):
                 ]
         return labs_with_projects
 
-    def _build_tray_dialog_schema(self) -> tuple[dict, dict]:
+    def build_tray_dialog_schema(self) -> tuple[dict, dict]:
         """
         Builds the dialog schema for the tray dialog box.
         This contains an auto create well entry. If this is set to true, the user
@@ -885,7 +885,7 @@ class AbstractPrefectWorkflow(ABC):
             }
         }
 
-        labs_with_projects = self.get_labs_with_projects()
+        labs_with_projects = self._get_labs_with_projects()
         lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
 
         default_lab = self._get_dialog_box_param("lab_name")
@@ -946,7 +946,7 @@ class AbstractPrefectWorkflow(ABC):
 
         return properties, conditional
 
-    def get_project_id_from_lab_name_and_project_name(
+    def _get_project_id_from_lab_name_and_project_name(
         self, lab_name: str, project_name: str
     ) -> int:
         """
@@ -964,7 +964,7 @@ class AbstractPrefectWorkflow(ABC):
         int
             The project id
         """
-        labs = self.get_labs_with_projects()
+        labs = self._get_labs_with_projects()
         for name, project_id in labs.get(lab_name, []):
             if name == project_name:
                 logging.getLogger("HWR").debug(

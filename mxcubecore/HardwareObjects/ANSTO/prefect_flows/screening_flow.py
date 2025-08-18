@@ -176,10 +176,10 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             }
 
-        plate_conditional: dict | None = None
+        tray_conditional: dict | None = None
         if self.get_head_type() == "Plate":
-            plate_props, plate_conditional = self._build_tray_dialog_schema()
-            properties.update(plate_props)
+            tray_properties, tray_conditional = self.build_tray_dialog_schema()
+            properties.update(tray_properties)
 
         dialog = {
             "properties": properties,
@@ -194,7 +194,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "dialogName": "Screening Parameters",
         }
 
-        if plate_conditional:
-            dialog.update(plate_conditional)
+        if tray_conditional:
+            dialog.update(tray_conditional)
 
         return dialog
