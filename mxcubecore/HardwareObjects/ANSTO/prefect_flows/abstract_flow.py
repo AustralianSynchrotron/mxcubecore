@@ -742,7 +742,7 @@ class AbstractPrefectWorkflow(ABC):
         barcode: str,
         epn_string: str,
         column: int,
-        row: int,
+        row: str,
         drop: int,
         dialog_box_model: DataCollectionDialogBoxBase,
     ) -> int:
@@ -757,7 +757,7 @@ class AbstractPrefectWorkflow(ABC):
             The epn string
         column : int
             The column
-        row : int
+        row : str
             The row
         drop : int
             The drop location
@@ -776,12 +776,13 @@ class AbstractPrefectWorkflow(ABC):
         )
 
         if dialog_box_model.sample_name is None:
-            dialog_box_model.sample_name = (
-                ""  # The data layer automatically will create a name
-            )
+            sample_name = ""  # The data layer automatically will create a name
+
+        else:
+            sample_name = dialog_box_model.sample_name
 
         payload = {
-            "name": dialog_box_model.sample_name,
+            "name": sample_name,
             "description": "",
             "type": "sample_well",
             "row": row,
@@ -797,11 +798,24 @@ class AbstractPrefectWorkflow(ABC):
         if response.status_code == HTTPStatus.CREATED:
             data = response.json()
             logging.getLogger("user_level_log").info(
-                f"Added well '{data['name']}' to the database"
+                f"Added sample '{data['name']}' to the database"
             )
             return data["id"]
+        elif response.status_code == HTTPStatus.OK:
+            data = response.json()
+            if dialog_box_model.sample_name is not None:
+                logging.getLogger("user_level_log").warning(
+                    f"Sample already exists for well {row}{column}:{drop} (`{data['name']}`). "
+                    f"The name {dialog_box_model.sample_name} will not used."
+                )
+            else:
+                logging.getLogger("user_level_log").info(
+                    f"Sample '{data['name']}' exists in the database. The flow will run using this sample."
+                )
+
+            return data["id"]
         else:
-            msg = f"Failed to add well to the database: {response.text}"
+            msg = f"Failed to add sample to the database: {response.text}"
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
 
@@ -885,11 +899,11 @@ class AbstractPrefectWorkflow(ABC):
         if default_lab is not None and default_lab in lab_names:
             lab_field["default"] = default_lab
 
-        # Base project field (shown immediately when auto_create_well is true)
-        # Enum is refined via per-lab conditionals in allOf
+        # NOTE: the project field is shown when auto_create_well is True,
+        # but the enum depends on the lab conditionals in the allOf field
         all_project_names = sorted(
             {name for items in labs_with_projects.values() for name, _ in items},
-            key=str.casefold,
+            key=str.casefold,  # case insensitive
         )
         project_field: dict = {
             "title": "Project Name",
@@ -902,14 +916,15 @@ class AbstractPrefectWorkflow(ABC):
             and default_project is not None
             and default_project in [name for name, _ in labs_with_projects[default_lab]]
         ):
+            # only set default if it makes sense
             project_field["default"] = default_project
 
-        # Refine project enum based on selected lab
+        # Get projects based on selected lab
         per_lab_conditionals = []
         for lab_name in lab_names:
             project_names = sorted(
                 [name for name, _ in labs_with_projects[lab_name]],
-                key=str.casefold,
+                key=str.casefold,  # case insensitive
             )
             per_lab_conditionals.append(
                 {
