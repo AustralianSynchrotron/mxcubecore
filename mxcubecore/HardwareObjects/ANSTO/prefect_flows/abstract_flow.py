@@ -536,6 +536,11 @@ class AbstractPrefectWorkflow(ABC):
     ) -> int:
         """Gets the well id from the mx-data-layer-api
 
+        Parameters
+        ----------
+        dialog_box_model : DataCollectionDialogBoxBase
+            The dialog box model
+
         Returns
         -------
         int
@@ -575,6 +580,22 @@ class AbstractPrefectWorkflow(ABC):
     def _get_well_id(
         self, barcode: str, epn_string: str, column: int, row: str, drop: str
     ) -> int:
+        """
+        Gets the well id from the mx-data-layer-api
+
+        Parameters
+        ----------
+        barcode : str
+            The barcode of the tray.
+        epn_string : str
+            The epn string.
+        column : int
+            The column.
+        row : str
+            The row letter of the well.
+        drop : str
+            The drop location of the well.
+        """
         logging.getLogger("HWR").info(
             f"Getting well id for barcode {barcode}, epn_string {epn_string}, column {column}, row {row}, and drop {drop}"
         )
@@ -644,14 +665,19 @@ class AbstractPrefectWorkflow(ABC):
     ) -> int:
         """
         Gets the sample id of the mounted sample. The sample id is either the pin id
-        or the well id, depending on the head type.
+        or the well id, depending on the head type. The dialog_box_model is
+        used only to auto add wells to the database (only for trays)
+
+        Parameters
+        ----------
+        dialog_box_model : DataCollectionDialogBoxBase
+            The dialog box model containing the data collection parameters sent
+            from the UI.
 
         Returns
         -------
         int
             The sample id of the mounted sample.
-        project_id : int | None
-            The project id to use when creating a new well (if needed).
 
         Raises
         ------
@@ -672,7 +698,21 @@ class AbstractPrefectWorkflow(ABC):
         return sample_id
 
     def _get_tray_id_of_mounted_tray(self, barcode: str, epn: str) -> int:
+        """
+        Gets the tray ID of the mounted tray.
 
+        Parameters
+        ----------
+        barcode : str
+            The barcode of the tray.
+        epn : str
+            The epn string.
+
+        Returns
+        -------
+        int
+            The tray id of the mounted tray.
+        """
         response = httpx.get(
             urljoin(
                 settings.DATA_LAYER_API,
@@ -699,20 +739,35 @@ class AbstractPrefectWorkflow(ABC):
 
     def _add_well_to_db(
         self,
-        barcode,
-        epn_string,
-        column,
-        row,
-        drop,
+        barcode: str,
+        epn_string: str,
+        column: int,
+        row: int,
+        drop: int,
         dialog_box_model: DataCollectionDialogBoxBase,
     ) -> int:
         """
         Adds a well to the database.
 
+        Parameters
+        ----------
+        barcode : str
+            The barcode of the tray.
+        epn_string : str
+            The epn string
+        column : int
+            The column
+        row : int
+            The row
+        drop : int
+            The drop location
+        dialog_box_model : DataCollectionDialogBoxBase
+            The dialog box model containing the data collection parameters.
+
         Returns
         -------
         int
-            The id of the created well.
+            The id of the added well.
         """
         tray_id = self._get_tray_id_of_mounted_tray(barcode, epn_string)
 
@@ -904,6 +959,13 @@ class AbstractPrefectWorkflow(ABC):
         """
         Gets the project id from the lab name and project name.
 
+        Parameters
+        ----------
+        lab_name : str
+            The name of the lab.
+        project_name : str
+            The name of the project.
+
         Returns
         -------
         int
@@ -913,7 +975,7 @@ class AbstractPrefectWorkflow(ABC):
         for name, project_id in labs.get(lab_name, []):
             if name == project_name:
                 logging.getLogger("HWR").debug(
-                    f"Found project ID {project_id} for lab '{lab_name}' and project '{project_name}'"
+                    f"Found project ID {project_id} for lab {lab_name} and project {project_name}"
                 )
                 return project_id
         msg = f"Project ID not found for lab '{lab_name}' and project '{project_name}'"
