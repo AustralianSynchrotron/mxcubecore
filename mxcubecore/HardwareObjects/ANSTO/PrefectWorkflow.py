@@ -527,6 +527,25 @@ class PrefectWorkflow(HardwareObject):
     def _save_params_to_redis(
         self, collection_type: str, key: str, value: int | str | bool | None
     ) -> None:
+        """
+        Saves default parameters to redis. This values are updated
+        per data collection
+
+        Parameters
+        ----------
+        collection_type : str
+            The type of data collection (e.g. full_dataset, screening, etc.)
+        key : str
+            The key of the parameter to save
+        value : int | str | bool | None
+            The value of the parameter to save. If the type is
+            bool, we save 1 for True and 0 for False. If the parameter
+            is None, we delete the key from redis.
+
+        Returns
+        -------
+        None
+        """
         if value is None:
             self.redis_connection.delete(f"{collection_type}:{key}")
             self.redis_connection.delete(f"mxcube_common_params:{key}")
@@ -541,16 +560,12 @@ class PrefectWorkflow(HardwareObject):
         self,
     ) -> Literal["SmartMagnet", "MiniKappa", "Plate", "Permanent", "Unknown"]:
         """
-        Get the md3 head type from the md3. In simulation mode,
-        get it from redis.
+        Get the md3 head type
 
         Returns
         -------
         None
         """
-        # if settings.BL_ACTIVE:
-        #     head_type = md3.get_head_type()
-        # else:
         with get_redis_connection() as redis_connection:
             head_type = redis_connection.get("mxcube:md3_head_type")
 
