@@ -802,7 +802,6 @@ class AbstractPrefectWorkflow(ABC):
         labs_with_projects = self.get_labs_with_projects()
         lab_names = sorted(labs_with_projects.keys())
 
-        # Fetch saved defaults (if any)
         default_lab = self._get_dialog_box_param("lab_name")
         default_project = self._get_dialog_box_param("project_name")
 
@@ -812,12 +811,10 @@ class AbstractPrefectWorkflow(ABC):
             "enum": lab_names,
             "widget": "select",
         }
-        # Set default lab if valid
         if default_lab is not None and default_lab in lab_names:
             lab_field["default"] = default_lab
 
-        # Build lab-dependent branches: when a specific lab is selected, show its projects
-        lab_dependencies_oneof = []
+        per_lab_conditionals = []
         for lab_name in lab_names:
             project_names = [name for name, _pid in labs_with_projects[lab_name]]
 
@@ -827,7 +824,6 @@ class AbstractPrefectWorkflow(ABC):
                 "enum": project_names,
                 "widget": "select",
             }
-            # Set default project if it matches the selected default lab and is valid
             if (
                 default_lab is not None
                 and default_lab == lab_name
@@ -836,27 +832,22 @@ class AbstractPrefectWorkflow(ABC):
             ):
                 project_field["default"] = default_project
 
-            lab_dependencies_oneof.append(
+            per_lab_conditionals.append(
                 {
-                    "properties": {
-                        "lab_name": {"const": lab_name},
-                        "project_name": project_field,
+                    "if": {"properties": {"lab_name": {"const": lab_name}}},
+                    "then": {
+                        "properties": {"project_name": project_field},
+                        "required": ["project_name"],
                     },
-                    "required": ["project_name"],
                 }
             )
 
-        # Only show lab_name when auto_create_well is true; project_name appears after lab selection
         conditional = {
             "if": {"properties": {"auto_create_well": {"const": True}}},
             "then": {
                 "properties": {"lab_name": lab_field},
                 "required": ["lab_name"],
-                "dependencies": {
-                    "lab_name": {
-                        "oneOf": lab_dependencies_oneof
-                    }
-                },
+                "allOf": per_lab_conditionals,  # project shown only after lab is selected
             },
         }
 
