@@ -30,6 +30,10 @@ class DataCollectionDialogBoxBase(BaseModel):
         default=None,
         description="The name of the lab. Only used if auto_create_well=True",
     )
+    sample_name: str | None = Field(
+        default=None,
+        description="The name of the sample. Only used if auto_create_well=True",
+    )
 
 
 class DataCollectionBase(BaseModel):
