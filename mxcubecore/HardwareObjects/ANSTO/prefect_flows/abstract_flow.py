@@ -866,9 +866,10 @@ class AbstractPrefectWorkflow(ABC):
     def _build_tray_dialog_schema(self) -> tuple[dict, dict]:
         """
         Builds the dialog schema for the tray dialog box.
-        This contains an auto create well entry. If this is set
-        to true, the user can select a lab and project name from
-        the available options which are obtained from the data layer api.
+        This contains an auto create well entry. If this is set to true, the user
+        can select a lab and project name from the available options which are
+        obtained from the data layer api. The project list is populated based on
+        the selected lab.
 
         Returns
         -------
@@ -885,7 +886,9 @@ class AbstractPrefectWorkflow(ABC):
         }
 
         labs_with_projects = self.get_labs_with_projects()
-        lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
+        lab_names = sorted(
+            labs_with_projects.keys(), key=str.casefold
+        )  # case insensitive
 
         default_lab = self._get_dialog_box_param("lab_name")
         default_project = self._get_dialog_box_param("project_name")
@@ -900,7 +903,7 @@ class AbstractPrefectWorkflow(ABC):
             lab_field["default"] = default_lab
 
         # NOTE: the project field is shown when auto_create_well is True,
-        # but the enum depends on the lab conditionals in the allOf field
+        # and the enum depends on the lab conditionals in the allOf field
         all_project_names = sorted(
             {name for items in labs_with_projects.values() for name, _ in items},
             key=str.casefold,  # case insensitive
@@ -911,42 +914,28 @@ class AbstractPrefectWorkflow(ABC):
             "enum": all_project_names,
             "widget": "select",
         }
-        if (
-            default_lab in labs_with_projects
-            and default_project is not None
-            and default_project in [name for name, _ in labs_with_projects[default_lab]]
-        ):
-            # only set default if it makes sense
-            project_field["default"] = default_project
 
         # Get projects based on selected lab
-        per_lab_conditionals = []
+        lab_conditionals = []
         for lab_name in lab_names:
             project_names = sorted(
                 [name for name, _ in labs_with_projects[lab_name]],
                 key=str.casefold,  # case insensitive
             )
-            per_lab_conditionals.append(
+
+            project_name_schema = {
+                "title": "Project Name",
+                "type": "string",
+                "enum": project_names,
+                "widget": "select",
+            }
+            if default_lab == lab_name and default_project in project_names:
+                project_name_schema["default"] = default_project
+
+            lab_conditionals.append(
                 {
                     "if": {"properties": {"lab_name": {"const": lab_name}}},
-                    "then": {
-                        "properties": {
-                            "project_name": {
-                                "title": "Project Name",
-                                "type": "string",
-                                "enum": project_names,
-                                "widget": "select",
-                                **(
-                                    {"default": default_project}
-                                    if (
-                                        default_lab == lab_name
-                                        and default_project in project_names
-                                    )
-                                    else {}
-                                ),
-                            }
-                        }
-                    },
+                    "then": {"properties": {"project_name": project_name_schema}},
                 }
             )
 
@@ -962,7 +951,7 @@ class AbstractPrefectWorkflow(ABC):
                     },
                 },
                 "required": ["lab_name", "project_name"],
-                "allOf": per_lab_conditionals,
+                "allOf": lab_conditionals,
             },
         }
 
