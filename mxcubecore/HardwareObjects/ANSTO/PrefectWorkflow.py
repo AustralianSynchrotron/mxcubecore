@@ -5,27 +5,27 @@ import pprint
 import time
 from os import path
 from time import perf_counter
+from typing import Literal
 
 import gevent
 import redis
 import yaml
 from gevent.event import Event
+from mx3_beamline_library.devices.motors import md3
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import SampleView
 from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
-from typing import Literal
 
 from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.one_shot_flow import OneShotFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
-from .Resolution import Resolution
 from .redis_utils import get_redis_connection
-from mx3_beamline_library.devices.motors import md3
+from .Resolution import Resolution
 
 
 class State(object):
@@ -507,31 +507,32 @@ class PrefectWorkflow(HardwareObject):
             path.dirname(__file__), "prefect_flows", "config", filename
         )
         with open(default_params_path) as config:
-            default_params = yaml.safe_load(config)
+            default_params: dict = yaml.safe_load(config)
 
         collection_type = "full_dataset"
         for key, value in default_params[collection_type].items():
-            if isinstance(value, bool):
-                value = 1 if value else 0
-            self.redis_connection.set(f"{collection_type}:{key}", value)
-
+            self._save_params_to_redis(collection_type, key, value)
         collection_type = "screening"
         for key, value in default_params[collection_type].items():
-            if isinstance(value, bool):
-                value = 1 if value else 0
-            self.redis_connection.set(f"{collection_type}:{key}", value)
+            self._save_params_to_redis(collection_type, key, value)
 
         collection_type = "grid_scan"
         for key, value in default_params[collection_type].items():
-            if isinstance(value, bool):
-                value = 1 if value else 0
-            self.redis_connection.set(f"{collection_type}:{key}", value)
+            self._save_params_to_redis(collection_type, key, value)
 
         collection_type = "one_shot"
         for key, value in default_params[collection_type].items():
-            if isinstance(value, bool):
-                value = 1 if value else 0
-            self.redis_connection.set(f"{collection_type}:{key}", value)
+            self._save_params_to_redis(collection_type, key, value)
+
+    def _save_params_to_redis(
+        self, collection_type: str, key: str, value: int | str | bool | None
+    ) -> None:
+        if value is None:
+            self.redis_connection.delete(f"{collection_type}:{key}")
+            return
+        if isinstance(value, bool):
+            value = 1 if value else 0
+        self.redis_connection.set(f"{collection_type}:{key}", value)
 
     def get_head_type(
         self,
