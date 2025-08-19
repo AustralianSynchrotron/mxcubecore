@@ -832,7 +832,7 @@ class AbstractPrefectWorkflow(ABC):
         with get_redis_connection(decode_response=False) as redis_connection:
             lab_ids = redis_connection.get("lab_ids")
             if lab_ids is None:
-                logging.getLogger("user_level_log").warning("No lab IDs found in Redis")
+                logging.getLogger("user_level_log").error("No lab IDs found in Redis")
                 return {}
             lab_ids = pickle.loads(lab_ids)
 
