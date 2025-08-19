@@ -1,8 +1,8 @@
 ---
 full_dataset:
-  exposure_time: 9.0  # Total exposure time, seconds
+  exposure_time: 2.0  # Total exposure time, seconds
   omega_range: 20.0  # Degrees
-  number_of_frames: 1800
+  number_of_frames: 200
   processing_pipeline: "fast_dp"  # can be fast_dp, dials, or dials_and_fast_dp
   crystal_counter: 0  # a.k.a. crystal id
   photon_energy: 13.0  # keV
@@ -14,9 +14,9 @@ full_dataset:
   lab_name: null
 
 screening:
-  exposure_time: 2.0  # Total exposure time, seconds
-  omega_range: 10.0  # Degrees
-  number_of_frames: 400
+  exposure_time: 0.5  # Total exposure time, seconds
+  omega_range: 5.0  # Degrees
+  number_of_frames: 50
   processing_pipeline: "fast_dp"  # can be fast_dp, dials, or dials_and_fast_dp
   crystal_counter: 0  # a.k.a. crystal id
   photon_energy: 13.0  # keV
