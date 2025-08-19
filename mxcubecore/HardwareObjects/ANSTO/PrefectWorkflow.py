@@ -5,11 +5,13 @@ import pprint
 import time
 from os import path
 from time import perf_counter
+from typing import Literal
 
 import gevent
 import redis
 import yaml
 from gevent.event import Event
+from mx3_beamline_library.devices.motors import md3
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -22,6 +24,7 @@ from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.one_shot_flow import OneShotFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
+from .redis_utils import get_redis_connection
 from .Resolution import Resolution
 
 
@@ -492,24 +495,81 @@ class PrefectWorkflow(HardwareObject):
         -------
         None
         """
+        head_type = self.get_head_type()
+        if head_type == "SmartMagnet":
+            filename = "default_params_pins.yml"
+        elif head_type == "Plate":
+            filename = "default_params_trays.yml"
+        else:
+            raise NotImplementedError(f"Head type {head_type} not supported")
+
         default_params_path = path.join(
-            path.dirname(__file__), "prefect_flows", "default_params.yml"
+            path.dirname(__file__), "prefect_flows", "config", filename
         )
         with open(default_params_path) as config:
-            default_params = yaml.safe_load(config)
+            default_params: dict = yaml.safe_load(config)
 
         collection_type = "full_dataset"
         for key, value in default_params[collection_type].items():
-            self.redis_connection.set(f"{collection_type}:{key}", value)
-
+            self._save_params_to_redis(collection_type, key, value)
         collection_type = "screening"
         for key, value in default_params[collection_type].items():
-            self.redis_connection.set(f"{collection_type}:{key}", value)
+            self._save_params_to_redis(collection_type, key, value)
 
         collection_type = "grid_scan"
         for key, value in default_params[collection_type].items():
-            self.redis_connection.set(f"{collection_type}:{key}", value)
+            self._save_params_to_redis(collection_type, key, value)
 
         collection_type = "one_shot"
         for key, value in default_params[collection_type].items():
+            self._save_params_to_redis(collection_type, key, value)
+
+    def _save_params_to_redis(
+        self, collection_type: str, key: str, value: int | str | bool | None
+    ) -> None:
+        """
+        Saves default parameters to redis. This values are updated
+        per data collection
+
+        Parameters
+        ----------
+        collection_type : str
+            The type of data collection (e.g. full_dataset, screening, etc.)
+        key : str
+            The key of the parameter to save
+        value : int | str | bool | None
+            The value of the parameter to save. If the type is
+            bool, we save 1 for True and 0 for False. If the parameter
+            is None, we delete the key from redis.
+
+        Returns
+        -------
+        None
+        """
+        if value is None:
+            self.redis_connection.delete(f"{collection_type}:{key}")
+            self.redis_connection.delete(f"mxcube_common_params:{key}")
+            return
+        if key == "auto_create_well":
+            value = 1 if value else 0
+            self.redis_connection.set(f"mxcube_common_params:{key}", value)
+        else:
             self.redis_connection.set(f"{collection_type}:{key}", value)
+
+    def get_head_type(
+        self,
+    ) -> Literal["SmartMagnet", "MiniKappa", "Plate", "Permanent", "Unknown"]:
+        """
+        Get the md3 head type
+
+        Returns
+        -------
+        None
+        """
+        with get_redis_connection() as redis_connection:
+            head_type = redis_connection.get("mxcube:md3_head_type")
+
+        if head_type is None:
+            raise ValueError("mxcube:md3_head_type is not set in redis")
+
+        return head_type

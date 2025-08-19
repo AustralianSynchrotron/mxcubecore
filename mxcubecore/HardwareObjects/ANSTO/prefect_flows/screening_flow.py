@@ -58,7 +58,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample()
+            sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
             logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
 
         else:
@@ -176,6 +176,11 @@ class ScreeningFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             }
 
+        tray_conditional: dict | None = None
+        if self.get_head_type() == "Plate":
+            tray_properties, tray_conditional = self.build_tray_dialog_schema()
+            properties.update(tray_properties)
+
         dialog = {
             "properties": properties,
             "required": [
@@ -188,5 +193,8 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             ],
             "dialogName": "Screening Parameters",
         }
+
+        if tray_conditional:
+            dialog.update(tray_conditional)
 
         return dialog

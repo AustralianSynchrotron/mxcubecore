@@ -75,7 +75,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample()
+            sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
             logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
 
         else:
@@ -338,32 +338,39 @@ class GridScanFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
-        dialog = {
-            "properties": {
-                "md3_alignment_y_speed": {
-                    "title": "Alignment Y Speed [mm/s]",
-                    "type": "number",
-                    "minimum": 0.1,
-                    "maximum": 14.8,
-                    "default": float(
-                        self._get_dialog_box_param("md3_alignment_y_speed")
-                    ),
-                    "widget": "textarea",
-                },
-                "transmission": {
-                    "title": "Transmission [%]",
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 100,
-                    "default": float(self._get_dialog_box_param("transmission")),
-                    "widget": "textarea",
-                },
+        properties = {
+            "md3_alignment_y_speed": {
+                "title": "Alignment Y Speed [mm/s]",
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 14.8,
+                "default": float(self._get_dialog_box_param("md3_alignment_y_speed")),
+                "widget": "textarea",
             },
+            "transmission": {
+                "title": "Transmission [%]",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "default": float(self._get_dialog_box_param("transmission")),
+                "widget": "textarea",
+            },
+        }
+        tray_conditional: dict | None = None
+        if self.get_head_type() == "Plate":
+            tray_properties, tray_conditional = self.build_tray_dialog_schema()
+            properties.update(tray_properties)
+
+        dialog = {
+            "properties": properties,
             "required": [
                 "md3_alignment_y_speed",
                 "transmission",
             ],
             "dialogName": "Grid Scan Parameters",
         }
+
+        if tray_conditional:
+            dialog.update(tray_conditional)
 
         return dialog

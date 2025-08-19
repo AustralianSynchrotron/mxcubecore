@@ -1,4 +1,5 @@
 import logging
+import pickle
 import re
 from abc import (
     ABC,
@@ -9,9 +10,7 @@ from time import sleep
 from typing import Literal
 from urllib.parse import urljoin
 
-import gevent
 import httpx
-import redis
 from mx_robot_library.client import Client
 from scipy.constants import (
     Planck,
@@ -25,6 +24,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 from ..mockup.robot import SimRobot
 from ..redis_utils import get_redis_connection
 from ..Resolution import Resolution
+from .schemas.common import DataCollectionDialogBoxBase
 from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
@@ -309,7 +309,13 @@ class AbstractPrefectWorkflow(ABC):
         """
         with get_redis_connection() as redis_connection:
             for key, value in dialog_box.model_dump(exclude_none=True).items():
-                redis_connection.set(f"{self._collection_type}:{key}", value)
+                if isinstance(value, bool):
+                    value = 1 if value else 0
+
+                if key in ["lab_name", "project_name", "auto_create_well"]:
+                    redis_connection.set(f"mxcube_common_params:{key}", value)
+                else:
+                    redis_connection.set(f"{self._collection_type}:{key}", value)
 
     def _get_dialog_box_param(
         self,
@@ -323,8 +329,11 @@ class AbstractPrefectWorkflow(ABC):
             "resolution",
             "md3_alignment_y_speed",
             "transmission",
+            "auto_create_well",
+            "lab_name",
+            "project_name",
         ],
-    ) -> str | int | float:
+    ) -> str | int | float | None:
         """
         Retrieve a parameter value from Redis.
 
@@ -338,8 +347,11 @@ class AbstractPrefectWorkflow(ABC):
             "crystal_counter",
             "photon_energy",
             "resolution",
-            "md3_alignment_y_speed"
-            "transmission"
+            "md3_alignment_y_speed",
+            "transmission",
+            "auto_create_well",
+            "lab_name",
+            "project_name",
         ]
             A parameter saved in redis
 
@@ -349,7 +361,16 @@ class AbstractPrefectWorkflow(ABC):
             The last value set in redis for a given parameter
         """
         with get_redis_connection() as redis_connection:
-            return redis_connection.get(f"{self._collection_type}:{parameter}")
+            if parameter in ["lab_name", "project_name", "auto_create_well"]:
+                value = redis_connection.get(f"mxcube_common_params:{parameter}")
+            else:
+                value = redis_connection.get(f"{self._collection_type}:{parameter}")
+
+            if parameter == "auto_create_well":
+                if value is not None:
+                    return bool(int(value))
+            else:
+                return value
 
     def _resolution_to_distance(self, resolution: float, energy: float) -> float:
         """
@@ -500,8 +521,25 @@ class AbstractPrefectWorkflow(ABC):
             raise QueueExecutionException(msg, self)
         return barcode
 
-    def _get_well_id_of_mounted_tray(self) -> int:
+    def _get_current_drop_location(self) -> tuple[int, int, int]:
+        with get_redis_connection() as redis_connection:
+            current_drop_location = redis_connection.get("current_drop_location")
+            if current_drop_location is None:
+                msg = "current_drop_location redis key does not exist"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+
+        return self._parse_plate_address(current_drop_location)
+
+    def _get_well_id_of_mounted_tray(
+        self, dialog_box_model: DataCollectionDialogBoxBase
+    ) -> int:
         """Gets the well id from the mx-data-layer-api
+
+        Parameters
+        ----------
+        dialog_box_model : DataCollectionDialogBoxBase
+            The dialog box model
 
         Returns
         -------
@@ -520,14 +558,7 @@ class AbstractPrefectWorkflow(ABC):
 
         epn_string = self._get_epn_string()
 
-        with get_redis_connection() as redis_connection:
-            current_drop_location = redis_connection.get("current_drop_location")
-            if current_drop_location is None:
-                msg = "current_drop_location redis key does not exist"
-                logging.getLogger("user_level_log").error(msg)
-                raise QueueExecutionException(msg, self)
-
-        row, column, drop = self._parse_plate_address(current_drop_location)
+        row, column, drop = self._get_current_drop_location()
 
         # FIXME: This will be changed to numbers in the data layer
         if drop == 1:
@@ -537,6 +568,34 @@ class AbstractPrefectWorkflow(ABC):
         elif drop == 3:
             drop = "middle"
 
+        if dialog_box_model.auto_create_well:
+            well_id = self._add_well_to_db(
+                barcode, epn_string, column, row, drop, dialog_box_model
+            )
+        else:
+            well_id = self._get_well_id(barcode, epn_string, column, row, drop)
+
+        return well_id
+
+    def _get_well_id(
+        self, barcode: str, epn_string: str, column: int, row: str, drop: str
+    ) -> int:
+        """
+        Gets the well id from the mx-data-layer-api
+
+        Parameters
+        ----------
+        barcode : str
+            The barcode of the tray.
+        epn_string : str
+            The epn string.
+        column : int
+            The column.
+        row : str
+            The row letter of the well.
+        drop : str
+            The drop location of the well.
+        """
         logging.getLogger("HWR").info(
             f"Getting well id for barcode {barcode}, epn_string {epn_string}, column {column}, row {row}, and drop {drop}"
         )
@@ -591,17 +650,29 @@ class AbstractPrefectWorkflow(ABC):
         """
         match = re.match(r"([A-Z])(\d+):(\d+)", address)
         if not match:
-            raise ValueError("Invalid address format")
+            raise QueueExecutionException(
+                f"Invalid well address format. Expected format is e.g.'B7:1', not {address}",
+                self,
+            )
         row_chr, col_str, drop_str = match.groups()
         row = row_chr.upper()
         col = int(col_str)
         drop = int(drop_str)
         return row, col, drop
 
-    def get_sample_id_of_mounted_sample(self) -> int:
+    def get_sample_id_of_mounted_sample(
+        self, dialog_box_model: DataCollectionDialogBoxBase
+    ) -> int:
         """
         Gets the sample id of the mounted sample. The sample id is either the pin id
-        or the well id, depending on the head type.
+        or the well id, depending on the head type. The dialog_box_model is
+        used only to auto add wells to the database (only for trays)
+
+        Parameters
+        ----------
+        dialog_box_model : DataCollectionDialogBoxBase
+            The dialog box model containing the data collection parameters sent
+            from the UI.
 
         Returns
         -------
@@ -618,9 +689,288 @@ class AbstractPrefectWorkflow(ABC):
         if head_type == "SmartMagnet":
             sample_id = self._get_pin_model_of_mounted_sample_from_db().id
         elif head_type == "Plate":
-            sample_id = self._get_well_id_of_mounted_tray()
+
+            sample_id = self._get_well_id_of_mounted_tray(dialog_box_model)
         else:
             msg = f"Head type {head_type} is not implemented for getting sample id"
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
         return sample_id
+
+    def _get_tray_id_of_mounted_tray(self, barcode: str, epn: str) -> int:
+        """
+        Gets the tray ID of the mounted tray.
+
+        Parameters
+        ----------
+        barcode : str
+            The barcode of the tray.
+        epn : str
+            The epn string.
+
+        Returns
+        -------
+        int
+            The tray id of the mounted tray.
+        """
+        response = httpx.get(
+            urljoin(
+                settings.DATA_LAYER_API,
+                f"/samples/trays?filter_by_tray_barcode={barcode}&filter_by_visit_identifier={epn}",
+            )
+        )
+
+        if response.status_code == HTTPStatus.OK:
+            data = response.json()
+            if len(data) == 1:
+                return data[0]["id"]
+            elif len(data) > 1:
+                msg = f"Multiple trays found for barcode {barcode} and epn {epn}"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+            else:
+                msg = f"No tray found for barcode {barcode} and epn {epn}"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+        else:
+            msg = f"Failed to get tray by barcode {barcode} and epn {epn} from the data layer API"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
+
+    def _add_well_to_db(
+        self,
+        barcode: str,
+        epn_string: str,
+        column: int,
+        row: str,
+        drop: int,
+        dialog_box_model: DataCollectionDialogBoxBase,
+    ) -> int:
+        """
+        Adds a well to the database.
+
+        Parameters
+        ----------
+        barcode : str
+            The barcode of the tray.
+        epn_string : str
+            The epn string
+        column : int
+            The column
+        row : str
+            The row
+        drop : int
+            The drop location
+        dialog_box_model : DataCollectionDialogBoxBase
+            The dialog box model containing the data collection parameters.
+
+        Returns
+        -------
+        int
+            The id of the added well.
+        """
+        tray_id = self._get_tray_id_of_mounted_tray(barcode, epn_string)
+
+        project_id = self._get_project_id_from_lab_name_and_project_name(
+            dialog_box_model.lab_name, dialog_box_model.project_name
+        )
+
+        if dialog_box_model.sample_name is None:
+            sample_name = ""  # The data layer automatically will create a name
+
+        else:
+            sample_name = dialog_box_model.sample_name
+
+        payload = {
+            "name": sample_name,
+            "description": "",
+            "type": "sample_well",
+            "row": row,
+            "column": column,
+            "drop": drop,
+            "tray_id": tray_id,
+            "project_id": project_id,
+        }
+        response = httpx.post(
+            urljoin(settings.DATA_LAYER_API, "/samples/wells"), json=payload
+        )
+
+        if response.status_code == HTTPStatus.CREATED:
+            data = response.json()
+            logging.getLogger("user_level_log").info(
+                f"Added sample '{data['name']}' to the database"
+            )
+            return data["id"]
+        elif response.status_code == HTTPStatus.OK:
+            data = response.json()
+            if dialog_box_model.sample_name is not None:
+                logging.getLogger("user_level_log").warning(
+                    f"Using existing sample '{data['name']}' for well {row}{column}:{drop}. "
+                    f"Provided name '{dialog_box_model.sample_name}' is ignored."
+                )
+            else:
+                logging.getLogger("user_level_log").info(
+                    f"Sample '{data['name']}' exists in the database. The flow will run using this sample."
+                )
+
+            return data["id"]
+        else:
+            msg = f"Failed to add sample to the database: {response.text}"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
+
+    def _get_labs_with_projects(self) -> dict[str, list[tuple[str, int]]]:
+        """
+        Call the data layer api to get a dictionary mapping lab names
+        to a list of (project_name, project_id) tuples.
+
+        Returns
+        -------
+        dict[str, list[tuple[str, int]]]
+            A dictionary mapping lab names to a list of (project_name, project_id) tuples.
+        """
+        with get_redis_connection(decode_response=False) as redis_connection:
+            lab_ids = redis_connection.get("lab_ids")
+            if lab_ids is None:
+                logging.getLogger("user_level_log").error("No lab IDs found in Redis")
+                return {}
+            lab_ids = pickle.loads(lab_ids)
+
+        labs_with_projects: dict[str, list[tuple[str, int]]] = {}
+        with httpx.Client() as client:
+            for lab in lab_ids:
+                lab_response = client.get(settings.DATA_LAYER_API + f"/labs/{lab}")
+                if lab_response.status_code != HTTPStatus.OK:
+                    logging.getLogger("user_level_log").warning(
+                        f"Failed to get lab info from the data layer API: {lab_response.text}"
+                    )
+                    continue
+                lab_name = lab_response.json()["name"]
+
+                response = client.get(
+                    settings.DATA_LAYER_API
+                    + f"/projects?only_active=true&filter_by_lab={lab}"
+                )
+                if response.status_code != HTTPStatus.OK:
+                    logging.getLogger("user_level_log").warning(
+                        f"Failed to get project names from the data layer API: {response.text}"
+                    )
+                    continue
+
+                data = response.json()
+                labs_with_projects[lab_name] = [
+                    (item["name"], item["id"]) for item in data
+                ]
+        return labs_with_projects
+
+    def build_tray_dialog_schema(self) -> tuple[dict, dict]:
+        """
+        Builds the dialog schema for the tray dialog box.
+        This contains an auto create well entry. If this is set to true, the user
+        can select a lab and project name from the available options which are
+        obtained from the data layer api. The project list is populated based on
+        the selected lab.
+
+        Returns
+        -------
+        tuple[dict, dict]
+            The properties and conditional schemas for the tray dialog box.
+        """
+        properties: dict = {
+            "auto_create_well": {
+                "title": "Auto Create Well",
+                "type": "boolean",
+                "default": self._get_dialog_box_param("auto_create_well"),
+                "widget": "textarea",
+            }
+        }
+
+        labs_with_projects = self._get_labs_with_projects()
+        lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
+
+        default_lab = self._get_dialog_box_param("lab_name")
+        default_project = self._get_dialog_box_param("project_name")
+
+        lab_field: dict = {
+            "title": "Lab",
+            "type": "string",
+            "enum": lab_names,
+            "widget": "select",
+        }
+        if default_lab is not None and default_lab in lab_names:
+            lab_field["default"] = default_lab
+
+        # Show projects depending on the selected lab
+        lab_conditionals = []
+        for lab_name in lab_names:
+            project_names = sorted(
+                [name for name, _ in labs_with_projects[lab_name]],
+                key=str.casefold,
+            )
+
+            project_name_schema = {
+                "title": "Project Name",
+                "type": "string",
+                "enum": project_names,
+                "widget": "select",
+            }
+            if default_lab == lab_name and default_project in project_names:
+                project_name_schema["default"] = default_project
+
+            lab_conditionals.append(
+                {
+                    "if": {"properties": {"lab_name": {"const": lab_name}}},
+                    "then": {
+                        "properties": {
+                            "project_name": project_name_schema,
+                            "sample_name": {
+                                "title": "Sample Name (Optional)",
+                                "type": "string",
+                            },
+                        },
+                        "required": ["project_name"],
+                    },
+                }
+            )
+
+        conditional = {
+            "if": {"properties": {"auto_create_well": {"const": True}}},
+            "then": {
+                "properties": {
+                    "lab_name": lab_field,
+                },
+                "required": ["lab_name"],
+                "allOf": lab_conditionals,
+            },
+        }
+
+        return properties, conditional
+
+    def _get_project_id_from_lab_name_and_project_name(
+        self, lab_name: str, project_name: str
+    ) -> int:
+        """
+        Gets the project id from the lab name and project name.
+
+        Parameters
+        ----------
+        lab_name : str
+            The name of the lab.
+        project_name : str
+            The name of the project.
+
+        Returns
+        -------
+        int
+            The project id
+        """
+        labs = self._get_labs_with_projects()
+        for name, project_id in labs.get(lab_name, []):
+            if name == project_name:
+                logging.getLogger("HWR").debug(
+                    f"Project id for lab {lab_name} and project {project_name}: {project_id}"
+                )
+                return project_id
+        msg = f"Project id not found for lab '{lab_name}' and project '{project_name}'"
+        logging.getLogger("user_level_log").error(msg)
+        raise QueueExecutionException(msg, self)
