@@ -86,14 +86,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             )
             sample_id = 1
 
-        redis_grid_scan_id = self.redis_connection.get(
-            f"mxcube_grid_scan_id:{sample_id}"
-        )
-        if redis_grid_scan_id is None:
-            grid_scan_id = 0
-        else:
-            grid_scan_id = int(redis_grid_scan_id) + 1
-
         photon_energy = energy_master.get()
 
         default_resolution = float(self.redis_connection.get("grid_scan:resolution"))
@@ -112,7 +104,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         prefect_parameters = GridScanParams(
             sample_id=sample_id,
-            grid_scan_id=grid_scan_id,
             grid_top_left_coordinate=screen_coordinate,
             grid_height=height,
             grid_width=width,
@@ -130,9 +121,6 @@ class GridScanFlow(AbstractPrefectWorkflow):
             use_centring_table=use_centring_table,
         )
 
-        self.redis_connection.set(
-            f"mxcube_grid_scan_id:{sample_id}", grid_scan_id, ex=86400
-        )
         logging.getLogger("HWR").info(
             f"Parameters sent to prefect flow: {prefect_parameters}"
         )
@@ -190,7 +178,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
         try:
-            grid_scan_flow.trigger_grid_scan()
+            flow_run_uuid = grid_scan_flow.trigger_grid_scan()
 
             logging.getLogger("HWR").info("Getting spotfinder results from redis...")
             logging.getLogger("HWR").info(
@@ -199,7 +187,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
             if not self.mxcubecore_workflow_aborted:
                 last_id = 0
-                numer_of_frames = num_cols * num_rows
+                number_of_frames = num_cols * num_rows
                 score_array = np.zeros((num_rows, num_cols))
                 with redis.StrictRedis(
                     host=settings.MXCUBE_REDIS_HOST,
@@ -208,9 +196,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     password=settings.MXCUBE_REDIS_PASSWORD,
                     db=settings.MXCUBE_REDIS_DB,
                 ) as redis_client:
-                    for _ in range(numer_of_frames):
+                    for _ in range(number_of_frames):
                         data, last_id = self.read_message_from_redis_streams(
-                            topic=f"spotfinder:sample_{prefect_parameters.sample_id}:grid_scan_{prefect_parameters.grid_scan_id}",  # noqa
+                            topic=f"spotfinder_results:{flow_run_uuid}",
                             id=last_id,
                             redis_client=redis_client,
                         )
@@ -251,7 +239,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
             grid_scan_flow.check_flow_state()
 
-            logging.getLogger("HWR").error(
+            logging.getLogger("user_level_log").error(
                 f"Grid scan flow was not successful: {str(ex)}"
             )
             raise QueueExecutionException(str(ex), self) from ex
