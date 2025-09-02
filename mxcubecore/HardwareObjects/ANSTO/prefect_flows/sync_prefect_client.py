@@ -159,15 +159,14 @@ class MX3SyncPrefectClient:
                 logging.getLogger("user_level_log").error(flow_state.message)
                 raise QueueExecutionException(flow_state.message, self)
 
-    def trigger_grid_scan(self) -> FlowRun:
+    def trigger_grid_scan(self) -> UUID:
         """
         Triggers a grid scans and waits until the flow state has
         changed from scheduled or pending to running
 
         Returns
         -------
-        FlowRunResponse
-            The flow response
+        The flow run uuid
 
         Raises
         ------
@@ -191,6 +190,8 @@ class MX3SyncPrefectClient:
             ):
                 state = self.get_flow_run_state(self.flow_run_id, client)
                 sleep(1)
+
+            return self.flow_run_id
 
     def get_flow_run_state(self, flow_run_id: UUID, client: PrefectClient) -> State:
         """

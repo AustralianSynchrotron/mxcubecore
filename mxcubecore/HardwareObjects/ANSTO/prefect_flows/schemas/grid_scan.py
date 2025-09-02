@@ -34,7 +34,6 @@ class GridScanDialogBox(BaseModel):
 
 class GridScanParams(BaseModel):
     sample_id: int
-    grid_scan_id: Union[str, int]
     grid_top_left_coordinate: Union[tuple[int, int], list[int]]
     grid_height: int
     grid_width: int
