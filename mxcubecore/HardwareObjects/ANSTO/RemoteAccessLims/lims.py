@@ -24,6 +24,7 @@ from pydantic_core import (
 )
 from typing_extensions import Literal
 
+from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.abstract.AbstractLims import AbstractLims
 from mxcubecore.model.lims_session import (
     Lims,
@@ -59,15 +60,8 @@ class RemoteAccessLims(AbstractLims):
                 description=self._beamline_description,
             ),
         ]
-        _gateway_api_url = cast(
-            Url,
-            TypeAdapter(
-                AnyHttpUrl,
-            ).validate_python(
-                self.get_property("gateway_api_url"),
-            ),
-        )
-        self._gateway_api_url = str(_gateway_api_url)
+
+        self._gateway_api_url = settings.GATEWAY_API_URL
         self._local_timezone = gettz(self.get_property("local_timezone", None))
 
         # Start Remote Access Polling
