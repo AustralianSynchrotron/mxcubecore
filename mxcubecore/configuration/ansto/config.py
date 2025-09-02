@@ -64,6 +64,7 @@ class Robot(BaseSettings):
 class APIs(BaseSettings):
     DATA_LAYER_API: str = Field(default="http://0.0.0.0:8088", env="DATA_LAYER_API")
     SIMPLON_API: str = Field(default="http://0.0.0.0:8000", env="SIMPLON_API")
+    GATEWAY_API_URL: str = Field(default="http://0.0.0.0:8001", env="GATEWAY_API_URL")
 
 
 class ANSTOConfig(APIs, Robot, RedisSettings, MD3, PrefectSettings):
