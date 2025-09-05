@@ -154,14 +154,36 @@ class SampleChanger(AbstractSampleChanger):
         self._selected_basket = -1
         self._scIsCharging = None
 
-        self.no_of_baskets = (
-            robot_config.ASC_NUM_PUCKS
-        )  # TODO: no_of_baskets = number of projects
+        client = self.get_client()
+
+        loaded_pucks = client.status.get_loaded_pucks()
+        pucks_by_epn = self.get_pucks_by_epn()
+
+        # Only show loaded pucks filtered by epn
+        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
+        for robot_puck in loaded_pucks:
+            for puck in pucks_by_epn:
+                if robot_puck.name.replace("-", "") == puck["barcode"]:
+                    self.loaded_pucks_dict[robot_puck.id] = robot_puck
+
+        if len(self.loaded_pucks_dict) == 0:
+            logging.getLogger("user_level_log").warning(
+                "No pucks loaded in the robot match the current EPN. "
+                "The sample changer will be empty.",
+            )
         self.no_of_samples_in_basket = (
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        for puck_location in range(1, self.no_of_baskets + 1):
+        self.no_of_baskets = len(
+            self.loaded_pucks_dict
+        )  # TODO: no_of_baskets = number of projects
+
+        puck_location_list = []
+        for loaded_puck in self.loaded_pucks_dict.values():
+            puck_location_list.append(loaded_puck.id)
+
+        for puck_location in puck_location_list:
             basket = MxcubePuck(
                 self,
                 puck_location,
@@ -187,13 +209,6 @@ class SampleChanger(AbstractSampleChanger):
 
         self._mount_deployment_name = self.get_property("mount_deployment_name")
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
-
-        client = self.get_client()
-
-        loaded_pucks = client.status.get_loaded_pucks()
-        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
-        for robot_puck in loaded_pucks:
-            self.loaded_pucks_dict[robot_puck.id] = robot_puck
 
     @dtask
     def __update_timer_task(self, *args):
