@@ -154,14 +154,28 @@ class SampleChanger(AbstractSampleChanger):
         self._selected_basket = -1
         self._scIsCharging = None
 
-        self.no_of_baskets = (
-            robot_config.ASC_NUM_PUCKS
-        )  # TODO: no_of_baskets = number of projects
+        client = self.get_client()
+
+        loaded_pucks = client.status.get_loaded_pucks()
+        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
+        for robot_puck in loaded_pucks:
+            self.loaded_pucks_dict[robot_puck.id] = robot_puck
+
         self.no_of_samples_in_basket = (
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        for puck_location in range(1, self.no_of_baskets + 1):
+        pucks_by_epn = self.get_pucks_by_epn()
+
+        self.no_of_baskets = len(pucks_by_epn) # TODO: no_of_baskets = number of projects
+
+        puck_location_list = []
+        for i in range(1, len(self.loaded_pucks_dict)+1):
+            for puck_data_layer in pucks_by_epn:
+                if self.loaded_pucks_dict[i].name.replace("-", "") == puck_data_layer["barcode"]:
+                    puck_location_list.append(i)
+
+        for puck_location in puck_location_list:
             basket = MxcubePuck(
                 self,
                 puck_location,
@@ -188,12 +202,7 @@ class SampleChanger(AbstractSampleChanger):
         self._mount_deployment_name = self.get_property("mount_deployment_name")
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
-        client = self.get_client()
 
-        loaded_pucks = client.status.get_loaded_pucks()
-        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
-        for robot_puck in loaded_pucks:
-            self.loaded_pucks_dict[robot_puck.id] = robot_puck
 
     @dtask
     def __update_timer_task(self, *args):
