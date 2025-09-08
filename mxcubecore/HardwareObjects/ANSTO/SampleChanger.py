@@ -106,6 +106,7 @@ class MxcubePuck(AbstractPuck):
         container: Container,
         puck_location: int,
         samples_num: int = 16,
+        pin_ports: list[int] | None = None,
         name: str = "Puck",
     ) -> None:
         """
@@ -126,8 +127,13 @@ class MxcubePuck(AbstractPuck):
         self.robot_id = puck_location
 
         self._name = name
-        self.samples_num = samples_num
-        for port in range(1, samples_num + 1):
+        if pin_ports is None:
+            self.pin_ports = list(range(1, samples_num + 1))
+        else:
+            # Ensure unique & sorted for deterministic ordering
+            self.pin_ports = sorted(set(pin_ports))
+        self.samples_num = len(self.pin_ports)
+        for port in self.pin_ports:
             slot = MxcubePin(self, puck_location, port)
             self._add_component(slot)
 
@@ -175,7 +181,6 @@ class SampleChanger(AbstractSampleChanger):
         self._mount_deployment_name = self.get_property("mount_deployment_name")
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
-
     def refresh_puck_info(self) -> dict[str, Any]:
         logging.getLogger("HWR").info("Refreshing sample info...")
         client = self.get_client()
@@ -185,47 +190,47 @@ class SampleChanger(AbstractSampleChanger):
 
         # Only show loaded pucks filtered by epn
         self.loaded_pucks_dict: dict[int, RobotPuck] = {}
-        self.sample_dict: list[dict]  = []
+        self.sample_dict: list[dict] = []
+        pin_ports_by_puck: dict[int, list[int]] = {}
+
         for robot_puck in loaded_pucks:
             for puck in pucks_by_epn:
-                if robot_puck.name.replace("-", "") == puck["barcode"]:
+                if robot_puck.name.replace("-", "") == puck.get("barcode"):
                     self.loaded_pucks_dict[robot_puck.id] = robot_puck
-                    for pin in puck["pins"]:
-                        self.sample_dict.append({
-                            "containerSampleChangerLocation": str(robot_puck.id),
-                            "sampleLocation": str(pin["port"]),
-                            "sampleName": pin["name"],
-                            "sampleId": pin["id"],
-                        })
-                    # self.sample_dict.append({
-                    #     "containerSampleChangerLocation": robot_puck.id,
-                    #     "sampleLocation": puck[""]
-                    # })
+                    pin_ports_by_puck.setdefault(robot_puck.id, [])
+                    for pin in puck.get("pins", []):
+                        self.sample_dict.append(
+                            {
+                                "containerSampleChangerLocation": str(robot_puck.id),
+                                "sampleLocation": str(pin.get("port")),
+                                "sampleName": pin.get("name"),
+                                "sampleId": pin.get("id"),
+                            }
+                        )
+                        if pin.get("port") is not None:
+                            pin_ports_by_puck[robot_puck.id].append(pin["port"])
 
         if len(self.loaded_pucks_dict) == 0:
             logging.getLogger("user_level_log").warning(
-                "No pucks loaded in the robot match the current EPN. "
-                "The sample changer will be empty.",
+                "No pucks loaded in the robot match the current EPN. The sample changer will be empty.",
             )
-        self.no_of_samples_in_basket = (
-            robot_config.ASC_NUM_PINS
-        )  # TODO: number of samples per project
 
-        self.no_of_baskets = len(
-            self.loaded_pucks_dict
-        )  # TODO: no_of_baskets = number of projects
+        self.no_of_samples_in_basket = robot_config.ASC_NUM_PINS
+        self.no_of_baskets = len(self.loaded_pucks_dict)
 
-        self.puck_location_list = []
-        for loaded_puck in self.loaded_pucks_dict.values():
-            self.puck_location_list.append(loaded_puck.id)
+        self.puck_location_list = [puck.id for puck in self.loaded_pucks_dict.values()]
 
         for puck_location in self.puck_location_list:
             basket = MxcubePuck(
                 self,
                 puck_location,
                 samples_num=self.no_of_samples_in_basket,
+                pin_ports=pin_ports_by_puck.get(puck_location),
             )
             self._add_component(basket)
+
+        # Store mapping for later update cycles
+        self.puck_pin_ports = pin_ports_by_puck
 
         return self.sample_dict
 
@@ -376,9 +381,15 @@ class SampleChanger(AbstractSampleChanger):
                     id=(robot_puck is not None and str(robot_puck)) or None,
                     scanned=False,
                 )
-
-                for mxcube_pin_idx in range(self.no_of_samples_in_basket):
-                    port = mxcube_pin_idx + 1
+                # Determine which ports to update for this puck
+                pin_ports = getattr(self, "puck_pin_ports", {}).get(puck_location, [])
+                if not pin_ports:
+                    # Fallback: if mapping missing (e.g. legacy) use full range
+                    pin_ports = [
+                        port
+                        for port in range(1, getattr(mxcube_puck, "samples_num", 0) + 1)
+                    ]
+                for port in pin_ports:
                     self._update_mxcube_pin_info(
                         robot_puck,
                         puck_location=puck_location,
