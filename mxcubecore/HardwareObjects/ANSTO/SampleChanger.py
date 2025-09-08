@@ -105,7 +105,7 @@ class MxcubePuck(AbstractPuck):
         self,
         container: Container,
         puck_location: int,
-        samples_num: int = 16,
+        sample_locations: list[int],
         name: str = "Puck",
     ) -> None:
         """
@@ -126,8 +126,8 @@ class MxcubePuck(AbstractPuck):
         self.robot_id = puck_location
 
         self._name = name
-        self.samples_num = samples_num
-        for port in range(1, samples_num + 1):
+        self.sample_locations = sample_locations
+        for port in self.sample_locations:
             slot = MxcubePin(self, puck_location, port)
             self._add_component(slot)
 
@@ -154,7 +154,7 @@ class SampleChanger(AbstractSampleChanger):
         self._selected_basket = -1
         self._scIsCharging = None
 
-        self.refresh_puck_info()
+        self.refresh_pin_and_puck_info()
 
         self._set_state(SampleChangerState.Unknown)
         self.signal_wait_task = None
@@ -176,7 +176,7 @@ class SampleChanger(AbstractSampleChanger):
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
 
 
-    def refresh_puck_info(self) -> dict[str, Any]:
+    def refresh_pin_and_puck_info(self) -> dict[str, Any]:
         logging.getLogger("HWR").info("Refreshing sample info...")
         client = self.get_client()
 
@@ -190,17 +190,35 @@ class SampleChanger(AbstractSampleChanger):
             for puck in pucks_by_epn:
                 if robot_puck.name.replace("-", "") == puck["barcode"]:
                     self.loaded_pucks_dict[robot_puck.id] = robot_puck
+                    self.sample_locations = []
                     for pin in puck["pins"]:
+                        self.sample_locations.append(pin["port"])
                         self.sample_dict.append({
                             "containerSampleChangerLocation": str(robot_puck.id),
                             "sampleLocation": str(pin["port"]),
                             "sampleName": pin["name"],
                             "sampleId": pin["id"],
                         })
-                    # self.sample_dict.append({
-                    #     "containerSampleChangerLocation": robot_puck.id,
-                    #     "sampleLocation": puck[""]
-                    # })
+                        address = MxcubePin.get_sample_address(robot_puck.id, pin["port"])  # e.g. "1:01"
+                        mxcube_pin: MxcubePin = self.get_component_by_address(address)
+                    basket = MxcubePuck(
+                        self,
+                        robot_puck.id,
+                        sample_locations=self.sample_locations,
+                    )
+                    self._add_component(basket)
+
+                    for port in self.sample_locations:
+                        address = MxcubePin.get_sample_address(robot_puck.id, port)  # e.g. "1:01"
+                        mxcube_pin: MxcubePin = self.get_component_by_address(address)
+                        mxcube_pin._set_info(
+                            present=True,
+                            id= address,
+                            scanned=False,
+                        )
+                        mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
+
+
 
         if len(self.loaded_pucks_dict) == 0:
             logging.getLogger("user_level_log").warning(
@@ -211,21 +229,13 @@ class SampleChanger(AbstractSampleChanger):
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        self.no_of_baskets = len(
-            self.loaded_pucks_dict
-        )  # TODO: no_of_baskets = number of projects
 
         self.puck_location_list = []
         for loaded_puck in self.loaded_pucks_dict.values():
             self.puck_location_list.append(loaded_puck.id)
 
-        for puck_location in self.puck_location_list:
-            basket = MxcubePuck(
-                self,
-                puck_location,
-                samples_num=self.no_of_samples_in_basket,
-            )
-            self._add_component(basket)
+        #for puck_location in self.puck_location_list:
+
 
         return self.sample_dict
 
@@ -416,50 +426,44 @@ class SampleChanger(AbstractSampleChanger):
         puck_list : list[dict]
             A list of pucks from the data layer API, each puck is a dictionary
         """
-        robot_pin: RobotPin | None = None
-        if robot_puck is not None:
-            robot_pin = RobotPin(
-                id=port,
-                puck=robot_puck,
-            )
+        # robot_pin: RobotPin | None = None
+        # if robot_puck is not None:
+        #     robot_pin = RobotPin(
+        #         id=port,
+        #         puck=robot_puck,
+        #     )
 
-        address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
-        mxcube_pin: MxcubePin = self.get_component_by_address(address)
-        if robot_pin is not None and robot_puck.name:  # check also that barcode exists
-            try:
-                sample_name = self.get_sample_by_barcode_and_port(
-                    puck_list=puck_list,
-                    port=port,
-                    barcode=robot_puck.name.replace("-", ""),
-                )
-            except Exception:
-                sample_name = str(robot_pin)
+        # address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+        # mxcube_pin: MxcubePin = self.get_component_by_address(address)
+        #if robot_pin is not None and robot_puck.name:  # check also that barcode exists
+            # try:
+            #     sample_name = self.get_sample_by_barcode_and_port(
+            #         puck_list=puck_list,
+            #         port=port,
+            #         barcode=robot_puck.name.replace("-", ""),
+            #     )
+            # except Exception:
+            #     sample_name = str(robot_pin)
 
-            if sample_name is None:
-                sample_name = str(robot_pin)
+            # if sample_name is None:
+            #     sample_name = str(robot_pin)
 
-            mxcube_pin._name = sample_name
-            pin_datamatrix = str(robot_pin)
+            # mxcube_pin._name = sample_name
+            # pin_datamatrix = str(robot_pin)
 
-            mxcube_pin._set_info(
-                present=robot_puck is not None,
-                id=pin_datamatrix,
-                scanned=False,
-            )
-            loaded: bool = False
-            if robot_state.goni_pin is not None:
-                loaded = (
-                    robot_state.goni_pin.puck.id,
-                    robot_state.goni_pin.id,
-                ) == (
-                    puck_location,
-                    port,
-                )
+            # mxcube_pin._set_info(
+            #     present=robot_puck is not None,
+            #     id=pin_datamatrix,
+            #     scanned=False,
+            # )
+        loaded: bool = False
+        if robot_state.goni_pin is not None: 
+            address = MxcubePin.get_sample_address(robot_state.goni_pin.puck.id, robot_state.goni_pin.id)  # e.g. "1:01"
+            mxcube_pin: MxcubePin = self.get_component_by_address(address)
             mxcube_pin._set_loaded(
                 loaded=loaded,
                 has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
             )
-            mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
     def _update_sample_changer_state(self, robot_state: StateResponse | None) -> None:
         """
