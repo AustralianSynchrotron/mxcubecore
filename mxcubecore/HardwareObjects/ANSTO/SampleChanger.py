@@ -105,7 +105,6 @@ class MxcubePuck(AbstractPuck):
         self,
         container: Container,
         puck_location: int,
-        samples_num: int = 16,
         pin_ports: list[int] | None = None,
         name: str = "Puck",
     ) -> None:
@@ -116,8 +115,6 @@ class MxcubePuck(AbstractPuck):
             The container, e.g. the SampleChanger hardware object
         puck_location : int
             The puck location in the dewar
-        samples_num : int, optional
-            The number of samples per puck, by default 16
         name : str, optional
             The name of the puck, by default "Puck"
         """
@@ -127,11 +124,16 @@ class MxcubePuck(AbstractPuck):
         self.robot_id = puck_location
 
         self._name = name
+        # Determine pin ports: if explicit list not given, use full configured range
         if pin_ports is None:
-            self.pin_ports = list(range(1, samples_num + 1))
+            # Use robot_config if available, else fallback to 16
+            try:
+                _max_pins = getattr(robot_config, "ASC_NUM_PINS", 16)
+            except Exception:
+                _max_pins = 16
+            self.pin_ports = list(range(1, _max_pins + 1))
         else:
-            # Ensure unique & sorted for deterministic ordering
-            self.pin_ports = sorted(set(pin_ports))
+            self.pin_ports = sorted(set(pin_ports))  # unique & deterministic
         self.samples_num = len(self.pin_ports)
         for port in self.pin_ports:
             slot = MxcubePin(self, puck_location, port)
@@ -215,7 +217,6 @@ class SampleChanger(AbstractSampleChanger):
                 "No pucks loaded in the robot match the current EPN. The sample changer will be empty.",
             )
 
-        self.no_of_samples_in_basket = robot_config.ASC_NUM_PINS
         self.no_of_baskets = len(self.loaded_pucks_dict)
 
         self.puck_location_list = [puck.id for puck in self.loaded_pucks_dict.values()]
@@ -224,44 +225,36 @@ class SampleChanger(AbstractSampleChanger):
             basket = MxcubePuck(
                 self,
                 puck_location,
-                samples_num=self.no_of_samples_in_basket,
                 pin_ports=pin_ports_by_puck.get(puck_location),
             )
             self._add_component(basket)
 
-        # Store mapping for later update cycles
-        self.puck_pin_ports = pin_ports_by_puck
-
-        # Update puck & pin runtime info (moved from _do_update_info)
         try:
             robot_state = client.status.state
         except Exception:
             robot_state = None
-        puck_list = pucks_by_epn
         components: list[MxcubePuck] = self.get_components()
-        for mxcube_puck_idx in range(self.no_of_baskets):
-            puck_location = mxcube_puck_idx + 1
+        for puck_location in self.puck_location_list:
             robot_puck = self.loaded_pucks_dict.get(puck_location)
-            if mxcube_puck_idx >= len(components):
-                continue
-            mxcube_puck = components[mxcube_puck_idx]
+            mxcube_puck = components[puck_location - 1]
             mxcube_puck._set_info(
                 present=robot_puck is not None,
                 id=(robot_puck is not None and str(robot_puck)) or None,
                 scanned=False,
             )
-            pin_ports = self.puck_pin_ports.get(puck_location, [])
+            pin_ports = pin_ports_by_puck.get(puck_location, [])
             if not pin_ports:
-                pin_ports = [
-                    port for port in range(1, getattr(mxcube_puck, "samples_num", 0) + 1)
-                ]
+                logging.getLogger("HWR").warning(
+                    f"No pins found for puck at location {puck_location}. Skipping pin info update.",
+                )
+                continue
             for port in pin_ports:
                 self._update_mxcube_pin_info(
                     robot_puck,
                     puck_location=puck_location,
                     port=port,
                     robot_state=robot_state,
-                    puck_list=puck_list,
+                    puck_list=pucks_by_epn,
                 )
 
         return self.sample_dict
@@ -391,7 +384,7 @@ class SampleChanger(AbstractSampleChanger):
         return
 
     def _do_update_info(self) -> None:
-        """Lightweight periodic update: only evaluate robot state & loaded sample."""
+        """Update the state of the sample changer and which sample is loaded"""
         # TODO: check loaded samples
         try:
             client = self.get_client()
