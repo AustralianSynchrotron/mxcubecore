@@ -232,6 +232,38 @@ class SampleChanger(AbstractSampleChanger):
         # Store mapping for later update cycles
         self.puck_pin_ports = pin_ports_by_puck
 
+        # Update puck & pin runtime info (moved from _do_update_info)
+        try:
+            robot_state = client.status.state
+        except Exception:
+            robot_state = None
+        puck_list = pucks_by_epn
+        components: list[MxcubePuck] = self.get_components()
+        for mxcube_puck_idx in range(self.no_of_baskets):
+            puck_location = mxcube_puck_idx + 1
+            robot_puck = self.loaded_pucks_dict.get(puck_location)
+            if mxcube_puck_idx >= len(components):
+                continue
+            mxcube_puck = components[mxcube_puck_idx]
+            mxcube_puck._set_info(
+                present=robot_puck is not None,
+                id=(robot_puck is not None and str(robot_puck)) or None,
+                scanned=False,
+            )
+            pin_ports = self.puck_pin_ports.get(puck_location, [])
+            if not pin_ports:
+                pin_ports = [
+                    port for port in range(1, getattr(mxcube_puck, "samples_num", 0) + 1)
+                ]
+            for port in pin_ports:
+                self._update_mxcube_pin_info(
+                    robot_puck,
+                    puck_location=puck_location,
+                    port=port,
+                    robot_state=robot_state,
+                    puck_list=puck_list,
+                )
+
         return self.sample_dict
 
     @dtask
@@ -359,49 +391,15 @@ class SampleChanger(AbstractSampleChanger):
         return
 
     def _do_update_info(self) -> None:
-        """
-        Polls and updates the Puck/Pin information and robot state.
-        TODO: This method is called every second, but could be called
-        less frequently
-        """
+        """Lightweight periodic update: only evaluate robot state & loaded sample."""
+        # TODO: check loaded samples
         try:
             client = self.get_client()
-
             robot_state = client.status.state
-            puck_list = self.get_pucks_by_epn()
-
-            components: list[MxcubePuck] = self.get_components()
-            for mxcube_puck_idx in range(self.no_of_baskets):
-                puck_location = mxcube_puck_idx + 1
-                robot_puck = self.loaded_pucks_dict.get(puck_location)
-                mxcube_puck = components[mxcube_puck_idx]
-                mxcube_puck._name = "test1"
-                mxcube_puck._set_info(
-                    present=robot_puck is not None,
-                    id=(robot_puck is not None and str(robot_puck)) or None,
-                    scanned=False,
-                )
-                # Determine which ports to update for this puck
-                pin_ports = getattr(self, "puck_pin_ports", {}).get(puck_location, [])
-                if not pin_ports:
-                    # Fallback: if mapping missing (e.g. legacy) use full range
-                    pin_ports = [
-                        port
-                        for port in range(1, getattr(mxcube_puck, "samples_num", 0) + 1)
-                    ]
-                for port in pin_ports:
-                    self._update_mxcube_pin_info(
-                        robot_puck,
-                        puck_location=puck_location,
-                        port=port,
-                        robot_state=robot_state,
-                        puck_list=puck_list,
-                    )
+        except Exception:
+            robot_state = None
 
             self._update_sample_changer_state(robot_state)
-
-        except Exception as ex:
-            self._update_sample_changer_state(None)
 
     def _update_mxcube_pin_info(
         self,
