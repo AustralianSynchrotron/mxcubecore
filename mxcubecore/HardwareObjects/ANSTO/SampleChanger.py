@@ -105,7 +105,7 @@ class MxcubePuck(AbstractPuck):
         self,
         container: Container,
         puck_location: int,
-        pin_ports: list[int] | None = None,
+        samples_num: int = 16,
         name: str = "Puck",
     ) -> None:
         """
@@ -115,6 +115,8 @@ class MxcubePuck(AbstractPuck):
             The container, e.g. the SampleChanger hardware object
         puck_location : int
             The puck location in the dewar
+        samples_num : int, optional
+            The number of samples per puck, by default 16
         name : str, optional
             The name of the puck, by default "Puck"
         """
@@ -124,21 +126,10 @@ class MxcubePuck(AbstractPuck):
         self.robot_id = puck_location
 
         self._name = name
-        # Determine pin ports: if explicit list not given, use full configured range
-        if pin_ports is None:
-            # Use robot_config if available, else fallback to 16
-            try:
-                _max_pins = getattr(robot_config, "ASC_NUM_PINS", 16)
-            except Exception:
-                _max_pins = 16
-            self.pin_ports = list(range(1, _max_pins + 1))
-        else:
-            self.pin_ports = sorted(set(pin_ports))  # unique & deterministic
-        self.samples_num = len(self.pin_ports)
-        for port in self.pin_ports:
+        self.samples_num = samples_num
+        for port in range(1, samples_num + 1):
             slot = MxcubePin(self, puck_location, port)
             self._add_component(slot)
-
 
 class SampleChanger(AbstractSampleChanger):
     """ANSTO Sample Changer
@@ -162,7 +153,6 @@ class SampleChanger(AbstractSampleChanger):
         self._selected_basket = -1
         self._scIsCharging = None
 
-        self.refresh_puck_info()
 
         self._set_state(SampleChangerState.Unknown)
         self.signal_wait_task = None
@@ -175,6 +165,11 @@ class SampleChanger(AbstractSampleChanger):
         task1s.link(self._on_timer_1s_exit)
         updateTask = self.__update_timer_task(wait=False)
         updateTask.link(self._on_timer_update_exit)
+        
+        self._initialise_pucks_and_pins()
+
+        self.refresh_puck_info()
+
 
         self.update_info()
 
@@ -182,6 +177,22 @@ class SampleChanger(AbstractSampleChanger):
 
         self._mount_deployment_name = self.get_property("mount_deployment_name")
         self._unmount_deployment_name = self.get_property("unmount_deployment_name")
+
+    def _initialise_pucks_and_pins(self) -> None:
+        self.no_of_baskets = (
+            robot_config.ASC_NUM_PUCKS
+        )  # TODO: no_of_baskets = number of projects
+        self.no_of_samples_in_basket = (
+            robot_config.ASC_NUM_PINS
+        )  # TODO: number of samples per project
+
+        for puck_location in range(1, self.no_of_baskets + 1):
+            basket = MxcubePuck(
+                self,
+                puck_location,
+                samples_num=self.no_of_samples_in_basket,
+            )
+            self._add_component(basket)
 
     def refresh_puck_info(self) -> dict[str, Any]:
         logging.getLogger("HWR").info("Refreshing sample info...")
@@ -230,23 +241,20 @@ class SampleChanger(AbstractSampleChanger):
 
         self.no_of_baskets = robot_config.ASC_NUM_PUCKS
 
-
+        baskets: list[MxcubePuck] = self.get_basket_list()
         for i in range(1, self.no_of_baskets + 1):
             if i not in self.puck_location_list:
-                puck_mxcube = MxcubePuck(self, i, pin_ports=pin_ports_by_puck.get(i))
-                puck_mxcube._set_info(
+                baskets[i-1]._set_info(
                 present=False,
                 id=str(i),
                 scanned=False,
                 )
             else:
-                puck_mxcube = MxcubePuck(self, i, pin_ports=pin_ports_by_puck.get(i))
-                puck_mxcube._set_info(
+                baskets[i-1]._set_info(
                     present=True,
                     id=str(i),
                     scanned=True,
                 )
-            self._add_component(puck_mxcube)
 
 
         # Update puck & pin info
