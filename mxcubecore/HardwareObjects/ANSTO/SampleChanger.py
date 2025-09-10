@@ -190,73 +190,82 @@ class SampleChanger(AbstractSampleChanger):
         loaded_pucks = client.status.get_loaded_pucks()
         pucks_by_epn = self.get_pucks_by_epn()
 
-        # Only show loaded pucks filtered by epn
-        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
-        self.sample_dict: list[dict] = []
+        # Map visit pucks by barcode for O(1) lookup
+        epn_puck_by_barcode = {
+            str(p.get("barcode")): p for p in pucks_by_epn if p.get("barcode")
+        }
+
+        self.loaded_pucks_dict = {}
+        self.sample_dict = []
         pin_ports_by_puck: dict[int, list[int]] = {}
 
-        for robot_puck in loaded_pucks:
-            for puck in pucks_by_epn:
-                if robot_puck.name.replace("-", "") == puck.get("barcode"):
-                    self.loaded_pucks_dict[robot_puck.id] = robot_puck
-                    pin_ports_by_puck.setdefault(robot_puck.id, [])
-                    for pin in puck.get("pins", []):
-                        self.sample_dict.append(
-                            {
-                                "containerSampleChangerLocation": str(robot_puck.id),
-                                "sampleLocation": str(pin.get("port")),
-                                "sampleName": pin.get("name"),
-                                "sampleId": pin.get("id"),
-                            }
-                        )
-                        if pin.get("port") is not None:
-                            pin_ports_by_puck[robot_puck.id].append(pin["port"])
+        for rp in loaded_pucks:
+            key = rp.name.replace("-", "") if rp.name else None
+            visit_puck = epn_puck_by_barcode.get(key)
+            if not visit_puck:
+                continue
+            self.loaded_pucks_dict[rp.id] = rp
+            pins = visit_puck.get("pins", [])
+            pin_ports_by_puck[rp.id] = []
+            for pin in pins:
+                port = pin.get("port")
+                if port is None:
+                    continue
+                pin_ports_by_puck[rp.id].append(port)
+                self.sample_dict.append(
+                    {
+                        "containerSampleChangerLocation": str(rp.id),
+                        "sampleLocation": str(port),
+                        "sampleName": pin.get("name"),
+                        "sampleId": pin.get("id"),
+                    }
+                )
 
-        if len(self.loaded_pucks_dict) == 0:
+        if not self.loaded_pucks_dict:
             logging.getLogger("user_level_log").warning(
-                "No pucks loaded in the robot match the current EPN. The sample changer will be empty.",
+                "No pucks loaded in the robot match the current EPN. The sample changer will be empty."
             )
 
-        self.no_of_baskets = len(self.loaded_pucks_dict)
+        self.puck_location_list = list(self.loaded_pucks_dict.keys())
 
-        self.puck_location_list = [puck.id for puck in self.loaded_pucks_dict.values()]
+        self.no_of_baskets = robot_config.ASC_NUM_PUCKS
 
-        for puck_location in self.puck_location_list:
-            basket = MxcubePuck(
-                self,
-                puck_location,
-                pin_ports=pin_ports_by_puck.get(puck_location),
-            )
-            self._add_component(basket)
 
+        for i in range(1, self.no_of_baskets + 1):
+            if i not in self.puck_location_list:
+                puck_mxcube = MxcubePuck(self, i, pin_ports=pin_ports_by_puck.get(i))
+                puck_mxcube._set_info(
+                present=False,
+                id=str(i),
+                scanned=False,
+                )
+            else:
+                puck_mxcube = MxcubePuck(self, i, pin_ports=pin_ports_by_puck.get(i))
+                puck_mxcube._set_info(
+                    present=True,
+                    id=str(i),
+                    scanned=True,
+                )
+            self._add_component(puck_mxcube)
+
+
+        # Update puck & pin info
         try:
             robot_state = client.status.state
         except Exception:
             robot_state = None
-        components: list[MxcubePuck] = self.get_components()
-        for puck_location in self.puck_location_list:
-            robot_puck = self.loaded_pucks_dict.get(puck_location)
-            mxcube_puck = components[puck_location - 1]
-            mxcube_puck._set_info(
-                present=robot_puck is not None,
-                id=(robot_puck is not None and str(robot_puck)) or None,
-                scanned=False,
-            )
-            pin_ports = pin_ports_by_puck.get(puck_location, [])
-            if not pin_ports:
-                logging.getLogger("HWR").warning(
-                    f"No pins found for puck at location {puck_location}. Skipping pin info update.",
-                )
-                continue
-            for port in pin_ports:
+        for location in self.puck_location_list:
+            robot_puck = self.loaded_pucks_dict.get(location)
+
+            for port in pin_ports_by_puck.get(location, []):
                 self._update_mxcube_pin_info(
                     robot_puck,
-                    puck_location=puck_location,
+                    puck_location=location,
                     port=port,
                     robot_state=robot_state,
                     puck_list=pucks_by_epn,
                 )
-
+        
         return self.sample_dict
 
     @dtask
