@@ -257,22 +257,51 @@ class SampleChanger(AbstractSampleChanger):
                 )
 
 
-        # Update puck & pin info
-        try:
-            robot_state = client.status.state
-        except Exception:
-            robot_state = None
-        for location in self.puck_location_list:
-            robot_puck = self.loaded_pucks_dict.get(location)
+        for i in range(1, self.no_of_baskets + 1):
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(i, port)
+                pin: MxcubePin = self.get_component_by_address(address)
+                if i not in self.puck_location_list:
+                    # pin._set_info(
+                    #     present=False,
+                    #     id=address,
+                    #     scanned=False,
+                    # )
+                    pass
+                else:
+                    if port not in pin_ports_by_puck.get(i, []):
+                        # pin._set_info(
+                        #     present=False,
+                        #     id=address,
+                        #     scanned=False,
+                        # )
+                        pass
+                    else:
+                        pin._name = "test1"
+                        pin._set_info(
+                            present=True,
+                            id=address,
+                            scanned=True,
+                        )
 
-            for port in pin_ports_by_puck.get(location, []):
-                self._update_mxcube_pin_info(
-                    robot_puck,
-                    puck_location=location,
-                    port=port,
-                    robot_state=robot_state,
-                    puck_list=pucks_by_epn,
-                )
+
+
+        # Update puck & pin info
+        # try:
+        #     robot_state = client.status.state
+        # except Exception:
+        #     robot_state = None
+        # for location in self.puck_location_list:
+        #     robot_puck = self.loaded_pucks_dict.get(location)
+
+        #     for port in pin_ports_by_puck.get(location, []):
+        #         self._update_mxcube_pin_info(
+        #             robot_puck,
+        #             puck_location=location,
+        #             port=port,
+        #             robot_state=robot_state,
+        #             puck_list=pucks_by_epn,
+        #         )
         
         return self.sample_dict
 
