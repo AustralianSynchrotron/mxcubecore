@@ -194,7 +194,20 @@ class SampleChanger(AbstractSampleChanger):
             )
             self._add_component(basket)
 
+        # all pins have to be added for the refresh button to work
+        for i in range(1, self.no_of_baskets + 1):
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(i, port)
+                pin: MxcubePin = self.get_component_by_address(address)
+                pin._set_info(
+                    present=False,
+                    id=address,
+                    scanned=False,
+                )
+
+
     def refresh_puck_info(self) -> dict[str, Any]:
+
         logging.getLogger("HWR").info("Refreshing sample info...")
         client = self.get_client()
 
