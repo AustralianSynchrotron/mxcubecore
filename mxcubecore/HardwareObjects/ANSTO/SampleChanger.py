@@ -242,6 +242,7 @@ class SampleChanger(AbstractSampleChanger):
                         "sampleLocation": str(port),
                         "sampleName": pin.get("name"),
                         "sampleId": pin.get("id"),
+                        "queueID": None
                     }
                 )
 
@@ -290,32 +291,11 @@ class SampleChanger(AbstractSampleChanger):
                         # )
                         pass
                     else:
-                        pin._name = "test1"
                         pin._set_info(
                             present=True,
                             id=address,
                             scanned=True,
                         )
-
-
-
-        # Update puck & pin info
-        # try:
-        #     robot_state = client.status.state
-        # except Exception:
-        #     robot_state = None
-        # for location in self.puck_location_list:
-        #     robot_puck = self.loaded_pucks_dict.get(location)
-
-        #     for port in pin_ports_by_puck.get(location, []):
-        #         self._update_mxcube_pin_info(
-        #             robot_puck,
-        #             puck_location=location,
-        #             port=port,
-        #             robot_state=robot_state,
-        #             puck_list=pucks_by_epn,
-        #         )
-        
         return self.sample_dict
 
     @dtask
@@ -448,18 +428,15 @@ class SampleChanger(AbstractSampleChanger):
         try:
             client = self.get_client()
             robot_state = client.status.state
+            self._update_loaded_pin_info(robot_state)
         except Exception:
             robot_state = None
 
-            self._update_sample_changer_state(robot_state)
+        self._update_sample_changer_state(robot_state)
 
-    def _update_mxcube_pin_info(
+    def _update_loaded_pin_info(
         self,
-        robot_puck: RobotPuck,
-        puck_location: int,
-        port: int,
         robot_state: StateResponse | None,
-        puck_list: list[dict],
     ):
         """
         Updates the pin information
@@ -477,50 +454,24 @@ class SampleChanger(AbstractSampleChanger):
         puck_list : list[dict]
             A list of pucks from the data layer API, each puck is a dictionary
         """
-        robot_pin: RobotPin | None = None
-        if robot_puck is not None:
-            robot_pin = RobotPin(
-                id=port,
-                puck=robot_puck,
-            )
-
-        address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
-        mxcube_pin: MxcubePin = self.get_component_by_address(address)
-        if robot_pin is not None and robot_puck.name:  # check also that barcode exists
-            try:
-                sample_name = self.get_sample_by_barcode_and_port(
-                    puck_list=puck_list,
-                    port=port,
-                    barcode=robot_puck.name.replace("-", ""),
+        for puck_location in self.puck_location_list:
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+                mxcube_pin: MxcubePin = self.get_component_by_address(address)
+                loaded: bool = False
+                if robot_state.goni_pin is not None:
+                    loaded = (
+                        robot_state.goni_pin.puck.id,
+                        robot_state.goni_pin.id,
+                    ) == (
+                        puck_location,
+                        port,
+                    )
+                mxcube_pin._set_loaded(
+                    loaded=loaded,
+                    has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
                 )
-            except Exception:
-                sample_name = str(robot_pin)
-
-            if sample_name is None:
-                sample_name = str(robot_pin)
-
-            mxcube_pin._name = sample_name
-            pin_datamatrix = str(robot_pin)
-
-            mxcube_pin._set_info(
-                present=robot_puck is not None,
-                id=pin_datamatrix,
-                scanned=False,
-            )
-            loaded: bool = False
-            if robot_state.goni_pin is not None:
-                loaded = (
-                    robot_state.goni_pin.puck.id,
-                    robot_state.goni_pin.id,
-                ) == (
-                    puck_location,
-                    port,
-                )
-            mxcube_pin._set_loaded(
-                loaded=loaded,
-                has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
-            )
-            mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
+                mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
     def _update_sample_changer_state(self, robot_state: StateResponse | None) -> None:
         """
@@ -637,13 +588,12 @@ class SampleChanger(AbstractSampleChanger):
             if response.state.type != StateType.COMPLETED:
                 msg = f"Failed to mount sample. {response.state.message}"
                 logging.getLogger("user_level_log").error(msg)
-                raise RuntimeError(msg)
-
-        except Exception:
+                return
+        except Exception as e:
             logging.getLogger("user_level_log").error(
-                f"Failed to mount sample. Please check the status of the robot."
+                f"Failed to mount sample. {e}"
             )
-            raise
+            return
 
     def _check_if_robot_is_ready(self) -> None:
         """
@@ -760,13 +710,13 @@ class SampleChanger(AbstractSampleChanger):
             if response.state.type != StateType.COMPLETED:
                 msg = f"Failed to unmount sample. {response.state.message}"
                 logging.getLogger("user_level_log").error(msg)
-                raise RuntimeError(msg)
+                return
 
-        except Exception:
+        except Exception as e:
             logging.getLogger("user_level_log").error(
-                f"Failed to unmount sample. Please check the status of the robot."
+                f"Failed to unmount sample. {e}"
             )
-            raise
+            return
 
     def _do_reset(self) -> None:
         """ """

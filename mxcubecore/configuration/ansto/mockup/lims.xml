@@ -1,4 +1,4 @@
-<object class="ISPyBClientMockup">
+<object class="ANSTO.StaffLims">
   <object hwrid="/lims_rest" role="lims_rest"/>
   <ws_root>
     https://your.lims.org
@@ -10,5 +10,5 @@
   <ws_password></ws_password>
   <loginType>proposal</loginType>
   <object role="session" href="/session"/>
-  <!-- <object role="ldapServer" href="/ldapconnection"/> -->
+  <object role="sample_changer" href="/sc"/>
 </object>
