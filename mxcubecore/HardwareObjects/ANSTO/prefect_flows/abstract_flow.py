@@ -1,5 +1,4 @@
 import logging
-import pickle
 import re
 from abc import (
     ABC,
@@ -560,14 +559,6 @@ class AbstractPrefectWorkflow(ABC):
 
         row, column, drop = self._get_current_drop_location()
 
-        # FIXME: This will be changed to numbers in the data layer
-        if drop == 1:
-            drop = "left"
-        elif drop == 2:
-            drop = "right"
-        elif drop == 3:
-            drop = "middle"
-
         if dialog_box_model.auto_create_well:
             well_id = self._add_well_to_db(
                 barcode, epn_string, column, row, drop, dialog_box_model
@@ -578,7 +569,7 @@ class AbstractPrefectWorkflow(ABC):
         return well_id
 
     def _get_well_id(
-        self, barcode: str, epn_string: str, column: int, row: str, drop: str
+        self, barcode: str, epn_string: str, column: int, row: str, drop: int
     ) -> int:
         """
         Gets the well id from the mx-data-layer-api
@@ -593,7 +584,7 @@ class AbstractPrefectWorkflow(ABC):
             The column.
         row : str
             The row letter of the well.
-        drop : str
+        drop : int
             The drop location of the well.
         """
         logging.getLogger("HWR").info(
@@ -829,15 +820,45 @@ class AbstractPrefectWorkflow(ABC):
         dict[str, list[tuple[str, int]]]
             A dictionary mapping lab names to a list of (project_name, project_id) tuples.
         """
-        with get_redis_connection(decode_response=False) as redis_connection:
-            lab_ids = redis_connection.get("lab_ids")
-            if lab_ids is None:
-                logging.getLogger("user_level_log").error("No lab IDs found in Redis")
-                return {}
-            lab_ids = pickle.loads(lab_ids)
+        epn = self._get_epn_string()
 
         labs_with_projects: dict[str, list[tuple[str, int]]] = {}
         with httpx.Client() as client:
+            visit_response = client.get(
+                urljoin(
+                    settings.DATA_LAYER_API,
+                    f"visits?filter_by_identifier_startswith={epn}",
+                )
+            )
+            if visit_response.status_code != HTTPStatus.OK:
+                logging.getLogger("user_level_log").warning(
+                    f"Failed to get visit info from the data layer API: {visit_response.text}"
+                )
+                return labs_with_projects
+
+            visit_response_json = visit_response.json()
+            if len(visit_response_json) == 0:
+                logging.getLogger("user_level_log").error(
+                    f"No visit found starting with identifier {epn}"
+                )
+                return labs_with_projects
+            elif len(visit_response_json) > 1:
+                logging.getLogger("user_level_log").error(
+                    f"Multiple visits ({len(visit_response_json)}) found with identifier {epn}"
+                )
+                return labs_with_projects
+
+            visit_id = visit_response_json[0]["id"]
+
+            lab_response = client.get(
+                settings.DATA_LAYER_API + f"/visits/{visit_id}/labs"
+            )
+            if lab_response.status_code != HTTPStatus.OK:
+                logging.getLogger("user_level_log").warning(
+                    f"Failed to get lab info from the data layer API: {lab_response.text}"
+                )
+
+            lab_ids = [lab["id"] for lab in lab_response.json()]
             for lab in lab_ids:
                 lab_response = client.get(settings.DATA_LAYER_API + f"/labs/{lab}")
                 if lab_response.status_code != HTTPStatus.OK:

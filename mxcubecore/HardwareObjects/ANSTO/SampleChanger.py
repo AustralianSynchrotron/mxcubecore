@@ -560,13 +560,11 @@ class SampleChanger(AbstractSampleChanger):
 
             response = _prefect_mount_client.trigger_flow(wait=True)
             if response.state.type != StateType.COMPLETED:
-                msg = f"Failed to mount sample. {response.state.message}"
-                logging.getLogger("user_level_log").error(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError(f"{response.state.message}")
 
-        except Exception:
+        except Exception as ex:
             logging.getLogger("user_level_log").error(
-                f"Failed to mount sample. Please check the status of the robot."
+                f"Failed to mount sample. {str(ex)}"
             )
             raise
 
@@ -683,13 +681,11 @@ class SampleChanger(AbstractSampleChanger):
 
             response = _prefect_unmount_client.trigger_flow(wait=True)
             if response.state.type != StateType.COMPLETED:
-                msg = f"Failed to unmount sample. {response.state.message}"
-                logging.getLogger("user_level_log").error(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError(f"{response.state.message}")
 
-        except Exception:
+        except Exception as ex:
             logging.getLogger("user_level_log").error(
-                f"Failed to unmount sample. Please check the status of the robot."
+                f"Failed to unmount sample. {str(ex)}"
             )
             raise
 
