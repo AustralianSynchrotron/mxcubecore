@@ -175,20 +175,25 @@ class SampleChanger(AbstractSampleChanger):
             robot_config.ASC_NUM_PINS
         )  # TODO: number of samples per project
 
-        self.no_of_baskets = len(
-            self.loaded_pucks_dict
+        self.no_of_baskets = (
+            robot_config.ASC_NUM_PUCKS
         )  # TODO: no_of_baskets = number of projects
 
         puck_location_list = []
         for loaded_puck in self.loaded_pucks_dict.values():
             puck_location_list.append(loaded_puck.id)
 
-        for puck_location in puck_location_list:
+        for puck_location in range(1, self.no_of_baskets + 1):
+            if puck_location not in puck_location_list:
+                present = False
+            else:
+                present = True
             basket = MxcubePuck(
                 self,
                 puck_location,
                 samples_num=self.no_of_samples_in_basket,
             )
+            basket._set_info(present=present, id=str(puck_location), scanned=False)
             self._add_component(basket)
 
         self._set_state(SampleChangerState.Unknown)
