@@ -4,6 +4,7 @@
       {"type": "controller", "name": "Detector Back", "command": "HardwareObjects.ANSTO.BeamlineActions.DetectorBack"},
       {"type": "controller", "name": "Enter Hutch", "command": "HardwareObjects.ANSTO.BeamlineActions.EnterHutch"},
       {"type": "controller", "name": "Park Goni", "command": "HardwareObjects.ANSTO.BeamlineActions.ParkGoni"},
+      {"type": "controller", "name": "Calibrate Plate", "command": "HardwareObjects.ANSTO.BeamlineActions.CalibratePlate"},
     ]
     </commands>
 </object>
