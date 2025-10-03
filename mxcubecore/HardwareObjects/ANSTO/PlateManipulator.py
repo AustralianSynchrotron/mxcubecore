@@ -339,30 +339,29 @@ class PlateManipulator(AbstractSampleChanger):
             sample_str = new_sample.address[:-2]  # e.g. 'B7:1'
 
             old_sample = self.get_loaded_sample()
-            if old_sample != new_sample:
 
+            gevent.sleep(0.01)
+            while self.md3_state.get_value().lower() != "ready":
                 gevent.sleep(0.01)
-                while self.md3_state.get_value().lower() != "ready":
-                    gevent.sleep(0.01)
 
-                self.move_to_well_spot(well_input=sample_str)
+            self.move_to_well_spot(well_input=sample_str)
 
+            gevent.sleep(0.1)
+            while self.md3_state.get_value().lower() != "ready":
                 gevent.sleep(0.1)
-                while self.md3_state.get_value().lower() != "ready":
-                    gevent.sleep(0.1)
 
-                with get_redis_connection() as redis_connection:
-                    redis_connection.set("current_drop_location", sample_str)
+            with get_redis_connection() as redis_connection:
+                redis_connection.set("current_drop_location", sample_str)
 
-                if old_sample is not None:
-                    old_sample._set_loaded(False, True)
-                    self._trigger_loaded_sample_changed_event(old_sample)
-                    gevent.sleep(0.01)
-                if new_sample is not None:
-                    new_sample._set_loaded(True, True)
-                    self._trigger_loaded_sample_changed_event(new_sample)
+            if old_sample is not None:
+                old_sample._set_loaded(False, True)
+                self._trigger_loaded_sample_changed_event(old_sample)
+                gevent.sleep(0.01)
+            if new_sample is not None:
+                new_sample._set_loaded(True, True)
+                self._trigger_loaded_sample_changed_event(new_sample)
 
-                self.update_info()
+            self.update_info()
 
         except Exception as e:
             logging.getLogger("user_level_log").error(
