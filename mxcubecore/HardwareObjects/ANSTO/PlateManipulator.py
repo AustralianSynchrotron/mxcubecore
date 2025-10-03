@@ -1,7 +1,13 @@
 import logging
+import re
+from typing import Literal
 
 import gevent
+import numpy as np
 from gevent import sleep
+from mx3_beamline_library.plans.calibration.trays.calibrate import get_positions
+from mx3_beamline_library.plans.calibration.trays.plane_frame import PlaneFrame
+from mx3_beamline_library.plans.calibration.trays.plate_configs import plate_configs
 from mx_robot_library.client import Client
 from prefect.server.schemas.states import StateType
 
@@ -15,6 +21,7 @@ from mxcubecore.HardwareObjects.abstract.sample_changer import (
     Sample,
 )
 
+from .Diffractometer import Diffractometer
 from .mockup.channels import (
     SimMd3Phase,
     SimMd3State,
@@ -217,6 +224,9 @@ class PlateManipulator(AbstractSampleChanger):
 
         self.update_info()
 
+        self.diffractometer: Diffractometer = self.get_object_by_role("diffractometer")
+        print()
+
     def _init_sc_contents(self) -> None:
         """
         Initializes the sample changer contents by creating a grid of baskets, cells, and drops.
@@ -327,14 +337,21 @@ class PlateManipulator(AbstractSampleChanger):
 
             old_sample = self.get_loaded_sample()
             if old_sample != new_sample:
-                # TODO: we're not moving the tray yet, but this is where we would do it
-                # based on sample_str
-                with get_redis_connection() as redis_connection:
-                    redis_connection.set("current_drop_location", sample_str)
+
+                gevent.sleep(0.01)
+                while self.md3_state.get_value().lower() != "ready":
+                    gevent.sleep(0.01)
+
+                self.move_to_well_spot(
+                    well_input=sample_str, plate_type="swissci_lowprofile"
+                )
 
                 gevent.sleep(0.1)
                 while self.md3_state.get_value().lower() != "ready":
                     gevent.sleep(0.1)
+
+                with get_redis_connection() as redis_connection:
+                    redis_connection.set("current_drop_location", sample_str)
 
                 if old_sample is not None:
                     old_sample._set_loaded(False, True)
@@ -585,6 +602,81 @@ class PlateManipulator(AbstractSampleChanger):
 
     def _do_abort(self):
         self.robot_client.common.abort()
+
+    def move_to_well_spot(
+        self,
+        well_input: str,
+        plate_type: Literal[
+            "swissci_lowprofile", "mitegen_insitu", "swissci_highprofile", "mrc"
+        ],
+    ):
+        """
+        Move the diffractometer to the specified well and spot number on the tray.
+
+        Parameters
+        ----------
+        well_input : str
+            The well and spot number in the format 'A4:2', where 'A4' is the
+            well and '2' is the spot number (1-4).
+        plate_type : Literal
+            The type of plate being used. Must be one of 'swissci_lowprofile',
+            'mitegen_insitu', 'swissci_highprofile', or 'mrc'.
+        """
+        if plate_type == "mitegen_insitu":
+            config = plate_configs.mitegen_insitu
+        elif plate_type == "swissci_highprofile":
+            config = plate_configs.swissci_highprofile
+        elif plate_type == "mrc":
+            config = plate_configs.mrc
+        elif plate_type == "swissci_lowprofile":
+            config = plate_configs.swissci_lowprofile
+        else:
+            raise ValueError(f"Unknown plate type: {plate_type}")
+
+        match = re.match(r"^([A-Ia-i][0-9]{1,2}):(\d)$", well_input)
+        if not match:
+            raise ValueError(
+                f"Invalid input: {well_input}. Format should be like 'A4:2'"
+            )
+
+        well_label = match.group(1).upper()
+        spot_num = int(match.group(2))
+
+        if not (1 <= spot_num <= 4):
+            raise ValueError("Spot number must be 1 to 4")
+
+        # Get all 4 sub-positions from the redis calibration plane
+        with get_redis_connection(decode_response=False) as redis_connection:
+            res = redis_connection.hgetall("tray_calibration_params")
+
+        if not res:
+            msg = "No calibration parameters found in Redis. Run calibration first."
+            logging.getLogger("user_level_log").error(msg)
+            raise RuntimeError(msg)
+        origin = np.array(list(map(float, res[b"origin"].decode().split(","))))
+        u_axis = np.array(list(map(float, res[b"u_axis"].decode().split(","))))
+        v_axis = np.array(list(map(float, res[b"v_axis"].decode().split(","))))
+
+        plane = PlaneFrame(origin, u_axis, v_axis)
+
+        positions = get_positions(well_label, plane, config)
+        selected = positions[spot_num - 1]["motor_pos"]
+
+        # Unpack and move motors
+        depth_offset = config["depth"]
+        print(depth_offset)
+        x, y, z = selected
+
+        target_position = {
+            "sampy": z + depth_offset,
+            "phiy": x,
+            "plate_translation": y,
+        }
+        self.diffractometer.move_motors(target_position)
+
+        logging.getLogger("HWR").info(
+            f"Moved to {well_label} spot {spot_num}: x={x:.3f}, y={y:.3f}, z={z:.3f}"
+        )
 
     # Not implemented methods
     def _do_reset(self):

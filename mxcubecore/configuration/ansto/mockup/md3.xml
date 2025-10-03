@@ -12,6 +12,7 @@
   <object role="kappa" hwrid="./md3/kappa"></object>
   <object role="kappa_phi" hwrid="./md3/kappa_phi"></object>
   <object role="beam" hwrid="./beam"></object>
+  <object role="plate_translation" hwrid="./md3/plate_translation"></object>
 
   <object role="backlight" href="./md3/backlight"/>
   <object role="backlightswitch" href="./md3/backlight_switch"/>

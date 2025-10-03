@@ -1,0 +1,6 @@
+<device class="ANSTO.ExporterMotor">
+    <username>plate_translation</username>
+    <actuator_name>PlateTranslation</actuator_name>
+    <tolerance>1e-2</tolerance>
+    <GUIstep>0.01</GUIstep>
+</device>
