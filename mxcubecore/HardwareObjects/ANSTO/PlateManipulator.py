@@ -4,7 +4,10 @@ import re
 import gevent
 import numpy as np
 from gevent import sleep
-from mx3_beamline_library.plans.calibration.trays.calibrate import get_positions
+from mx3_beamline_library.plans.calibration.trays.calibrate import (
+    define_plane_frame,
+    get_positions,
+)
 from mx3_beamline_library.plans.calibration.trays.plane_frame import PlaneFrame
 from mx3_beamline_library.plans.calibration.trays.plate_configs import plate_configs
 from mx_robot_library.client import Client
@@ -635,14 +638,15 @@ class PlateManipulator(AbstractSampleChanger):
             res = redis_connection.hgetall("tray_calibration_params")
 
         if not res:
-            msg = "No calibration parameters found in Redis. Run calibration first."
-            logging.getLogger("user_level_log").error(msg)
-            raise RuntimeError(msg)
-        origin = np.array(list(map(float, res[b"origin"].decode().split(","))))
-        u_axis = np.array(list(map(float, res[b"u_axis"].decode().split(","))))
-        v_axis = np.array(list(map(float, res[b"v_axis"].decode().split(","))))
+            logging.getLogger("user_level_log").info("Using default calibration points")
+            plane = define_plane_frame(self.plate_config["calibration_points"])
+        else:
 
-        plane = PlaneFrame(origin, u_axis, v_axis)
+            origin = np.array(list(map(float, res[b"origin"].decode().split(","))))
+            u_axis = np.array(list(map(float, res[b"u_axis"].decode().split(","))))
+            v_axis = np.array(list(map(float, res[b"v_axis"].decode().split(","))))
+
+            plane = PlaneFrame(origin, u_axis, v_axis)
 
         positions = get_positions(well_label, plane, self.plate_config)
         selected = positions[spot_num - 1]["motor_pos"]
