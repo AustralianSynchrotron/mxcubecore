@@ -225,7 +225,7 @@ class PlateManipulator(AbstractSampleChanger):
         self.update_info()
 
         self.diffractometer: Diffractometer = self.get_object_by_role("diffractometer")
-        print()
+        self.plate_config = self.get_plate_config()
 
     def _init_sc_contents(self) -> None:
         """
@@ -342,9 +342,7 @@ class PlateManipulator(AbstractSampleChanger):
                 while self.md3_state.get_value().lower() != "ready":
                     gevent.sleep(0.01)
 
-                self.move_to_well_spot(
-                    well_input=sample_str, plate_type="swissci_lowprofile"
-                )
+                self.move_to_well_spot(well_input=sample_str)
 
                 gevent.sleep(0.1)
                 while self.md3_state.get_value().lower() != "ready":
@@ -606,9 +604,6 @@ class PlateManipulator(AbstractSampleChanger):
     def move_to_well_spot(
         self,
         well_input: str,
-        plate_type: Literal[
-            "swissci_lowprofile", "mitegen_insitu", "swissci_highprofile", "mrc"
-        ],
     ):
         """
         Move the diffractometer to the specified well and spot number on the tray.
@@ -622,16 +617,6 @@ class PlateManipulator(AbstractSampleChanger):
             The type of plate being used. Must be one of 'swissci_lowprofile',
             'mitegen_insitu', 'swissci_highprofile', or 'mrc'.
         """
-        if plate_type == "mitegen_insitu":
-            config = plate_configs.mitegen_insitu
-        elif plate_type == "swissci_highprofile":
-            config = plate_configs.swissci_highprofile
-        elif plate_type == "mrc":
-            config = plate_configs.mrc
-        elif plate_type == "swissci_lowprofile":
-            config = plate_configs.swissci_lowprofile
-        else:
-            raise ValueError(f"Unknown plate type: {plate_type}")
 
         match = re.match(r"^([A-Ia-i][0-9]{1,2}):(\d)$", well_input)
         if not match:
@@ -659,11 +644,11 @@ class PlateManipulator(AbstractSampleChanger):
 
         plane = PlaneFrame(origin, u_axis, v_axis)
 
-        positions = get_positions(well_label, plane, config)
+        positions = get_positions(well_label, plane, self.plate_config)
         selected = positions[spot_num - 1]["motor_pos"]
 
         # Unpack and move motors
-        depth_offset = config["depth"]
+        depth_offset = self.plate_config["depth"]
         print(depth_offset)
         x, y, z = selected
 
@@ -696,3 +681,43 @@ class PlateManipulator(AbstractSampleChanger):
 
     def _do_select(self, component):
         pass
+
+    def get_plate_config(
+        self,
+    ) -> Literal["swissci_lowprofile", "mitegen_insitu", "swissci_highprofile", "mrc"]:
+        """
+        Gets the plate type from redis.
+
+        Returns
+        -------
+        dict
+            The plate configuration dictionary.
+        """
+        with get_redis_connection(decode_response=True) as redis_connection:
+            plate_type = redis_connection.get("plate_type")
+
+        if plate_type is None:
+            msg = "No plate type found in Redis'."
+            logging.getLogger("user_level_log").error(msg)
+            raise ValueError(msg)
+
+        allowed_plate_types = [
+            "swissci_lowprofile",
+            "mitegen_insitu",
+            "swissci_highprofile",
+            "mrc",
+        ]
+        if plate_type not in allowed_plate_types:
+            msg = f"Unknown plate type: {plate_type}. Supported types are {allowed_plate_types}"
+            logging.getLogger("user_level_log").error(msg)
+            raise ValueError(msg)
+
+        if plate_type == "mitegen_insitu":
+            config = plate_configs.mitegen_insitu
+        elif plate_type == "swissci_highprofile":
+            config = plate_configs.swissci_highprofile
+        elif plate_type == "mrc":
+            config = plate_configs.mrc
+        elif plate_type == "swissci_lowprofile":
+            config = plate_configs.swissci_lowprofile
+        return config
