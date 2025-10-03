@@ -382,6 +382,9 @@ class PlateManipulator(AbstractSampleChanger):
         -------
         None
         """
+        with get_redis_connection() as redis_connection:
+            redis_connection.delete("current_drop_location")
+
         prefect_client = MX3SyncPrefectClient(
             name=settings.UNMOUNT_TRAY_DEPLOYMENT_NAME,
             parameters={},
