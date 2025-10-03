@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import Literal
 
 import gevent
 import numpy as np
@@ -190,9 +189,11 @@ class PlateManipulator(AbstractSampleChanger):
         super().__init__(self.__TYPE__, False, *args, **kwargs)
 
     def init(self):
-        self.num_cols = self.get_property("numCols")
-        self.num_rows = self.get_property("numRows")
-        self.num_drops = self.get_property("numDrops")
+        self.plate_config = self.get_plate_config()
+
+        self.num_cols = self.plate_config["number_of_columns"]
+        self.num_rows = self.plate_config["number_of_rows"]
+        self.num_drops = self.plate_config["number_of_drops"]
 
         if settings.BL_ACTIVE:
             self.md3_state = self.add_channel(
@@ -225,7 +226,6 @@ class PlateManipulator(AbstractSampleChanger):
         self.update_info()
 
         self.diffractometer: Diffractometer = self.get_object_by_role("diffractometer")
-        self.plate_config = self.get_plate_config()
 
     def _init_sc_contents(self) -> None:
         """
@@ -684,9 +684,9 @@ class PlateManipulator(AbstractSampleChanger):
 
     def get_plate_config(
         self,
-    ) -> Literal["swissci_lowprofile", "mitegen_insitu", "swissci_highprofile", "mrc"]:
+    ) -> dict:
         """
-        Gets the plate type from redis.
+        Gets the plate type from redis, and returns the corresponding plate configuration
 
         Returns
         -------
