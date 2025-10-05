@@ -609,7 +609,7 @@ class PlateManipulator(AbstractSampleChanger):
     def move_to_well_spot(
         self,
         well_input: str,
-    ):
+    ) -> None:
         """
         Move the diffractometer to the specified well and spot number on the tray.
 
@@ -618,9 +618,10 @@ class PlateManipulator(AbstractSampleChanger):
         well_input : str
             The well and spot number in the format 'A4:2', where 'A4' is the
             well and '2' is the spot number (1-4).
-        plate_type : Literal
-            The type of plate being used. Must be one of 'swissci_lowprofile',
-            'mitegen_insitu', 'swissci_highprofile', or 'mrc'.
+
+        Returns
+        -------
+        None
         """
 
         match = re.match(r"^([A-Ia-i][0-9]{1,2}):(\d)$", well_input)
