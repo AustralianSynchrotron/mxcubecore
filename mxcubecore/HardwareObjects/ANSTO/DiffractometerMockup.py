@@ -87,6 +87,11 @@ class DiffractometerMockup(GenericDiffractometer):
         if self.mount_mode is None:
             self.mount_mode = "manual"
 
+        if "plate_translation" not in self.motor_hwobj_dict.keys():
+            self.motor_hwobj_dict["plate_translation"] = self.get_object_by_role(
+                "plate_translation"
+            )
+
         self.equipment_ready()
 
         self.connect(self.motor_hwobj_dict["phi"], "valueChanged", self.phi_motor_moved)

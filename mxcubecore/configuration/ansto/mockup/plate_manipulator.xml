@@ -6,5 +6,5 @@
   <numDrops>3</numDrops>
   
   <useUpdateTimer>True</useUpdateTimer>
-  <object role="diffractometer" href="/diffractometer"/>
+  <object role="diffractometer" href="/md3"/>
 </object>
