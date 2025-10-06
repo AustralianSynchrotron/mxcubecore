@@ -6,6 +6,7 @@ from mx3_beamline_library.devices.motors import detector_fast_stage
 from mx_robot_library.client.client import Client
 from mx_robot_library.schemas.common.path import RobotPaths
 from mx_robot_library.schemas.common.position import RobotPositions
+from prefect.server.schemas.states import StateType  # noqa
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.CommandContainer import ChannelObject
@@ -15,12 +16,27 @@ from mxcubecore.HardwareObjects.BeamlineActions import (
 )
 
 from .mockup.channels import SimChannel
+from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 
 
 class BeamlineActions(BeamlineActionsBase):
     # For more examples, check the BeamlineActionsMockup class
     def __init__(self, *args):
         super().__init__(*args)
+
+
+class CalibratePlate:
+    def __call__(self, *args, **kw):
+        logging.getLogger("user_level_log").info(f"Calibrating plate...")
+        prefect_client = MX3SyncPrefectClient(
+            name=settings.TRAY_CALIBRATION_DEPLOYMENT_NAME,
+            parameters={},
+        )
+        response = prefect_client.trigger_flow(wait=True)
+        if response.state.type != StateType.COMPLETED:
+            msg = f"Failed to run tray calibration flow: {response.state.message}"
+            logging.getLogger("user_level_log").error(msg)
+            raise RuntimeError(msg)
 
 
 class ParkRobot:

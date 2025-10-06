@@ -8,6 +8,9 @@ from pydantic_settings import BaseSettings
 
 class PrefectSettings(BaseSettings):
     PREFECT_URI: str = Field("http://localhost:4200", env="PREFECT_URI")
+    TRAY_CALIBRATION_DEPLOYMENT_NAME: str = Field(
+        "tray-calibration/tray_calibration", env="TRAY_CALIBRATION_DEPLOYMENT_NAME"
+    )
     MOUNT_TRAY_DEPLOYMENT_NAME: str = Field(
         "mount-tray-plan/mount_tray", env="MOUNT_TRAY_DEPLOYMENT_NAME"
     )

@@ -9,6 +9,7 @@ from mxcubecore.configuration.ansto.config import settings
 
 from .PlateManipulator import PlateManipulator
 from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
+from .redis_utils import get_redis_connection
 
 
 class PlateManipulatorMaint(HardwareObject):
@@ -195,6 +196,8 @@ class PlateManipulatorMaint(HardwareObject):
             self._update_global_state()
             return
         try:
+            with get_redis_connection() as redis_connection:
+                redis_connection.delete("current_drop_location")
             prefect_client = MX3SyncPrefectClient(
                 name=settings.MOUNT_TRAY_DEPLOYMENT_NAME,
                 parameters={

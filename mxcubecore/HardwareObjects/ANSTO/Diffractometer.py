@@ -65,6 +65,10 @@ class Diffractometer(GenericDiffractometer):
             self.motor_hwobj_dict["zoom"] = self.get_object_by_role("zoom")
         if "focus" not in self.motor_hwobj_dict.keys():
             self.motor_hwobj_dict["focus"] = self.get_object_by_role("focus")
+        if "plate_translation" not in self.motor_hwobj_dict.keys():
+            self.motor_hwobj_dict["plate_translation"] = self.get_object_by_role(
+                "plate_translation"
+            )
 
         calibration_x = self.motor_hwobj_dict["zoom"].get_property("pixels_per_mm_x")
         calibration_y = self.motor_hwobj_dict["zoom"].get_property("pixels_per_mm_y")
