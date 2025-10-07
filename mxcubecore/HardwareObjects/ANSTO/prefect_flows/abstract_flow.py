@@ -66,6 +66,7 @@ class AbstractPrefectWorkflow(ABC):
 
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
+        self.project_id_lab_name_map = None
 
         if settings.BL_ACTIVE:
             self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
@@ -909,6 +910,50 @@ class AbstractPrefectWorkflow(ABC):
         labs_with_projects = self._get_labs_with_projects()
         lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
 
+        self.project_id_lab_name_map: dict[str, list[tuple[str, int]]] = {}
+
+        def build_paths(
+            project: dict, prefix: str | None = None
+        ) -> list[tuple[str, int]]:
+            """Build (path, id) from a project that can contain a list of children"""
+            name = project.get("name", "")
+            proj_id = project.get("id")
+            if not name or proj_id is None:
+                return []
+            path = f"{prefix}/{name}" if prefix else name
+            paths: list[tuple[str, int]] = [(path, proj_id)]
+            for child in project.get("children", []) or []:
+                paths.extend(build_paths(child, path))
+            return paths
+
+        with httpx.Client() as client:
+            for lab_name in lab_names:
+                self.project_id_lab_name_map[lab_name] = []
+                for project_name, project_id in labs_with_projects[lab_name]:
+                    try:
+                        r = client.get(
+                            urljoin(
+                                settings.DATA_LAYER_API,
+                                f"projects/{project_id}?include_children=true&include_parents=false",
+                            )
+                        )
+                        if r.status_code == HTTPStatus.OK:
+                            node = r.json()
+                            self.project_id_lab_name_map[lab_name].extend(
+                                build_paths(node)
+                            )
+                        else:
+                            self.project_id_lab_name_map[lab_name].append(
+                                (project_name, project_id)
+                            )
+                    except Exception as e:
+                        logging.getLogger("HWR").warning(
+                            f"Failed to build path for project id {project_id}: {e}"
+                        )
+                        self.project_id_lab_name_map[lab_name].append(
+                            (project_name, project_id)
+                        )
+
         default_lab = self._get_dialog_box_param("lab_name")
         default_project = self._get_dialog_box_param("project_name")
 
@@ -924,18 +969,18 @@ class AbstractPrefectWorkflow(ABC):
         # Show projects depending on the selected lab
         lab_conditionals = []
         for lab_name in lab_names:
-            project_names = sorted(
-                [name for name, _ in labs_with_projects[lab_name]],
+            project_paths = sorted(
+                [path for path, _ in self.project_id_lab_name_map[lab_name]],
                 key=str.casefold,
             )
 
             project_name_schema = {
                 "title": "Project Name",
                 "type": "string",
-                "enum": project_names,
+                "enum": project_paths,
                 "widget": "select",
             }
-            if default_lab == lab_name and default_project in project_names:
+            if default_lab == lab_name and default_project in project_paths:
                 project_name_schema["default"] = default_project
 
             lab_conditionals.append(
@@ -985,13 +1030,20 @@ class AbstractPrefectWorkflow(ABC):
         int
             The project id
         """
-        labs = self._get_labs_with_projects()
-        for name, project_id in labs.get(lab_name, []):
-            if name == project_name:
-                logging.getLogger("HWR").debug(
-                    f"Project id for lab {lab_name} and project {project_name}: {project_id}"
-                )
+        if (
+            not self.project_id_lab_name_map
+            or lab_name not in self.project_id_lab_name_map
+        ):
+            msg = "project_id_lab_name_map not available "
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
+
+        for path, project_id in self.project_id_lab_name_map[lab_name]:
+            if path == project_name:
                 return project_id
-        msg = f"Project id not found for lab '{lab_name}' and project '{project_name}'"
+
+        msg = (
+            f"Project id not found for lab '{lab_name}' and project '{project_name}'. "
+        )
         logging.getLogger("user_level_log").error(msg)
         raise QueueExecutionException(msg, self)
