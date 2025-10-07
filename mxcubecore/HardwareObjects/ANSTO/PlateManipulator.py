@@ -530,7 +530,6 @@ class PlateManipulator(AbstractSampleChanger):
         None
         """
         md3_state = self.md3_state.get_value()
-        current_phase = self.md3_phase.get_value()
         _state: int = SampleChangerState.Unknown
         if md3_state == "Ready":
             _state = SampleChangerState.Ready
@@ -545,9 +544,6 @@ class PlateManipulator(AbstractSampleChanger):
 
         if md3_state == "Ready" and self.has_loaded_sample():
             _state = SampleChangerState.Loaded
-
-        if md3_state == "Ready" and current_phase == "Transfer":
-            _state = SampleChangerState.Charging
 
         _last_state = self.state
         if _state != _last_state:
