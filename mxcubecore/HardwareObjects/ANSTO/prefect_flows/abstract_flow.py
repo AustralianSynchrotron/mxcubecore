@@ -66,6 +66,7 @@ class AbstractPrefectWorkflow(ABC):
 
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
+        self.project_id_lab_name_map = None
 
         if settings.BL_ACTIVE:
             self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)
@@ -909,38 +910,27 @@ class AbstractPrefectWorkflow(ABC):
         labs_with_projects = self._get_labs_with_projects()
         lab_names = sorted(labs_with_projects.keys(), key=str.casefold)
 
-        # For each (root) project we retrieve its subtree (children) and build
-        # hierarchical path names in the form Parent/Child/SubChild. These
-        # hierarchical names are what the user will select in the UI. We cache
-        # the mapping so that _get_project_id_from_lab_name_and_project_name can
-        # resolve the selected path back to the correct project id.
-        hierarchical_project_cache: dict[str, list[tuple[str, int]]] = {}
+        self.project_id_lab_name_map: dict[str, list[tuple[str, int]]] = {}
 
-        def build_paths(node: dict, prefix: str | None = None) -> list[tuple[str, int]]:
-            """Recursively build (path, id) tuples from a project node that
-            contains (possibly) a list of children. The first element of the
-            path is the root node name passed to this function.
-            """
-            name = node.get("name", "")
-            proj_id = node.get("id")
+        def build_paths(
+            project: dict, prefix: str | None = None
+        ) -> list[tuple[str, int]]:
+            """Build (path, id) from a project that can contain a list of children"""
+            name = project.get("name", "")
+            proj_id = project.get("id")
             if not name or proj_id is None:
                 return []
             path = f"{prefix}/{name}" if prefix else name
             paths: list[tuple[str, int]] = [(path, proj_id)]
-            for child in node.get("children", []) or []:
+            for child in project.get("children", []) or []:
                 paths.extend(build_paths(child, path))
             return paths
 
-        # HTTP client reused for efficiency
         with httpx.Client() as client:
             for lab_name in lab_names:
-                hierarchical_project_cache[lab_name] = []
+                self.project_id_lab_name_map[lab_name] = []
                 for project_name, project_id in labs_with_projects[lab_name]:
                     try:
-                        # Request project including its children. Parents are
-                        # not required to build descendant paths because the
-                        # root returned by _get_labs_with_projects is already
-                        # the starting point for the path.
                         r = client.get(
                             urljoin(
                                 settings.DATA_LAYER_API,
@@ -949,25 +939,20 @@ class AbstractPrefectWorkflow(ABC):
                         )
                         if r.status_code == HTTPStatus.OK:
                             node = r.json()
-                            hierarchical_project_cache[lab_name].extend(
+                            self.project_id_lab_name_map[lab_name].extend(
                                 build_paths(node)
                             )
                         else:
-                            # Fallback: if the detailed request fails, we at least
-                            # include the root project itself.
-                            hierarchical_project_cache[lab_name].append(
+                            self.project_id_lab_name_map[lab_name].append(
                                 (project_name, project_id)
                             )
-                    except Exception as e:  # noqa: BLE001 - broad to ensure UI still works
+                    except Exception as e:
                         logging.getLogger("HWR").warning(
-                            f"Failed to build hierarchical path for project id {project_id}: {e}"
+                            f"Failed to build path for project id {project_id}: {e}"
                         )
-                        hierarchical_project_cache[lab_name].append(
+                        self.project_id_lab_name_map[lab_name].append(
                             (project_name, project_id)
                         )
-
-        # Store cache for later ID resolution when a hierarchical path is submitted
-        self._hierarchical_project_id_cache = hierarchical_project_cache  # type: ignore[attr-defined]
 
         default_lab = self._get_dialog_box_param("lab_name")
         default_project = self._get_dialog_box_param("project_name")
@@ -985,7 +970,7 @@ class AbstractPrefectWorkflow(ABC):
         lab_conditionals = []
         for lab_name in lab_names:
             project_paths = sorted(
-                [path for path, _ in hierarchical_project_cache[lab_name]],
+                [path for path, _ in self.project_id_lab_name_map[lab_name]],
                 key=str.casefold,
             )
 
@@ -995,7 +980,6 @@ class AbstractPrefectWorkflow(ABC):
                 "enum": project_paths,
                 "widget": "select",
             }
-            # Only set a default if the stored project name matches the full hierarchical path
             if default_lab == lab_name and default_project in project_paths:
                 project_name_schema["default"] = default_project
 
@@ -1046,26 +1030,20 @@ class AbstractPrefectWorkflow(ABC):
         int
             The project id
         """
-        # Prefer hierarchical cache if available (set during schema build)
-        cache = getattr(self, "_hierarchical_project_id_cache", None)
-        if not cache or lab_name not in cache:
-            msg = (
-                "Hierarchical project cache not available. Ensure 'build_tray_dialog_schema' was called "
-                f"before resolving project ids (lab='{lab_name}', project='{project_name}')."
-            )
+        if (
+            not self.project_id_lab_name_map
+            or lab_name not in self.project_id_lab_name_map
+        ):
+            msg = "project_id_lab_name_map not available "
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
 
-        for path, project_id in cache[lab_name]:
+        for path, project_id in self.project_id_lab_name_map[lab_name]:
             if path == project_name:
-                logging.getLogger("HWR").debug(
-                    f"Project id for lab {lab_name} and project {project_name}: {project_id}"
-                )
                 return project_id
 
         msg = (
             f"Project id not found for lab '{lab_name}' and project '{project_name}'. "
-            "The project name must match the full hierarchical path exactly."
         )
         logging.getLogger("user_level_log").error(msg)
         raise QueueExecutionException(msg, self)
