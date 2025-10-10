@@ -213,13 +213,66 @@ class AbstractPrefectWorkflow(ABC):
                 raise QueueExecutionException("EPN string is not set in Redis", self)
             return epn_string
 
-    def _get_pin_model_of_mounted_sample_from_db(self) -> PinRead:
+    def _hand_mount_pin(self, dialog_box_model: DataCollectionDialogBoxBase) -> int:
+        project_id = self._get_project_id_from_lab_name_and_project_name(
+            dialog_box_model.lab_name, dialog_box_model.project_name
+        )
+        epn = self._get_epn_string()
+
+        with httpx.Client() as client:
+            visit = client.get(
+                urljoin(
+                    settings.DATA_LAYER_API,
+                    f"/visits?filter_by_identifier_startswith={epn}",
+                )
+            )
+
+            if visit.status_code != HTTPStatus.OK or len(visit.json()) == 0:
+                msg = (
+                    f"Failed to get visit with identifier {epn} from the data layer API"
+                )
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+
+            visit_id = visit.json()[0]["id"]
+
+            r = client.post(
+                urljoin(settings.DATA_LAYER_API, "/samples/handmount"),
+                json={
+                    "name": dialog_box_model.sample_name,
+                    "description": "",
+                    "notes": "",
+                    "type": "sample_handmount",
+                    "project_id": project_id,
+                    "visit_id": visit_id,
+                },
+            )
+            if r.status_code != HTTPStatus.CREATED:
+                try:
+                    msg = f"Failed to add hand-mounted pin to the database: {r.json()['detail']}"
+                except Exception:
+                    msg = f"Failed to add hand-mounted pin to the database: {r.text}"
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+            else:
+                logging.getLogger("user_level_log").info(
+                    f"Successfully added pin {r.json()['name']} to the database"
+                )
+                return r.json()["id"]
+
+    def _get_pin_id(self, dialog_box_model: DataCollectionDialogBoxBase) -> int:
+        if dialog_box_model.auto_create_sample:
+            return self._hand_mount_pin(dialog_box_model)
+        else:
+            return self._get_pin_id_of_mounted_sample_from_db()
+
+    def _get_pin_id_of_mounted_sample_from_db(self) -> int:
         """Gets the pin model from the mx-data-layer-api
 
         Returns
         -------
-        PinRead
-            A PinRead pydantic model
+        int
+            The id of the pin
 
         Raises
         ------
@@ -248,7 +301,7 @@ class AbstractPrefectWorkflow(ABC):
             if r.status_code == HTTPStatus.OK:
                 response = r.json()
                 if len(response) == 1:
-                    return PinRead.model_validate(r.json()[0])
+                    return PinRead.model_validate(r.json()[0]).id
                 elif len(response) > 1:
                     msg = f"There are multiple ({len(response)}) pins with the same barcode {barcode}, port {port}, and epn {epn_string}"
                     logging.getLogger("user_level_log").error(msg)
@@ -312,7 +365,7 @@ class AbstractPrefectWorkflow(ABC):
                 if isinstance(value, bool):
                     value = 1 if value else 0
 
-                if key in ["lab_name", "project_name", "auto_create_well"]:
+                if key in ["lab_name", "project_name", "auto_create_sample"]:
                     redis_connection.set(f"mxcube_common_params:{key}", value)
                 else:
                     redis_connection.set(f"{self._collection_type}:{key}", value)
@@ -329,7 +382,7 @@ class AbstractPrefectWorkflow(ABC):
             "resolution",
             "md3_alignment_y_speed",
             "transmission",
-            "auto_create_well",
+            "auto_create_sample",
             "lab_name",
             "project_name",
         ],
@@ -349,7 +402,7 @@ class AbstractPrefectWorkflow(ABC):
             "resolution",
             "md3_alignment_y_speed",
             "transmission",
-            "auto_create_well",
+            "auto_create_sample",
             "lab_name",
             "project_name",
         ]
@@ -361,12 +414,12 @@ class AbstractPrefectWorkflow(ABC):
             The last value set in redis for a given parameter
         """
         with get_redis_connection() as redis_connection:
-            if parameter in ["lab_name", "project_name", "auto_create_well"]:
+            if parameter in ["lab_name", "project_name", "auto_create_sample"]:
                 value = redis_connection.get(f"mxcube_common_params:{parameter}")
             else:
                 value = redis_connection.get(f"{self._collection_type}:{parameter}")
 
-            if parameter == "auto_create_well":
+            if parameter == "auto_create_sample":
                 if value is not None:
                     return bool(int(value))
             else:
@@ -560,7 +613,7 @@ class AbstractPrefectWorkflow(ABC):
 
         row, column, drop = self._get_current_drop_location()
 
-        if dialog_box_model.auto_create_well:
+        if dialog_box_model.auto_create_sample:
             well_id = self._add_well_to_db(
                 barcode, epn_string, column, row, drop, dialog_box_model
             )
@@ -679,7 +732,7 @@ class AbstractPrefectWorkflow(ABC):
         head_type = self.get_head_type()
 
         if head_type == "SmartMagnet":
-            sample_id = self._get_pin_model_of_mounted_sample_from_db().id
+            sample_id = self._get_pin_id(dialog_box_model)
         elif head_type == "Plate":
 
             sample_id = self._get_well_id_of_mounted_tray(dialog_box_model)
@@ -885,7 +938,7 @@ class AbstractPrefectWorkflow(ABC):
                 ]
         return labs_with_projects
 
-    def build_tray_dialog_schema(self) -> tuple[dict, dict]:
+    def build_auto_add_sample_schema(self) -> tuple[dict, dict]:
         """
         Builds the dialog schema for the tray dialog box.
         This contains an auto create well entry. If this is set to true, the user
@@ -898,11 +951,21 @@ class AbstractPrefectWorkflow(ABC):
         tuple[dict, dict]
             The properties and conditional schemas for the tray dialog box.
         """
+        head_type = self.get_head_type()
+        if head_type == "Plate":
+            title = "Auto Create Well"
+        elif head_type == "SmartMagnet":
+            title = "Hand-mount Pin"
+        else:
+            msg = f"Head type {head_type} is not implemented for auto create sample"
+            logging.getLogger("user_level_log").error(msg)
+            raise QueueExecutionException(msg, self)
+
         properties: dict = {
-            "auto_create_well": {
-                "title": "Auto Create Well",
+            "auto_create_sample": {
+                "title": title,
                 "type": "boolean",
-                "default": self._get_dialog_box_param("auto_create_well"),
+                "default": self._get_dialog_box_param("auto_create_sample"),
                 "widget": "textarea",
             }
         }
@@ -1000,7 +1063,7 @@ class AbstractPrefectWorkflow(ABC):
             )
 
         conditional = {
-            "if": {"properties": {"auto_create_well": {"const": True}}},
+            "if": {"properties": {"auto_create_sample": {"const": True}}},
             "then": {
                 "properties": {
                     "lab_name": lab_field,

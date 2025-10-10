@@ -146,10 +146,8 @@ class OneShotFlow(AbstractPrefectWorkflow):
                 "widget": "textarea",
             }
 
-        tray_conditional: dict | None = None
-        if self.get_head_type() == "Plate":
-            tray_properties, tray_conditional = self.build_tray_dialog_schema()
-            properties.update(tray_properties)
+        sample_properties, sample_conditional = self.build_auto_add_sample_schema()
+        properties.update(sample_properties)
 
         dialog = {
             "properties": properties,
@@ -162,7 +160,6 @@ class OneShotFlow(AbstractPrefectWorkflow):
             "dialogName": "One Shot Parameters",
         }
 
-        if tray_conditional:
-            dialog.update(tray_conditional)
+        dialog.update(sample_conditional)
 
         return dialog

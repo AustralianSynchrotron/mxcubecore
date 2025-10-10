@@ -13,22 +13,22 @@ class GridScanDialogBox(BaseModel):
     md3_alignment_y_speed: float
     # photon_energy: float
     transmission: float = Field(description="Measured in percentage")
-    auto_create_well: bool = Field(
+    auto_create_sample: bool = Field(
         default=False,
         description="If True, a well will be added to the db automatically "
         "if it does not exist (only used for trays, not pins)",
     )
     project_name: str | None = Field(
         default=None,
-        description="The name of the project. Only used if auto_create_well=True",
+        description="The name of the project. Only used if auto_create_sample=True",
     )
     lab_name: str | None = Field(
         default=None,
-        description="The name of the lab. Only used if auto_create_well=True",
+        description="The name of the lab. Only used if auto_create_sample=True",
     )
     sample_name: str | None = Field(
         default=None,
-        description="The name of the sample. Only used if auto_create_well=True",
+        description="The name of the sample. Only used if auto_create_sample=True",
     )
 
 

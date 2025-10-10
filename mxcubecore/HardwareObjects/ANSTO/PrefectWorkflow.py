@@ -550,7 +550,7 @@ class PrefectWorkflow(HardwareObject):
             self.redis_connection.delete(f"{collection_type}:{key}")
             self.redis_connection.delete(f"mxcube_common_params:{key}")
             return
-        if key == "auto_create_well":
+        if key == "auto_create_sample":
             value = 1 if value else 0
             self.redis_connection.set(f"mxcube_common_params:{key}", value)
         else:

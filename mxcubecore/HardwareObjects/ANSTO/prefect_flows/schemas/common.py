@@ -17,22 +17,22 @@ class DataCollectionDialogBoxBase(BaseModel):
     # photon_energy: float = Field(description="Photon energy in keV")
     transmission: float = Field(description="Measured in percentage")
     sample_id: int | None = None
-    auto_create_well: bool = Field(
+    auto_create_sample: bool = Field(
         default=False,
-        description="If True, a well will be added to the db automatically "
-        "if it does not exist (only used for trays, not pins)",
+        description="If True, a sample will be added to the db automatically "
+        "if it does not exist",
     )
     project_name: str | None = Field(
         default=None,
-        description="The name of the project. Only used if auto_create_well=True",
+        description="The name of the project. Only used if auto_create_sample=True",
     )
     lab_name: str | None = Field(
         default=None,
-        description="The name of the lab. Only used if auto_create_well=True",
+        description="The name of the lab. Only used if auto_create_sample=True",
     )
     sample_name: str | None = Field(
         default=None,
-        description="The name of the sample. Only used if auto_create_well=True",
+        description="The name of the sample. Only used if auto_create_sample=True",
     )
 
 
