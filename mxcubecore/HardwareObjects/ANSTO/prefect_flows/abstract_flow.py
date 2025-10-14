@@ -44,7 +44,7 @@ class AbstractPrefectWorkflow(ABC):
         True if a mxcubecore workflow is aborted, False otherwise. False, by default.
     """
 
-    def __init__(self, state, resolution: Resolution) -> None:
+    def __init__(self, state, resolution: Resolution, sample_name: str | None) -> None:
         """
         Parameters
         ----------
@@ -63,6 +63,7 @@ class AbstractPrefectWorkflow(ABC):
         super().__init__()
         self._state = state
         self.resolution = resolution
+        self.sample_name = sample_name
 
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
@@ -254,6 +255,10 @@ class AbstractPrefectWorkflow(ABC):
                     msg = f"Failed to add hand-mounted pin to the database: {r.text}"
                 logging.getLogger("user_level_log").error(msg)
                 raise QueueExecutionException(msg, self)
+            elif r.status_code == HTTPStatus.FORBIDDEN:
+                # Sample already exists in the db
+                # TODO, need sample id from the db of the sample that exists
+                pass
             else:
                 logging.getLogger("user_level_log").info(
                     f"Successfully added pin {r.json()['name']} to the database"
@@ -952,14 +957,18 @@ class AbstractPrefectWorkflow(ABC):
             The properties and conditional schemas for the tray dialog box.
         """
         head_type = self.get_head_type()
+        allow_edit = self.sample_name is None
         if head_type == "Plate":
             title = "Auto Create Well"
+            required = ["project_name"]
         elif head_type == "SmartMagnet":
             title = "Hand-mount Pin"
+            required = ["project_name", "sample_name"]
         else:
             msg = f"Head type {head_type} is not implemented for auto create sample"
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
+        
 
         properties: dict = {
             "auto_create_sample": {
@@ -967,6 +976,7 @@ class AbstractPrefectWorkflow(ABC):
                 "type": "boolean",
                 "default": self._get_dialog_box_param("auto_create_sample"),
                 "widget": "textarea",
+                "readOnly": not allow_edit,
             }
         }
 
@@ -1028,6 +1038,9 @@ class AbstractPrefectWorkflow(ABC):
         }
         if default_lab is not None and default_lab in lab_names:
             lab_field["default"] = default_lab
+        
+        if not allow_edit:
+            lab_field["readOnly"] = True
 
         # Show projects depending on the selected lab
         lab_conditionals = []
@@ -1046,18 +1059,32 @@ class AbstractPrefectWorkflow(ABC):
             if default_lab == lab_name and default_project in project_paths:
                 project_name_schema["default"] = default_project
 
+            if not allow_edit:
+                project_name_schema["readOnly"] = True
+
+            # Sample name field configuration
+            if allow_edit:
+                sample_name_field = {
+                    "title": "Sample Name (Optional)",
+                    "type": "string",
+                }
+            else:
+                sample_name_field = {
+                    "title": "Sample Name",
+                    "type": "string",
+                    "default": self.sample_name,
+                    "readOnly": True,
+                }
+
             lab_conditionals.append(
                 {
                     "if": {"properties": {"lab_name": {"const": lab_name}}},
                     "then": {
                         "properties": {
                             "project_name": project_name_schema,
-                            "sample_name": {
-                                "title": "Sample Name (Optional)",
-                                "type": "string",
-                            },
+                            "sample_name": sample_name_field
                         },
-                        "required": ["project_name"],
+                        "required": required,
                     },
                 }
             )

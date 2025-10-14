@@ -15,8 +15,8 @@ from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class OneShotFlow(AbstractPrefectWorkflow):
-    def __init__(self, state, resolution: Resolution):
-        super().__init__(state, resolution)
+    def __init__(self, state, resolution: Resolution, sample_name: str | None) -> None:
+        super().__init__(state, resolution, sample_name)
 
         self._collection_type = "one_shot"
 
