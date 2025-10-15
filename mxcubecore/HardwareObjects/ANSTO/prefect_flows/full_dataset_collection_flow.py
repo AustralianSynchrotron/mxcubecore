@@ -15,8 +15,8 @@ from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class FullDatasetFlow(AbstractPrefectWorkflow):
-    def __init__(self, state, resolution: Resolution):
-        super().__init__(state, resolution)
+    def __init__(self, state, resolution: Resolution, sample_id: int | None):
+        super().__init__(state, resolution, sample_id=sample_id)
 
         self._collection_type = "full_dataset"
 
@@ -56,9 +56,15 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
-            logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
-            logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
+            if self.sample_id is None:
+                logging.getLogger("HWR").info("Getting sample from the data layer...")
+                sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
+                logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
+            else:
+                logging.getLogger("HWR").info(
+                    f"Hand-mount mode, sample id: {self.sample_id}"
+                )
+                sample_id = self.sample_id
 
         else:
             logging.getLogger("HWR").warning(

@@ -361,6 +361,13 @@ class PrefectWorkflow(HardwareObject):
         logging.getLogger("HWR").info(f"workflow name: {self.workflow_name}")
         logging.getLogger("HWR").info(f"list_arguments: {list_arguments}")
         self.list_arguments = list_arguments
+        # Mxcube returns a list (not pretty, should return dict).
+        # It also returns -1 if not set, would be easier if it returned None
+        sample_id = list_arguments[15]
+        if sample_id == "-1":
+            sample_id = None
+        else:
+            sample_id = int(sample_id)
 
         if not self.gevent_event.is_set():
             self.gevent_event.set()
@@ -393,16 +400,22 @@ class PrefectWorkflow(HardwareObject):
             self.state.value = "RUNNING"
             time0 = time.time()
             logging.getLogger("HWR").info("Starting prefect flow")
-            self.start_prefect_workflow()
+            self.start_prefect_workflow(sample_id=sample_id)
             time1 = time.time()
             logging.getLogger("HWR").info(
                 f"Time to execute workflow (s): {time1 - time0}"
             )
         self.state.value = "ON"
 
-    def start_prefect_workflow(self) -> None:
+    def start_prefect_workflow(self, sample_id: int | None) -> None:
         """
         Executes a prefect flow
+
+        Parameters
+        ----------
+        sample_id : int | None
+            The id of the sample to be used in the workflow. If not
+            None, then the sample has been hand-mounted.
 
         Returns
         -------
@@ -416,7 +429,7 @@ class PrefectWorkflow(HardwareObject):
         if self.workflow_name == PrefectFlows.screen_sample:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.screening_flow = ScreeningFlow(
-                state=self._state, resolution=self.resolution
+                state=self._state, resolution=self.resolution, sample_id=sample_id
             )
             dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
             if dialog_box_parameters:
@@ -432,7 +445,7 @@ class PrefectWorkflow(HardwareObject):
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.full_dataset_flow = FullDatasetFlow(
-                state=self._state, resolution=self.resolution
+                state=self._state, resolution=self.resolution, sample_id=sample_id
             )
             dialog_box_parameters = self.open_dialog(
                 self.full_dataset_flow.dialog_box()
@@ -453,6 +466,7 @@ class PrefectWorkflow(HardwareObject):
                 state=self._state,
                 redis_connection=self.redis_connection,
                 resolution=self.resolution,
+                sample_id=sample_id,
             )
             dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
             if dialog_box_parameters:
@@ -468,7 +482,7 @@ class PrefectWorkflow(HardwareObject):
         elif self.workflow_name == PrefectFlows.one_shot:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
             self.one_shot_flow = OneShotFlow(
-                state=self._state, resolution=self.resolution
+                state=self._state, resolution=self.resolution, sample_id=sample_id
             )
             dialog_box_parameters = self.open_dialog(self.one_shot_flow.dialog_box())
             if dialog_box_parameters:
