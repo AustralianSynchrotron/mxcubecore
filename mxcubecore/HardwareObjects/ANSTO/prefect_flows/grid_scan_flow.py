@@ -32,8 +32,9 @@ class GridScanFlow(AbstractPrefectWorkflow):
         resolution: Resolution,
         redis_connection: redis.StrictRedis,
         sample_view: SampleView,
+        sample_id: int | None,
     ) -> None:
-        super().__init__(state, resolution)
+        super().__init__(state, resolution, sample_id=sample_id)
 
         self.redis_connection = redis_connection
         self.sample_view = sample_view
@@ -74,9 +75,15 @@ class GridScanFlow(AbstractPrefectWorkflow):
         head_type = self.get_head_type()
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
-            logging.getLogger("HWR").info("Getting sample from the data layer...")
-            sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
-            logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
+            if self.sample_id is None:
+                logging.getLogger("HWR").info("Getting sample from the data layer...")
+                sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
+                logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
+            else:
+                logging.getLogger("HWR").info(
+                    f"Hand-mount mode, sample id: {self.sample_id}"
+                )
+                sample_id = self.sample_id
 
         else:
             logging.getLogger("HWR").warning(

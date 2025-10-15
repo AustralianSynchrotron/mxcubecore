@@ -44,7 +44,7 @@ class AbstractPrefectWorkflow(ABC):
         True if a mxcubecore workflow is aborted, False otherwise. False, by default.
     """
 
-    def __init__(self, state, resolution: Resolution) -> None:
+    def __init__(self, state, resolution: Resolution, sample_id: int | None) -> None:
         """
         Parameters
         ----------
@@ -63,6 +63,7 @@ class AbstractPrefectWorkflow(ABC):
         super().__init__()
         self._state = state
         self.resolution = resolution
+        self.sample_id = sample_id
 
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
