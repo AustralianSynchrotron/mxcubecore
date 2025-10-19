@@ -166,7 +166,13 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "processing_pipeline": {
                 "title": "Data Processing Pipeline",
                 "type": "string",
-                "enum": ["dials", "fast_dp", "dials_and_fast_dp"],
+                "enum": [
+                    "dials",
+                    "fast_dp",
+                    "dials_and_fast_dp",
+                    "fast_dp_and_xia2",
+                    "xia2",
+                ],
                 "default": self._get_dialog_box_param("processing_pipeline"),
             },
             "crystal_counter": {
