@@ -61,6 +61,10 @@ class MicrodiffCamera(HardwareObject):
             os.path.dirname(__file__), "camera_unavailable.jpg"
         )
         self.placeholder_img = Image.open(placeholder_path)
+        with BytesIO() as f:
+            self.placeholder_img.convert("RGB").save(f, format="JPEG")
+            f.seek(0)
+            self.placeholder_img_bytes = f.getvalue()
 
     def _init(self) -> None:
         """Object initialization - executed before loading contents
@@ -189,21 +193,12 @@ class MicrodiffCamera(HardwareObject):
                 f"Error while getting camera image, emitting placeholder: {ex}"
             )
             # If error occurs, emit placeholder image
-            try:
-                self.height = self.placeholder_img.height
-                self.width = self.placeholder_img.width
-                with BytesIO() as f:
-                    self.placeholder_img.convert("RGB").save(f, format="JPEG")
-                    f.seek(0)
-                    img_bin_str = f.getvalue()
-                self.emit("imageReceived", img_bin_str, self.height, self.width)
-            except Exception as load_ex:
-                logging.getLogger("HWR").error(
-                    f"Failed to load placeholder image: {load_ex}"
-                )
-                return -1
+            self.height = self.placeholder_img.height
+            self.width = self.placeholder_img.width
+            self.emit(
+                "imageReceived", self.placeholder_img_bytes, self.height, self.width
+            )
 
-            # Toggle flags to manage logging cadence
             self._print_cam_success = True
             self._print_cam_error_null = True
             self._print_cam_error_size = True
