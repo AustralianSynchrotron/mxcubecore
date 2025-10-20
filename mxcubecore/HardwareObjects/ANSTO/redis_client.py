@@ -145,12 +145,12 @@ class RedisClient(redis.Redis):
         ):
             try:
                 rep = self._attr_pubsub.get_message()
-            except redis.exceptions.ConnectionError:
-                # Re-subscribe to attribute pattern after connection hiccup
+            except redis.exceptions.ConnectionError as e:
+                print(f"MD3 redis connection error while getting attribute message: {e}")
                 try:
                     self._attr_pubsub.psubscribe("*:ATTR:*")
-                except redis.exceptions.ConnectionError:
-                    pass
+                except redis.exceptions.ConnectionError as e:
+                    print(f"MD3 redis connection error while subscribing to attribute: {e}")
                 time.sleep(0.01)
                 continue
         return (
@@ -186,13 +186,13 @@ class RedisClient(redis.Redis):
                 )
             try:
                 msg = self._img_pubsub.get_message()
-            except redis.exceptions.ConnectionError:
-                print("Reconnection")
+            except redis.exceptions.ConnectionError as e:
+                print(f"MD3 redis connection error while polling image: {e}")
                 # Ensure correct channel formatting on reconnection
                 try:
                     self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
-                except redis.exceptions.ConnectionError:
-                    pass
+                except redis.exceptions.ConnectionError as e:
+                    print(f"MD3 redis connection error while subscribing to image: {e}")
                 time.sleep(0.01)
                 continue
             if msg is not None and not isinstance(msg["data"], int):
