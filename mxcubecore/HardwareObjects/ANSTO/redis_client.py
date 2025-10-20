@@ -146,18 +146,22 @@ class RedisClient(redis.Redis):
             try:
                 rep = self._attr_pubsub.get_message()
             except redis.exceptions.ConnectionError as e:
-                print(f"MD3 redis connection error while getting attribute message: {e}")
+                print(
+                    f"MD3 redis connection error while getting attribute message: {e}"
+                )
                 try:
                     self._attr_pubsub.psubscribe("*:ATTR:*")
                 except redis.exceptions.ConnectionError as e:
-                    print(f"MD3 redis connection error while subscribing to attribute: {e}")
+                    print(
+                        f"MD3 redis connection error while subscribing to attribute: {e}"
+                    )
                 time.sleep(0.01)
                 continue
         return (
             True if rep is not None and rep["data"].decode("utf-8") == "OK" else False
         )
 
-    def _poll_image(self, timeout: float = 0.5) -> tuple[bytes, int, int]:
+    def _poll_image(self, timeout: float = 0.2) -> tuple[bytes, int, int]:
         """
         This function is used to retrieve one image from the Redis video server.
 
@@ -182,7 +186,7 @@ class RedisClient(redis.Redis):
         while True:
             if time.perf_counter() - start > timeout:
                 raise NoFrameFoundError(
-                    f"No frame found within {timeout:.3f}s while waiting for image message"
+                    f"No frame found within {timeout}s while waiting for image message"
                 )
             try:
                 msg = self._img_pubsub.get_message()
@@ -220,7 +224,7 @@ class RedisClient(redis.Redis):
         if self._read_attribute("video_live") != 1:
             self._write_attribute("video_live", 1)
 
-        raw, self.width, self.height = self._poll_image(timeout=0.5)
+        raw, self.width, self.height = self._poll_image(settings.MD3_CAMERA_TIMEOUT)
         try:
             img = Image.frombytes(mode="RGB", size=(self.width, self.height), data=raw)
         except ValueError:
@@ -242,4 +246,5 @@ if __name__ == "__main__":
     }
     cam = RedisClient(default_args)
     print(np.array(cam.get_frame()))
-    print(cam.height, cam.width)
+    print("height:", cam.height)
+    print("width:", cam.width)
