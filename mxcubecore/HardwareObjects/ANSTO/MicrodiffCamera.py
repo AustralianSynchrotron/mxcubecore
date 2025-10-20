@@ -4,6 +4,7 @@ from io import BytesIO
 from threading import Thread
 
 import gevent
+from PIL import Image
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.configuration.ansto.config import settings
@@ -56,6 +57,15 @@ class MicrodiffCamera(HardwareObject):
 
         self.cam = None
 
+        placeholder_path = os.path.join(
+            os.path.dirname(__file__), "camera_unavailable.jpg"
+        )
+        self.placeholder_img = Image.open(placeholder_path)
+        with BytesIO() as f:
+            self.placeholder_img.convert("RGB").save(f, format="JPEG")
+            f.seek(0)
+            self.placeholder_img_bytes = f.getvalue()
+
     def _init(self) -> None:
         """Object initialization - executed before loading contents
 
@@ -80,8 +90,6 @@ class MicrodiffCamera(HardwareObject):
             "hybrid": "bzoom",
             "first": "acA2500-x5",
             "second": "acA2440-x30",
-            "capture": True,
-            "write_image": False,
         }
         self.cam = RedisClient(default_args)
 
@@ -140,6 +148,7 @@ class MicrodiffCamera(HardwareObject):
 
     def get_camera_image(self) -> int:
         """Get camera image by converting into RGB and in JPEG format.
+        If error occurs, a placeholder image is emitted.
 
         Returns
         -------
@@ -153,41 +162,20 @@ class MicrodiffCamera(HardwareObject):
             self.refreshing = False
 
         try:
-            # Max attempts with an interval of 0.1 seconds (60 seconds total)
-            max_attempts = 600
-            for attempt in range(max_attempts):
-                try:
-                    # Get camera image
-                    self.imgArray = self.cam.get_frame()
-                    self.height = self.imgArray.height
-                    self.width = self.imgArray.width
+            self.imgArray = self.cam.get_frame()
+            self.height = self.imgArray.height
+            self.width = self.imgArray.width
 
-                    img_rgb = self.imgArray
-                    if img_rgb.mode != "RGB":
-                        img_rgb = img_rgb.convert("RGB")
-                    with BytesIO() as f:
-                        img_rgb.save(f, format="JPEG")
-                        f.seek(0)
-                        img_bin_str = f.getvalue()
-                    break
-                except Exception as ex:
-                    if attempt < max_attempts - 1:
-                        if attempt % 20 == 0:
-                            # only log every 20 attempts (2 seconds)
-                            logging.getLogger("HWR").error(
-                                f"Error while getting camera image (attempt {attempt}), retrying...: {ex}"
-                            )
-                        gevent.sleep(0.1)
-                    else:
-                        logging.getLogger("HWR").error(
-                            "Failed to get camera image after 600 attempts."
-                        )
-                        return -1
+            img_rgb = self.imgArray
+            if img_rgb.mode != "RGB":
+                img_rgb = img_rgb.convert("RGB")
+            with BytesIO() as f:
+                img_rgb.save(f, format="JPEG")
+                f.seek(0)
+                img_bin_str = f.getvalue()
 
-            # Sent image to gui
+            # Send image to mxcubeweb
             self.emit("imageReceived", img_bin_str, self.height, self.width)
-            # logging.getLogger("HWR").debug('Got camera image: ' + \
-            # str(img_bin_str[0:10]))
             if self._print_cam_success:
                 logging.getLogger("HWR").info(
                     "ANSTO Camera is emitting images! Cam routine is ok."
@@ -199,14 +187,19 @@ class MicrodiffCamera(HardwareObject):
                 self._print_cam_error_format = True
             return 0
         except Exception as ex:
-            logging.getLogger("HWR").error(f"Error while getting camera image: {ex}")
-            if self._print_cam_error_format:
-                logging.getLogger("HWR").error("Error while formatting camera image")
+            logging.getLogger("HWR").error(
+                f"Error while getting camera image, emitting placeholder: {ex}"
+            )
+            self.height = self.placeholder_img.height
+            self.width = self.placeholder_img.width
+            self.emit(
+                "imageReceived", self.placeholder_img_bytes, self.height, self.width
+            )
 
-                self._print_cam_success = True
-                self._print_cam_error_null = True
-                self._print_cam_error_size = True
-                self._print_cam_error_format = False
+            self._print_cam_success = True
+            self._print_cam_error_null = True
+            self._print_cam_error_size = True
+            self._print_cam_error_format = False
             return 0
 
     def read_depth(self) -> float:
