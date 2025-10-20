@@ -2,6 +2,7 @@ import struct
 import time
 from typing import Union
 
+import numpy as np
 import redis
 from PIL import (
     Image,
@@ -43,15 +44,22 @@ class RedisClient(redis.Redis):
         self.height: int = None
         self.depth: int = None
 
-    def __init(self) -> bool:
+        img = self.get_frame()
+        try:
+            self.width, self.height, self.depth = np.array(img).shape
+        except ValueError:
+            self.depth = None
+            self.width, self.height = np.array(img).shape
+
+    def _initialise_client(self) -> bool:
         """
-        This function initializes the test client (ping to check connection, read cameras
+        This function initializes the client (ping to check connection, read cameras
         zoom levels & prepare image and attribute listeners)
 
         Returns
         -------
         bool
-            A boolean indicating if the test client was correctly initialized
+            A boolean indicating if the client was correctly initialized
         """
         # Ping
         try:
@@ -66,6 +74,10 @@ class RedisClient(redis.Redis):
         self._attr_pubsub.psubscribe("*:ATTR:*")
         while self._attr_pubsub.get_message() is None:
             continue
+        try:
+            self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
+        except redis.exceptions.ConnectionError:
+            pass
         return True
 
     def _read_attribute(
@@ -131,7 +143,16 @@ class RedisClient(redis.Redis):
         while (rep is None or rep["channel"].decode("utf-8") != attr_channel) and (
             time.perf_counter() - start_time < 2
         ):
-            rep = self._attr_pubsub.get_message()
+            try:
+                rep = self._attr_pubsub.get_message()
+            except redis.exceptions.ConnectionError:
+                # Re-subscribe to attribute pattern after connection hiccup
+                try:
+                    self._attr_pubsub.psubscribe("*:ATTR:*")
+                except redis.exceptions.ConnectionError:
+                    pass
+                time.sleep(0.01)
+                continue
         return (
             True if rep is not None and rep["data"].decode("utf-8") == "OK" else False
         )
@@ -168,7 +189,11 @@ class RedisClient(redis.Redis):
             except redis.exceptions.ConnectionError:
                 print("Reconnection")
                 # Ensure correct channel formatting on reconnection
-                self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
+                try:
+                    self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
+                except redis.exceptions.ConnectionError:
+                    pass
+                time.sleep(0.01)
                 continue
             if msg is not None and not isinstance(msg["data"], int):
                 break
@@ -188,15 +213,12 @@ class RedisClient(redis.Redis):
         Image
             An image object
         """
-        if not self.__init():
-            print("Test client could not be initialized, test is aborted.")
+        if not self._initialise_client():
+            print("MD3 redis client could not be initialized")
             return
 
         if self._read_attribute("video_live") != 1:
             self._write_attribute("video_live", 1)
-        # Subscribe to image channel
-        img_channel = self._cameras[0] + ":RAW"
-        self._img_pubsub.subscribe(img_channel)
 
         raw, self.width, self.height = self._poll_image(timeout=0.5)
         try:
@@ -211,8 +233,6 @@ class RedisClient(redis.Redis):
 
 
 if __name__ == "__main__":
-    import numpy as np
-
     default_args = {
         "host": settings.MD3_REDIS_HOST,
         "port": settings.MD3_REDIS_PORT,
