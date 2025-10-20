@@ -148,6 +148,7 @@ class MicrodiffCamera(HardwareObject):
 
     def get_camera_image(self) -> int:
         """Get camera image by converting into RGB and in JPEG format.
+        If error occurs, a placeholder image is emitted.
 
         Returns
         -------
@@ -161,7 +162,6 @@ class MicrodiffCamera(HardwareObject):
             self.refreshing = False
 
         try:
-            # Single attempt to get the camera image
             self.imgArray = self.cam.get_frame()
             self.height = self.imgArray.height
             self.width = self.imgArray.width
@@ -174,10 +174,8 @@ class MicrodiffCamera(HardwareObject):
                 f.seek(0)
                 img_bin_str = f.getvalue()
 
-            # Send image to GUI
+            # Send image to mxcubeweb
             self.emit("imageReceived", img_bin_str, self.height, self.width)
-            # logging.getLogger("HWR").debug('Got camera image: ' + \
-            # str(img_bin_str[0:10]))
             if self._print_cam_success:
                 logging.getLogger("HWR").info(
                     "ANSTO Camera is emitting images! Cam routine is ok."
@@ -192,7 +190,6 @@ class MicrodiffCamera(HardwareObject):
             logging.getLogger("HWR").error(
                 f"Error while getting camera image, emitting placeholder: {ex}"
             )
-            # If error occurs, emit placeholder image
             self.height = self.placeholder_img.height
             self.width = self.placeholder_img.width
             self.emit(
