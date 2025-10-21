@@ -280,9 +280,7 @@ class SampleChanger(AbstractSampleChanger):
 
         prefect_pin = {
             "id": sample_tuple[1],
-            "puck": {
-                "id": sample_tuple[0],
-            },
+            "puck": sample_tuple[0],
         }
         return prefect_pin
 
