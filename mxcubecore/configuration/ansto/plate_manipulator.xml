@@ -3,7 +3,7 @@
   
   <numCols>12</numCols>
   <numRows>8</numRows>
-  <numDrops>3</numDrops>
+  <numDrops>4</numDrops>
   
   <useUpdateTimer>True</useUpdateTimer>
   <object role="diffractometer" href="/md3"/>

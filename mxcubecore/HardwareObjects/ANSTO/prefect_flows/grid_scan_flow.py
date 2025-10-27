@@ -126,6 +126,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
             use_centring_table=use_centring_table,
+            detector_roi_mode=dialog_box_model.detector_roi_mode,
         )
 
         logging.getLogger("HWR").info(
@@ -349,6 +350,13 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 "maximum": 100,
                 "default": float(self._get_dialog_box_param("transmission")),
                 "widget": "textarea",
+            },
+            "detector_roi_mode": {
+                "title": "Detector ROI Mode",
+                "type": "string",
+                "enum": ["4M", "disabled"],
+                "default": str(self._get_dialog_box_param("detector_roi_mode")),
+                "widget": "select",
             },
         }
         tray_conditional: dict | None = None
