@@ -26,6 +26,7 @@ grid_scan:
   photon_energy: 13.0  # keV
   resolution: 1.5  # Ångström (16M)
   transmission: 1.0  # Percentage
+  detector_roi_mode: "4M"  # 4M or disabled
 
 one_shot:
   exposure_time: 0.5  # Total exposure time, seconds

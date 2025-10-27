@@ -1,4 +1,5 @@
 from typing import (
+    Literal,
     Optional,
     Union,
 )
@@ -10,6 +11,7 @@ from pydantic import (
 
 
 class GridScanDialogBox(BaseModel):
+    detector_roi_mode: Literal["4M", "disabled"]
     md3_alignment_y_speed: float
     # photon_energy: float
     transmission: float = Field(description="Measured in percentage")
@@ -33,6 +35,7 @@ class GridScanDialogBox(BaseModel):
 
 
 class GridScanParams(BaseModel):
+    detector_roi_mode: Literal["4M", "disabled"]
     sample_id: int
     grid_top_left_coordinate: Union[tuple[int, int], list[int]]
     grid_height: int
