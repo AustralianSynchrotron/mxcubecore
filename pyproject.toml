@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mxcubecore"
-version = "1.195.0.45"
+version = "1.195.0.46"
 license = "LGPL-3.0-or-later"
 description = "Core libraries for the MXCuBE application"
 authors = ["The MXCuBE collaboration <mxcube@esrf.fr>"]
@@ -51,7 +51,7 @@ requests = "^2.31.0"
 colorama = "^0.4.6"
 prefect = { version = "3.4.22", optional = true, python = ">=3.10"  }
 cachetools = ">=5.3.3"
-mx3-beamline-library = { git = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git", rev = "v2.4.3", python = ">=3.11,<3.12" }
+mx3-beamline-library = { git = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git", rev = "v2.4.4", python = ">=3.11,<3.12" }
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.5.0"
