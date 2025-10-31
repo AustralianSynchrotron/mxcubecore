@@ -1,19 +1,16 @@
-
-
-
 import struct
-from gevent import time
 from typing import Union
 
 import numpy as np
 import redis
+from gevent import time
 from PIL import (
     Image,
     ImageOps,
 )
+from redis.exceptions import ConnectionError
 
 from mxcubecore.configuration.ansto.config import settings
-from redis.exceptions import ConnectionError
 
 INT, FLOAT, STRING = 0, 1, 2
 IS_RANGE_IDX = 1
@@ -82,9 +79,7 @@ class RedisClient(redis.Redis):
         try:
             self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
         except ConnectionError as ex:
-            raise ConnectionError(
-                f"Could not subscribe to image channel: {ex}"
-            ) from ex
+            raise ConnectionError(f"Could not subscribe to image channel: {ex}") from ex
         return True
 
     def _read_attribute(
@@ -191,9 +186,7 @@ class RedisClient(redis.Redis):
                 msg = self._img_pubsub.get_message()
             except ConnectionError as e:
                 msg = f"MD3 redis connection error while getting image message: {e}"
-                print(
-                    msg
-                )
+                print(msg)
                 raise ConnectionError(msg) from e
             if msg is not None and not isinstance(msg["data"], int):
                 break
