@@ -1,23 +1,22 @@
-
-
 import logging
 import os
 from io import BytesIO
 
 import gevent
+from gevent import monkey  # noqa
 from PIL import Image
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.configuration.ansto.config import settings
 
-
-from gevent import monkey # noqa
 # Important to patch socket for redis to work properly with gevent
-monkey.patch_socket() # noqa
-from mxcubecore.HardwareObjects.ANSTO.redis_client import RedisClient, NoFrameFoundError
+monkey.patch_socket()  # noqa
 from redis.exceptions import ConnectionError
 
-
+from mxcubecore.HardwareObjects.ANSTO.redis_client import (
+    NoFrameFoundError,
+    RedisClient,
+)
 
 
 class MicrodiffCamera(HardwareObject):
@@ -127,45 +126,33 @@ class MicrodiffCamera(HardwareObject):
         return video_sizes
 
     def image_generator(self) -> None:
-        """Camera image acquisition loop, exits when liveState is False. Closes Redis connection on exit."""
-        md3_redis_client = None
+        """Get images from the MD3 redis server.
+        If a ConnectionError occurs, a placeholder image is emitted and
+        we try to reconnect to the redis server.
+        """
         while self.liveState:
             try:
-                if md3_redis_client is None:
-                    try:
-                        md3_redis_client = RedisClient(self.camera_args)
-                    except ConnectionError as ce:
-                        logging.getLogger("HWR").error(f"Redis connection error: {ce}, retrying in 0.1s...")
-                        gevent.sleep(0.1)
-                        self._emit_placeholder_image(ce)
-                        continue
-                self.get_camera_image(md3_redis_client)
-            except ConnectionError as ce:
-                logging.getLogger("HWR").error(f"Redis connection lost: {ce}, reconnecting...")
+                with RedisClient(self.camera_args) as md3_redis_client:
+                    while self.liveState:
+                        try:
+                            self.get_camera_image(md3_redis_client)
+                        except ConnectionError as ce:
+                            logging.getLogger("HWR").error(
+                                f"Redis connection lost: {ce}, reconnecting..."
+                            )
+                            self._emit_placeholder_image(ce)
+                            gevent.sleep(0.02)
+                            break
+                        except Exception as e:
+                            logging.getLogger("HWR").error(f"Error in image generator: {e}")
+                            self._emit_placeholder_image(e)
+                            break
+            except Exception as ce:
+                logging.getLogger("HWR").error(
+                    f"Redis error: {ce}, retrying in 0.1s..."
+                )
                 self._emit_placeholder_image(ce)
-                if md3_redis_client:
-                    try:
-                        md3_redis_client.close()
-                    except Exception as e:
-                        self._emit_placeholder_image(e)
-                        pass
-                md3_redis_client = None
                 gevent.sleep(0.1)
-            except Exception as e:
-                logging.getLogger("HWR").error(f"Error in image generator: {e}")
-                self._emit_placeholder_image(e)
-                if md3_redis_client:
-                    try:
-                        md3_redis_client.close()
-                    except Exception as e:
-                        self._emit_placeholder_image(e)
-                break
-        
-        if md3_redis_client:
-            try:
-                md3_redis_client.close()
-            except Exception:
-                pass
 
     def get_camera_image(self, md3_redis_client: RedisClient) -> int:
         """Get camera image by converting into RGB and in JPEG format.
@@ -204,20 +191,17 @@ class MicrodiffCamera(HardwareObject):
             self._emit_placeholder_image(ex)
 
     def _emit_placeholder_image(self, ex: NoFrameFoundError) -> None:
-            logging.getLogger("HWR").error(
-                f"Error while getting camera image, emitting placeholder: {ex}"
-            )
-            self.height = self.placeholder_img.height
-            self.width = self.placeholder_img.width
-            self.emit(
-                "imageReceived", self.placeholder_img_bytes, self.height, self.width
-            )
+        logging.getLogger("HWR").error(
+            f"Error while getting camera image, emitting placeholder: {ex}"
+        )
+        self.height = self.placeholder_img.height
+        self.width = self.placeholder_img.width
+        self.emit("imageReceived", self.placeholder_img_bytes, self.height, self.width)
 
-            self._print_cam_success = True
-            self._print_cam_error_null = True
-            self._print_cam_error_size = True
-            self._print_cam_error_format = False
-
+        self._print_cam_success = True
+        self._print_cam_error_null = True
+        self._print_cam_error_size = True
+        self._print_cam_error_format = False
 
     def read_depth(self) -> float:
         """Get the depth of the camera image
@@ -426,7 +410,7 @@ class MicrodiffCamera(HardwareObject):
                 self.imagegen.join(timeout=1)
                 self.imagegen = None
         return True
-        
+
     def take_snapshots_procedure(
         self,
         image_count: int,
