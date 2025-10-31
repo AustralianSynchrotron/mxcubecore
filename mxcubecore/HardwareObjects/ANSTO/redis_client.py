@@ -1,5 +1,8 @@
+
+
+
 import struct
-import time
+from gevent import time
 from typing import Union
 
 import numpy as np
@@ -10,6 +13,7 @@ from PIL import (
 )
 
 from mxcubecore.configuration.ansto.config import settings
+from redis.exceptions import ConnectionError
 
 INT, FLOAT, STRING = 0, 1, 2
 IS_RANGE_IDX = 1
@@ -64,9 +68,10 @@ class RedisClient(redis.Redis):
         # Ping
         try:
             self.ping()
-        except redis.exceptions.ConnectionError as e:
-            print(e)
-            return False
+        except ConnectionError as e:
+            msg = f"Could not connect to MD3 redis server: {e}"
+            print(msg)
+            raise ConnectionError(msg) from e
         # Create clients to listen to attribute and image channels
         self._attr_pubsub = self.pubsub()
         self._img_pubsub = self.pubsub()
@@ -76,8 +81,10 @@ class RedisClient(redis.Redis):
             continue
         try:
             self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
-        except redis.exceptions.ConnectionError:
-            pass
+        except ConnectionError as ex:
+            raise ConnectionError(
+                f"Could not subscribe to image channel: {ex}"
+            ) from ex
         return True
 
     def _read_attribute(
@@ -145,18 +152,10 @@ class RedisClient(redis.Redis):
         ):
             try:
                 rep = self._attr_pubsub.get_message()
-            except redis.exceptions.ConnectionError as e:
-                print(
-                    f"MD3 redis connection error while getting attribute message: {e}"
-                )
-                try:
-                    self._attr_pubsub.psubscribe("*:ATTR:*")
-                except redis.exceptions.ConnectionError as e:
-                    print(
-                        f"MD3 redis connection error while subscribing to attribute: {e}"
-                    )
-                time.sleep(0.01)
-                continue
+            except ConnectionError as e:
+                msg = f"MD3 redis connection error while getting attribute message: {e}"
+                print(msg)
+                raise ConnectionError(msg) from e
         return (
             True if rep is not None and rep["data"].decode("utf-8") == "OK" else False
         )
@@ -190,15 +189,12 @@ class RedisClient(redis.Redis):
                 )
             try:
                 msg = self._img_pubsub.get_message()
-            except redis.exceptions.ConnectionError as e:
-                print(f"MD3 redis connection error while polling image: {e}")
-                # Ensure correct channel formatting on reconnection
-                try:
-                    self._img_pubsub.subscribe(self._cameras[0] + ":RAW")
-                except redis.exceptions.ConnectionError as e:
-                    print(f"MD3 redis connection error while subscribing to image: {e}")
-                time.sleep(0.01)
-                continue
+            except ConnectionError as e:
+                msg = f"MD3 redis connection error while getting image message: {e}"
+                print(
+                    msg
+                )
+                raise ConnectionError(msg) from e
             if msg is not None and not isinstance(msg["data"], int):
                 break
             time.sleep(0.001)
