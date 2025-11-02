@@ -48,7 +48,7 @@ class MicrodiffCamera(HardwareObject):
 
         self.liveState = False
         self.refreshing = False
-        self.imagegen = None
+        self.image_gen = None
         self.refreshgen = None
         self.qImage = None
         self.qImageHalf = None
@@ -144,7 +144,9 @@ class MicrodiffCamera(HardwareObject):
                             gevent.sleep(0.02)
                             break
                         except Exception as e:
-                            logging.getLogger("HWR").error(f"Error in image generator: {e}")
+                            logging.getLogger("HWR").error(
+                                f"Error in image generator: {e}"
+                            )
                             self._emit_placeholder_image(e)
                             break
             except Exception as ce:
@@ -399,16 +401,16 @@ class MicrodiffCamera(HardwareObject):
             return
 
         if live:
-            if self.imagegen and not self.imagegen.dead:
+            if self.image_gen and not self.image_gen.dead:
                 self.liveState = False
-                self.imagegen.join(timeout=1)
+                self.image_gen.join(timeout=1)
             self.liveState = True
-            self.imagegen = gevent.spawn(self.image_generator)
+            self.image_gen = gevent.spawn(self.image_generator)
         else:
             self.liveState = False
-            if self.imagegen and not self.imagegen.dead:
-                self.imagegen.join(timeout=1)
-                self.imagegen = None
+            if self.image_gen and not self.image_gen.dead:
+                self.image_gen.join(timeout=1)
+                self.image_gen = None
         return True
 
     def take_snapshots_procedure(
