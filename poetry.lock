@@ -457,7 +457,7 @@ description = "Foreign Function Interface for Python calling C code."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "platform_python_implementation == \"CPython\" and python_version == \"3.8\" and sys_platform == \"win32\""
+markers = "platform_python_implementation == \"CPython\" and sys_platform == \"win32\" and python_version == \"3.8\""
 files = [
     {file = "cffi-1.17.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:df8b1c11f177bc2313ec4b2d46baec87a5f3e71fc8b45dab2ee7cae86d9aba14"},
     {file = "cffi-1.17.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8f2cdc858323644ab277e9bb925ad72ae0e67f69e804f4898c070998d50b1a67"},
@@ -5355,7 +5355,7 @@ description = "C parser in Python"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "platform_python_implementation == \"CPython\" and sys_platform == \"win32\" and implementation_name != \"PyPy\" or platform_python_implementation == \"CPython\" and python_version == \"3.8\" and sys_platform == \"win32\" or python_version >= \"3.10\" and extra == \"prefect\" and implementation_name != \"PyPy\" and platform_python_implementation != \"PyPy\""
+markers = "implementation_name != \"PyPy\" and platform_python_implementation == \"CPython\" and sys_platform == \"win32\" or implementation_name != \"PyPy\" and extra == \"prefect\" and python_version >= \"3.10\" and platform_python_implementation != \"PyPy\" or python_version == \"3.8\" and platform_python_implementation == \"CPython\" and sys_platform == \"win32\""
 files = [
     {file = "pycparser-2.23-py3-none-any.whl", hash = "sha256:e5c6e8d3fbad53479cab09ac03729e0a9faf2bee3db8208a550daf5af81a5934"},
     {file = "pycparser-2.23.tar.gz", hash = "sha256:78816d4f24add8f10a06d6f05b4d424ad9e96cfebf68a4ddc99c65c0720d00c2"},
@@ -5738,7 +5738,7 @@ description = "Python bindings for the cppTango library; part of the Tango Distr
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"tango\""
+markers = "extra == \"tango\" and python_version >= \"3.9\""
 files = [
     {file = "pytango-9.5.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:3efaf8c81ada483b5be966ba2cecc25dcbbf2acd6964cabaf402f3d2740d4d14"},
     {file = "pytango-9.5.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2da78750ecb95ad8ffc179c11053de7c46c8c65f6f99ec24a69739e2f246bd52"},
@@ -7684,7 +7684,7 @@ files = [
     {file = "tomli-2.3.0-py3-none-any.whl", hash = "sha256:e95b1af3c5b07d9e643909b5abbec77cd9f1217e6d0bca72b0234736b9fb1f1b"},
     {file = "tomli-2.3.0.tar.gz", hash = "sha256:64be704a875d2a59753d80ee8a533c3fe183e3f06807ff7dc2232938ccb01549"},
 ]
-markers = {main = "python_version < \"3.11\" and (python_full_version <= \"3.10.0\" or extra == \"prefect\")", dev = "python_version < \"3.11\""}
+markers = {main = "python_version < \"3.11\" and (extra == \"prefect\" or python_full_version <= \"3.10.0\")", dev = "python_version < \"3.11\""}
 
 [[package]]
 name = "toolz"

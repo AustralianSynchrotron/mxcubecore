@@ -1,14 +1,22 @@
 import logging
 import os
 from io import BytesIO
-from threading import Thread
 
 import gevent
+from gevent import monkey  # noqa
 from PIL import Image
 
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.ANSTO.redis_client import RedisClient
+
+# Important to patch socket for redis to work properly with gevent
+monkey.patch_socket()  # noqa
+from redis.exceptions import ConnectionError
+
+from mxcubecore.HardwareObjects.ANSTO.redis_client import (
+    NoFrameFoundError,
+    RedisClient,
+)
 
 
 class MicrodiffCamera(HardwareObject):
@@ -40,9 +48,8 @@ class MicrodiffCamera(HardwareObject):
 
         self.liveState = False
         self.refreshing = False
-        self.imagegen = None
+        self.image_gen = None
         self.refreshgen = None
-        self.imgArray = None
         self.qImage = None
         self.qImageHalf = None
         self.delay = None
@@ -54,8 +61,6 @@ class MicrodiffCamera(HardwareObject):
         self._print_cam_error_null = True
         self._print_cam_error_size = True
         self._print_cam_error_format = True
-
-        self.cam = None
 
         placeholder_path = os.path.join(
             os.path.dirname(__file__), "camera_unavailable.jpg"
@@ -84,14 +89,13 @@ class MicrodiffCamera(HardwareObject):
         None
         """
 
-        default_args = {
+        self.camera_args = {
             "host": settings.MD3_REDIS_HOST,
             "port": settings.MD3_REDIS_PORT,
             "hybrid": "bzoom",
             "first": "acA2500-x5",
             "second": "acA2440-x30",
         }
-        self.cam = RedisClient(default_args)
 
         self.read_sizes()
         # Start camera image acquisition
@@ -121,32 +125,38 @@ class MicrodiffCamera(HardwareObject):
 
         return video_sizes
 
-    def poll(self) -> None:
-        """Poll/Acquisition of the camera images.
-
-        Returns
-        -------
-        None
-        """
-        logging.getLogger("HWR").debug("ANSTO Camera image acquiring has started.")
-
-        self.image_generator(self.delay)
-
-    def image_generator(self, delay: float) -> None:
-        """Stop camera image acquisition.
-
-        Parameters
-        ----------
-        delay : float
-            Delay to wait the acquisition process.
+    def image_generator(self) -> None:
+        """Get images from the MD3 redis server.
+        If a ConnectionError occurs, a placeholder image is emitted and
+        we try to reconnect to the redis server.
         """
         while self.liveState:
-            self.get_camera_image()
-            gevent.sleep(delay)
+            try:
+                with RedisClient(self.camera_args) as md3_redis_client:
+                    while self.liveState:
+                        try:
+                            self.get_camera_image(md3_redis_client)
+                        except ConnectionError as ce:
+                            logging.getLogger("HWR").error(
+                                f"Redis connection lost: {ce}, reconnecting..."
+                            )
+                            self._emit_placeholder_image(ce)
+                            gevent.sleep(0.02)
+                            break
+                        except Exception as e:
+                            logging.getLogger("HWR").error(
+                                f"Error in image generator: {e}"
+                            )
+                            self._emit_placeholder_image(e)
+                            break
+            except Exception as ce:
+                logging.getLogger("HWR").error(
+                    f"Redis error: {ce}, retrying in 0.1s..."
+                )
+                self._emit_placeholder_image(ce)
+                gevent.sleep(0.1)
 
-        logging.getLogger("HWR").debug("ANSTO Camera image acquiring has stopped.")
-
-    def get_camera_image(self) -> int:
+    def get_camera_image(self, md3_redis_client: RedisClient) -> int:
         """Get camera image by converting into RGB and in JPEG format.
         If error occurs, a placeholder image is emitted.
 
@@ -155,18 +165,12 @@ class MicrodiffCamera(HardwareObject):
         int
             Returns -1 for error and 0 for success
         """
-
-        if self.refreshing:
-            logging.getLogger("user_level_log").info("Camera was refreshed!")
-
-            self.refreshing = False
-
         try:
-            self.imgArray = self.cam.get_frame()
-            self.height = self.imgArray.height
-            self.width = self.imgArray.width
+            imgArray = md3_redis_client.get_frame()
+            self.height = imgArray.height
+            self.width = imgArray.width
 
-            img_rgb = self.imgArray
+            img_rgb = imgArray
             if img_rgb.mode != "RGB":
                 img_rgb = img_rgb.convert("RGB")
             with BytesIO() as f:
@@ -185,22 +189,21 @@ class MicrodiffCamera(HardwareObject):
                 self._print_cam_error_null = True
                 self._print_cam_error_size = True
                 self._print_cam_error_format = True
-            return 0
-        except Exception as ex:
-            logging.getLogger("HWR").error(
-                f"Error while getting camera image, emitting placeholder: {ex}"
-            )
-            self.height = self.placeholder_img.height
-            self.width = self.placeholder_img.width
-            self.emit(
-                "imageReceived", self.placeholder_img_bytes, self.height, self.width
-            )
+        except NoFrameFoundError as ex:
+            self._emit_placeholder_image(ex)
 
-            self._print_cam_success = True
-            self._print_cam_error_null = True
-            self._print_cam_error_size = True
-            self._print_cam_error_format = False
-            return 0
+    def _emit_placeholder_image(self, ex: NoFrameFoundError) -> None:
+        logging.getLogger("HWR").error(
+            f"Error while getting camera image, emitting placeholder: {ex}"
+        )
+        self.height = self.placeholder_img.height
+        self.width = self.placeholder_img.width
+        self.emit("imageReceived", self.placeholder_img_bytes, self.height, self.width)
+
+        self._print_cam_success = True
+        self._print_cam_error_null = True
+        self._print_cam_error_size = True
+        self._print_cam_error_format = False
 
     def read_depth(self) -> float:
         """Get the depth of the camera image
@@ -392,40 +395,23 @@ class MicrodiffCamera(HardwareObject):
         # Start a new thread to don't freeze UI
         self.refreshgen = gevent.spawn(self.refresh_camera_procedure)
 
-    def set_live(self, live: bool) -> bool:
-        """Start/Stop the camera image acquisition.
+    def set_live(self, live):
+        logging.getLogger("HWR").info(f"Setting camera live {live}")
+        if live and self.liveState == live:
+            return
 
-        Parameters
-        ----------
-        live : bool
-            A boolean flag to start/stop the acquisition.
-
-        Returns
-        -------
-        bool
-            Status of the acquisition.
-        """
-        try:
-            if live and self.liveState == live:
-                return
-
-            self.liveState = live
-
-            if live:
-                logging.getLogger("HWR").info("ANSTO Camera is going to poll images")
-
-                self.delay = settings.MD3_CAMERA_DELAY
-
-                thread = Thread(target=self.poll, daemon=True)
-                thread.start()
-            else:
-                self.stop_camera()
-
-            return True
-        except Exception:
-            logging.getLogger("HWR").error("Error while polling images")
-
-            return False
+        if live:
+            if self.image_gen and not self.image_gen.dead:
+                self.liveState = False
+                self.image_gen.join(timeout=1)
+            self.liveState = True
+            self.image_gen = gevent.spawn(self.image_generator)
+        else:
+            self.liveState = False
+            if self.image_gen and not self.image_gen.dead:
+                self.image_gen.join(timeout=1)
+                self.image_gen = None
+        return True
 
     def take_snapshots_procedure(
         self,
@@ -641,5 +627,4 @@ class MicrodiffCamera(HardwareObject):
         """
         logging.getLogger("HWR").exception(f"{self.__class__.__name__} - __del__()!")
 
-        self.stop_camera()
         self.set_live(False)

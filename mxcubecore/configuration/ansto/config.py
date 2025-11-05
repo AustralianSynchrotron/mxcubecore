@@ -51,7 +51,7 @@ class MD3(BaseSettings):
     EXPORTER_ADDRESS: str = Field("127.0.0.0:1234", env="EXPORTER_ADDRESS")
     MD3_CAMERA_DELAY: float = Field(0.0, env="MD3_CAMERA_DELAY")
     MD3_CAMERA_TIMEOUT: float = Field(
-        0.1,
+        0.2,
         env="MD3_CAMERA_TIMEOUT",
         description="Timeout in seconds when polling for an image from MD3 Redis "
         "before emitting a placeholder image",
