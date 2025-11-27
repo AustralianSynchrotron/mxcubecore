@@ -56,13 +56,13 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         dialog_box_model = PartialUDCDialogBox.model_validate(dialog_box_parameters)
         head_type = self.get_head_type()
 
-        gs_model = dialog_box_model.grid_scan
-        sc_model = dialog_box_model.screening
+        grid_scan_model = dialog_box_model.grid_scan
+        screening_model = dialog_box_model.screening
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             if self.sample_id is None:
                 logging.getLogger("HWR").info("Getting sample from the data layer...")
-                sample_id = self.get_sample_id_of_mounted_sample(gs_model)
+                sample_id = self.get_sample_id_of_mounted_sample(grid_scan_model)
                 logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
             else:
                 logging.getLogger("HWR").info(
@@ -104,30 +104,30 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             optical_centering=OpticalCenteringParams(
                 beam_position=(612, 512),
                 extra_config=OpticalCenteringExtraConfig(grid_height_scale_factor=2),
-                grid_step=self.grid_step_map[gs_model.grid_step],
+                grid_step=self.grid_step_map[grid_scan_model.grid_step],
                 calibrated_alignment_z=0.85,  # TODO: maybe get from redis?
             ),
             grid_scan=GridScanParams(
                 omega_range=0,
-                md3_alignment_y_speed=gs_model.md3_alignment_y_speed,
+                md3_alignment_y_speed=grid_scan_model.md3_alignment_y_speed,
                 detector_distance=detector_distance,
                 photon_energy=photon_energy,
-                transmission=gs_model.transmission / 100,
+                transmission=grid_scan_model.transmission / 100,
                 crystal_finder_threshold=1,  # TODO: can user set this?
                 number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
             ),
             screening=ScreeningParams(
-                omega_range=sc_model.omega_range,
-                exposure_time=sc_model.exposure_time,
+                omega_range=screening_model.omega_range,
+                exposure_time=screening_model.exposure_time,
                 number_of_passes=1,
                 count_time=None,
-                number_of_frames=sc_model.number_of_frames,
+                number_of_frames=screening_model.number_of_frames,
                 detector_distance=self._resolution_to_distance(
-                    sc_model.resolution,
+                    screening_model.resolution,
                     energy=photon_energy,
                 ),
                 photon_energy=photon_energy,
-                transmission=sc_model.transmission / 100,
+                transmission=screening_model.transmission / 100,
                 beam_size=(80, 80),
             ),
             full_dataset=None,
@@ -146,8 +146,8 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         )
 
         # Remember the collection params for the next collection
-        self._save_dialog_box_params_to_redis(gs_model, collection_type="grid_scan")
-        self._save_dialog_box_params_to_redis(sc_model, collection_type="screening")
+        self._save_dialog_box_params_to_redis(grid_scan_model, collection_type="grid_scan")
+        self._save_dialog_box_params_to_redis(screening_model, collection_type="screening")
         partial_udc_flow = MX3SyncPrefectClient(
             name=settings.PARTIAL_UDC_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
