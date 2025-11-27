@@ -136,8 +136,8 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         )
         prefect_parameters = {
             "sample_id": sample_id,
-            "pin": {"id": 1, "puck": 1},
-            "prepick_pin": {"id": 2, "puck": 1},
+            "pin": None,
+            "prepick_pin": None,
             "config": partial_udc_config.model_dump(exclude_none=True),
         }
 
@@ -146,14 +146,8 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         )
 
         # Remember the collection params for the next collection
-        # TODO: save dialog params can have the collection type as argument
-        original_collection_type = self._collection_type
-        self._collection_type = "grid_scan"
-        self._save_dialog_box_params_to_redis(gs_model)
-        self._collection_type = "screening"
-        self._save_dialog_box_params_to_redis(sc_model)
-        self._collection_type = original_collection_type
-
+        self._save_dialog_box_params_to_redis(gs_model, collection_type="grid_scan")
+        self._save_dialog_box_params_to_redis(sc_model, collection_type="screening")
         partial_udc_flow = MX3SyncPrefectClient(
             name=settings.PARTIAL_UDC_DEPLOYMENT_NAME, parameters=prefect_parameters
         )

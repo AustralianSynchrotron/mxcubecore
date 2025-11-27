@@ -300,6 +300,7 @@ class AbstractPrefectWorkflow(ABC):
             | GridScanDialogBox
             | OneShotDialogBox
         ),
+        collection_type: str | None = None,
     ) -> None:
         """
         Save the last set parameters from the dialog box to Redis.
@@ -309,6 +310,10 @@ class AbstractPrefectWorkflow(ABC):
         dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox | OneShotDialogBox
             A dialog box pydantic model
         """
+        if collection_type is not None:
+            type = collection_type
+        else:
+            type = self._collection_type
         with get_redis_connection() as redis_connection:
             for key, value in dialog_box.model_dump(exclude_none=True).items():
                 if isinstance(value, bool):
@@ -317,7 +322,7 @@ class AbstractPrefectWorkflow(ABC):
                 if key in ["lab_name", "project_name", "auto_create_well"]:
                     redis_connection.set(f"mxcube_common_params:{key}", value)
                 else:
-                    redis_connection.set(f"{self._collection_type}:{key}", value)
+                    redis_connection.set(f"{type}:{key}", value)
 
     def _get_dialog_box_param(
         self,
