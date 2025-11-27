@@ -8,6 +8,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 from ..redis_utils import get_redis_connection
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
+from .schemas.dialog_boxes.screening import get_screening_schema
 from .schemas.partial_udc import (
     GridScanParams,
     OpticalCenteringExtraConfig,
@@ -146,8 +147,12 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         )
 
         # Remember the collection params for the next collection
-        self._save_dialog_box_params_to_redis(grid_scan_model, collection_type="grid_scan")
-        self._save_dialog_box_params_to_redis(screening_model, collection_type="screening")
+        self._save_dialog_box_params_to_redis(
+            grid_scan_model, collection_type="grid_scan"
+        )
+        self._save_dialog_box_params_to_redis(
+            screening_model, collection_type="screening"
+        )
         partial_udc_flow = MX3SyncPrefectClient(
             name=settings.PARTIAL_UDC_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
@@ -225,85 +230,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
 
         # Screening Properties
         resolution_limits = self.resolution.get_limits()
-        sc_properties = {
-            "exposure_time": {
-                "title": "Total Exposure Time [s]",
-                "type": "number",
-                "exclusiveMinimum": 0,
-                "default": float(
-                    self._get_dialog_box_param(
-                        "exposure_time", collection_type="screening"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "omega_range": {
-                "title": "Omega Range [degrees]",
-                "type": "number",
-                "exclusiveMinimum": 0,
-                "default": float(
-                    self._get_dialog_box_param(
-                        "omega_range", collection_type="screening"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "number_of_frames": {
-                "title": "Number of Frames",
-                "type": "integer",
-                "minimum": 1,
-                "default": int(
-                    self._get_dialog_box_param(
-                        "number_of_frames", collection_type="screening"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "resolution": {
-                "title": "Resolution [Å]",
-                "type": "number",
-                "minimum": resolution_limits[0],
-                "maximum": resolution_limits[1],
-                "default": float(
-                    self._get_dialog_box_param(
-                        "resolution", collection_type="screening"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "transmission": {
-                "title": "Transmission [%]",
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100,
-                "default": float(
-                    self._get_dialog_box_param(
-                        "transmission", collection_type="screening"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "crystal_counter": {
-                "title": "Crystal ID",
-                "type": "integer",
-                "minimum": 0,
-                "default": int(
-                    self._get_dialog_box_param(
-                        "crystal_counter", collection_type="screening"
-                    )
-                ),
-                "widget": "textarea",
-            },
-        }
-
-        if settings.ADD_DUMMY_PIN_TO_DB:
-            # Dev only
-            sc_properties["sample_id"] = {
-                "title": "Database sample id (dev only)",
-                "type": "integer",
-                "default": 1,
-                "widget": "textarea",
-            }
+        screening_properties = get_screening_schema(resolution_limits)
 
         dialog = {
             "properties": {
@@ -319,7 +246,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 "screening": {
                     "type": "object",
                     "title": "Screening Parameters",
-                    "properties": sc_properties,
+                    "properties": screening_properties,
                     "required": [
                         "exposure_time",
                         "omega_range",
