@@ -40,8 +40,8 @@ def get_dialog_box_param(
         "project_name",
     ]
         A parameter saved in redis
-    collection_type : str | None
-        The collection type. If None, use the current collection type
+    collection_type : Literal["screening", "full_dataset", "grid_scan", "one_shot"]
+        The collection type
 
     Returns
     -------
