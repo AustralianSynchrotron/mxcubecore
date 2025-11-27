@@ -8,6 +8,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 from ..redis_utils import get_redis_connection
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
+from .schemas.dialog_boxes.grid_scan import get_grid_scan_schema
 from .schemas.dialog_boxes.screening import get_screening_schema
 from .schemas.partial_udc import (
     GridScanParams,
@@ -176,57 +177,12 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             A dictionary following the JSON schema.
         """
         # Grid Scan Properties
-        gs_properties = {
-            "md3_alignment_y_speed": {
-                "title": "Alignment Y Speed [mm/s]",
-                "type": "number",
-                "minimum": 0.1,
-                "maximum": 14.8,
-                "default": float(
-                    self._get_dialog_box_param(
-                        "md3_alignment_y_speed", collection_type="grid_scan"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "transmission": {
-                "title": "Transmission [%]",
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100,
-                "default": float(
-                    self._get_dialog_box_param(
-                        "transmission", collection_type="grid_scan"
-                    )
-                ),
-                "widget": "textarea",
-            },
-            "detector_roi_mode": {
-                "title": "Detector ROI Mode",
-                "type": "string",
-                "enum": ["4M", "disabled"],
-                "default": str(
-                    self._get_dialog_box_param(
-                        "detector_roi_mode", collection_type="grid_scan"
-                    )
-                ),
-                "widget": "select",
-            },
-            "grid_step": {
-                "title": "Grid Step [um]",
-                "type": "string",
-                "enum": ["5x5", "10x10", "20x20"],
-                "default": str(
-                    self._get_dialog_box_param("grid_step", collection_type="grid_scan")
-                ),
-                "widget": "select",
-            },
-        }
+        grid_scan_properties = get_grid_scan_schema(partial_udc=True)
 
         tray_conditional: dict | None = None
         if self.get_head_type() == "Plate":
             tray_properties, tray_conditional = self.build_tray_dialog_schema()
-            gs_properties.update(tray_properties)
+            grid_scan_properties.update(tray_properties)
 
         # Screening Properties
         resolution_limits = self.resolution.get_limits()
@@ -237,7 +193,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 "grid_scan": {
                     "type": "object",
                     "title": "Grid Scan Parameters",
-                    "properties": gs_properties,
+                    "properties": grid_scan_properties,
                     "required": [
                         "md3_alignment_y_speed",
                         "transmission",

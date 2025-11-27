@@ -16,6 +16,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
+from .schemas.dialog_boxes.grid_scan import get_grid_scan_schema
 from .schemas.grid_scan import (
     GridScanDialogBox,
     GridScanParams,
@@ -334,31 +335,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
-        properties = {
-            "md3_alignment_y_speed": {
-                "title": "Alignment Y Speed [mm/s]",
-                "type": "number",
-                "minimum": 0.1,
-                "maximum": 14.8,
-                "default": float(self._get_dialog_box_param("md3_alignment_y_speed")),
-                "widget": "textarea",
-            },
-            "transmission": {
-                "title": "Transmission [%]",
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100,
-                "default": float(self._get_dialog_box_param("transmission")),
-                "widget": "textarea",
-            },
-            "detector_roi_mode": {
-                "title": "Detector ROI Mode",
-                "type": "string",
-                "enum": ["4M", "disabled"],
-                "default": str(self._get_dialog_box_param("detector_roi_mode")),
-                "widget": "select",
-            },
-        }
+        properties = get_grid_scan_schema(partial_udc=False)
         tray_conditional: dict | None = None
         if self.get_head_type() == "Plate":
             tray_properties, tray_conditional = self.build_tray_dialog_schema()
