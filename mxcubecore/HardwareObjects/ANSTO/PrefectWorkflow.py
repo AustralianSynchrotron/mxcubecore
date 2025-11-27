@@ -556,10 +556,6 @@ class PrefectWorkflow(HardwareObject):
         for key, value in default_params[collection_type].items():
             self._save_params_to_redis(collection_type, key, value)
 
-        collection_type = "partial_udc"
-        for key, value in default_params[collection_type].items():
-            self._save_params_to_redis(collection_type, key, value)
-
     def _save_params_to_redis(
         self, collection_type: str, key: str, value: int | str | bool | None
     ) -> None:

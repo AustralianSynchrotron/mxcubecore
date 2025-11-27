@@ -159,7 +159,11 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 0.1,
                 "maximum": 14.8,
-                "default": float(self._get_dialog_box_param("md3_alignment_y_speed")),
+                "default": float(
+                    self._get_dialog_box_param(
+                        "md3_alignment_y_speed", collection_type="grid_scan"
+                    )
+                ),
                 "widget": "textarea",
             },
             "transmission": {
@@ -167,21 +171,31 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 "type": "number",
                 "minimum": 0,
                 "maximum": 100,
-                "default": float(self._get_dialog_box_param("transmission")),
+                "default": float(
+                    self._get_dialog_box_param(
+                        "transmission", collection_type="grid_scan"
+                    )
+                ),
                 "widget": "textarea",
             },
             "detector_roi_mode": {
                 "title": "Detector ROI Mode",
                 "type": "string",
                 "enum": ["4M", "disabled"],
-                "default": str(self._get_dialog_box_param("detector_roi_mode")),
+                "default": str(
+                    self._get_dialog_box_param(
+                        "detector_roi_mode", collection_type="grid_scan"
+                    )
+                ),
                 "widget": "select",
             },
             "grid_step": {
                 "title": "Grid Step [um]",
                 "type": "string",
                 "enum": ["5x5", "10x10", "20x20"],
-                "default": str(self._get_dialog_box_param("grid_step")),
+                "default": str(
+                    self._get_dialog_box_param("grid_step", collection_type="grid_scan")
+                ),
                 "widget": "select",
             },
         }
