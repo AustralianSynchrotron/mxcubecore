@@ -7,12 +7,12 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
+from .schemas.dialog_boxes.one_shot import get_one_shot_schema
 from .schemas.one_shot import (
     OneShotDialogBox,
     OneShotParams,
 )
 from .sync_prefect_client import MX3SyncPrefectClient
-from .schemas.dialog_boxes.one_shot import get_one_shot_schema
 
 
 class OneShotFlow(AbstractPrefectWorkflow):
