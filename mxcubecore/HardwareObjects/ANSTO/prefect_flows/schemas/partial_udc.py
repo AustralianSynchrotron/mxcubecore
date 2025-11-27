@@ -12,12 +12,18 @@ from .grid_scan import (
     GridScanDialogBox,
     GridScanParams,
 )
+from .screening import ScreeningDialogBox
 
 
-class PartialUDCDialogBox(GridScanDialogBox):
+class PartialUDCGridScanDialogBox(GridScanDialogBox):
     grid_step: str = Field(
         description="This is set as a string in the UI and is latter mapped to a tuple"
     )
+
+
+class PartialUDCDialogBox(BaseModel):
+    grid_scan: PartialUDCGridScanDialogBox
+    screening: ScreeningDialogBox
 
 
 # Below are the schemas copied from bluesky_worker single loop data collection flow schema

@@ -13,6 +13,7 @@ from .schemas.partial_udc import (
     OpticalCenteringExtraConfig,
     OpticalCenteringParams,
     PartialUDCDialogBox,
+    ScreeningParams,
     SingleLoopDataCollectionConfig,
 )
 from .sync_prefect_client import MX3SyncPrefectClient
@@ -55,10 +56,13 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         dialog_box_model = PartialUDCDialogBox.model_validate(dialog_box_parameters)
         head_type = self.get_head_type()
 
+        gs_model = dialog_box_model.grid_scan
+        sc_model = dialog_box_model.screening
+
         if not settings.ADD_DUMMY_PIN_TO_DB:
             if self.sample_id is None:
                 logging.getLogger("HWR").info("Getting sample from the data layer...")
-                sample_id = self.get_sample_id_of_mounted_sample(dialog_box_model)
+                sample_id = self.get_sample_id_of_mounted_sample(gs_model)
                 logging.getLogger("HWR").info(f"Mounted sample id: {sample_id}")
             else:
                 logging.getLogger("HWR").info(
@@ -100,19 +104,32 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             optical_centering=OpticalCenteringParams(
                 beam_position=(612, 512),
                 extra_config=OpticalCenteringExtraConfig(grid_height_scale_factor=2),
-                grid_step=self.grid_step_map[dialog_box_model.grid_step],
+                grid_step=self.grid_step_map[gs_model.grid_step],
                 calibrated_alignment_z=0.85,  # TODO: maybe get from redis?
             ),
             grid_scan=GridScanParams(
                 omega_range=0,
-                md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
+                md3_alignment_y_speed=gs_model.md3_alignment_y_speed,
                 detector_distance=detector_distance,
                 photon_energy=photon_energy,
-                transmission=dialog_box_model.transmission / 100,
+                transmission=gs_model.transmission / 100,
                 crystal_finder_threshold=1,  # TODO: can user set this?
                 number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
             ),
-            screening=None,
+            screening=ScreeningParams(
+                omega_range=sc_model.omega_range,
+                exposure_time=sc_model.exposure_time,
+                number_of_passes=1,
+                count_time=None,
+                number_of_frames=sc_model.number_of_frames,
+                detector_distance=self._resolution_to_distance(
+                    sc_model.resolution,
+                    energy=photon_energy,
+                ),
+                photon_energy=photon_energy,
+                transmission=sc_model.transmission / 100,
+                beam_size=(80, 80),
+            ),
             full_dataset=None,
             mount_pin_at_start_of_flow=False,
             add_dummy_pin_to_db=settings.ADD_DUMMY_PIN_TO_DB,
@@ -129,7 +146,13 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         )
 
         # Remember the collection params for the next collection
-        self._save_dialog_box_params_to_redis(dialog_box_model)
+        # TODO: save dialog params can have the collection type as argument
+        original_collection_type = self._collection_type
+        self._collection_type = "grid_scan"
+        self._save_dialog_box_params_to_redis(gs_model)
+        self._collection_type = "screening"
+        self._save_dialog_box_params_to_redis(sc_model)
+        self._collection_type = original_collection_type
 
         partial_udc_flow = MX3SyncPrefectClient(
             name=settings.PARTIAL_UDC_DEPLOYMENT_NAME, parameters=prefect_parameters
@@ -153,7 +176,8 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         dialog : dict
             A dictionary following the JSON schema.
         """
-        properties = {
+        # Grid Scan Properties
+        gs_properties = {
             "md3_alignment_y_speed": {
                 "title": "Alignment Y Speed [mm/s]",
                 "type": "number",
@@ -199,21 +223,124 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 "widget": "select",
             },
         }
+
         tray_conditional: dict | None = None
         if self.get_head_type() == "Plate":
             tray_properties, tray_conditional = self.build_tray_dialog_schema()
-            properties.update(tray_properties)
+            gs_properties.update(tray_properties)
+
+        # Screening Properties
+        resolution_limits = self.resolution.get_limits()
+        sc_properties = {
+            "exposure_time": {
+                "title": "Total Exposure Time [s]",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "default": float(
+                    self._get_dialog_box_param(
+                        "exposure_time", collection_type="screening"
+                    )
+                ),
+                "widget": "textarea",
+            },
+            "omega_range": {
+                "title": "Omega Range [degrees]",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "default": float(
+                    self._get_dialog_box_param(
+                        "omega_range", collection_type="screening"
+                    )
+                ),
+                "widget": "textarea",
+            },
+            "number_of_frames": {
+                "title": "Number of Frames",
+                "type": "integer",
+                "minimum": 1,
+                "default": int(
+                    self._get_dialog_box_param(
+                        "number_of_frames", collection_type="screening"
+                    )
+                ),
+                "widget": "textarea",
+            },
+            "resolution": {
+                "title": "Resolution [Å]",
+                "type": "number",
+                "minimum": resolution_limits[0],
+                "maximum": resolution_limits[1],
+                "default": float(
+                    self._get_dialog_box_param(
+                        "resolution", collection_type="screening"
+                    )
+                ),
+                "widget": "textarea",
+            },
+            "transmission": {
+                "title": "Transmission [%]",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "default": float(
+                    self._get_dialog_box_param(
+                        "transmission", collection_type="screening"
+                    )
+                ),
+                "widget": "textarea",
+            },
+            "crystal_counter": {
+                "title": "Crystal ID",
+                "type": "integer",
+                "minimum": 0,
+                "default": int(
+                    self._get_dialog_box_param(
+                        "crystal_counter", collection_type="screening"
+                    )
+                ),
+                "widget": "textarea",
+            },
+        }
+
+        if settings.ADD_DUMMY_PIN_TO_DB:
+            # Dev only
+            sc_properties["sample_id"] = {
+                "title": "Database sample id (dev only)",
+                "type": "integer",
+                "default": 1,
+                "widget": "textarea",
+            }
 
         dialog = {
-            "properties": properties,
-            "required": [
-                "md3_alignment_y_speed",
-                "transmission",
-            ],
-            "dialogName": "Grid Scan Parameters",
+            "properties": {
+                "grid_scan": {
+                    "type": "object",
+                    "title": "Grid Scan Parameters",
+                    "properties": gs_properties,
+                    "required": [
+                        "md3_alignment_y_speed",
+                        "transmission",
+                    ],
+                },
+                "screening": {
+                    "type": "object",
+                    "title": "Screening Parameters",
+                    "properties": sc_properties,
+                    "required": [
+                        "exposure_time",
+                        "omega_range",
+                        "number_of_frames",
+                        "resolution",
+                        "crystal_counter",
+                        "transmission",
+                    ],
+                },
+            },
+            "required": ["grid_scan", "screening"],
+            "dialogName": "Partial UDC Parameters",
         }
 
         if tray_conditional:
-            dialog.update(tray_conditional)
+            dialog["properties"]["grid_scan"].update(tray_conditional)
 
         return dialog
