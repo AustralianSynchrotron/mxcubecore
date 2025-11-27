@@ -8,6 +8,7 @@ from pydantic import (
     model_validator,
 )
 
+from .full_dataset import FullDatasetDialogBox
 from .grid_scan import (
     GridScanDialogBox,
     GridScanParams,
@@ -24,6 +25,7 @@ class PartialUDCGridScanDialogBox(GridScanDialogBox):
 class PartialUDCDialogBox(BaseModel):
     grid_scan: PartialUDCGridScanDialogBox
     screening: ScreeningDialogBox
+    full_dataset: FullDatasetDialogBox
 
 
 # Below are the schemas copied from bluesky_worker single loop data collection flow schema

@@ -8,9 +8,11 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 from ..redis_utils import get_redis_connection
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
+from .schemas.dialog_boxes.full_dataset import get_full_dataset_schema
 from .schemas.dialog_boxes.grid_scan import get_grid_scan_schema
 from .schemas.dialog_boxes.screening import get_screening_schema
 from .schemas.partial_udc import (
+    FullDatasetParams,
     GridScanParams,
     OpticalCenteringExtraConfig,
     OpticalCenteringParams,
@@ -60,6 +62,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
 
         grid_scan_model = dialog_box_model.grid_scan
         screening_model = dialog_box_model.screening
+        full_dataset_model = dialog_box_model.full_dataset
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             if self.sample_id is None:
@@ -132,7 +135,20 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 transmission=screening_model.transmission / 100,
                 beam_size=(80, 80),
             ),
-            full_dataset=None,
+            full_dataset=FullDatasetParams(
+                omega_range=full_dataset_model.omega_range,
+                exposure_time=full_dataset_model.exposure_time,
+                number_of_passes=1,
+                count_time=None,
+                number_of_frames=full_dataset_model.number_of_frames,
+                detector_distance=self._resolution_to_distance(
+                    full_dataset_model.resolution,
+                    energy=photon_energy,
+                ),
+                photon_energy=photon_energy,
+                transmission=full_dataset_model.transmission / 100,
+                beam_size=(80, 80),
+            ),
             mount_pin_at_start_of_flow=False,
             add_dummy_pin_to_db=settings.ADD_DUMMY_PIN_TO_DB,
         )
@@ -153,6 +169,9 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         )
         self._save_dialog_box_params_to_redis(
             screening_model, collection_type="screening"
+        )
+        self._save_dialog_box_params_to_redis(
+            full_dataset_model, collection_type="full_dataset"
         )
         partial_udc_flow = MX3SyncPrefectClient(
             name=settings.PARTIAL_UDC_DEPLOYMENT_NAME, parameters=prefect_parameters
@@ -188,6 +207,9 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         resolution_limits = self.resolution.get_limits()
         screening_properties = get_screening_schema(resolution_limits)
 
+        # Full Dataset Properties
+        full_dataset_properties = get_full_dataset_schema(resolution_limits)
+
         dialog = {
             "properties": {
                 "grid_scan": {
@@ -212,8 +234,22 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                         "transmission",
                     ],
                 },
+                "full_dataset": {
+                    "type": "object",
+                    "title": "Dataset Parameters",
+                    "properties": full_dataset_properties,
+                    "required": [
+                        "exposure_time",
+                        "omega_range",
+                        "number_of_frames",
+                        "resolution",
+                        "crystal_counter",
+                        "transmission",
+                        "processing_pipeline",
+                    ],
+                },
             },
-            "required": ["grid_scan", "screening"],
+            "required": ["grid_scan", "screening", "full_dataset"],
             "dialogName": "Partial UDC Parameters",
         }
 
