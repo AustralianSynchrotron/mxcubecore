@@ -35,3 +35,12 @@ one_shot:
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)
   transmission: 0.5  # Percentage
+
+partial_udc:
+  # TODO: add more steps later
+  md3_alignment_y_speed: 1.0  # mm/s
+  omega_range: 0.0  # Degrees
+  photon_energy: 13.0  # keV
+  resolution: 1.5  # Ångström (16M)
+  transmission: 1.0  # Percentage
+  detector_roi_mode: "4M"  # 4M or disabled

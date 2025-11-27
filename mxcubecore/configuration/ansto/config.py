@@ -8,6 +8,10 @@ from pydantic_settings import BaseSettings
 
 class PrefectSettings(BaseSettings):
     PREFECT_URI: str = Field("http://localhost:4200", env="PREFECT_URI")
+    PARTIAL_UDC_DEPLOYMENT_NAME: str = Field(
+        "single-loop-data-collection-flow/single_loop_data_collection_flow",
+        env="PARTIAL_UDC_DEPLOYMENT_NAME",
+    )
     TRAY_CALIBRATION_DEPLOYMENT_NAME: str = Field(
         "tray-calibration/tray_calibration", env="TRAY_CALIBRATION_DEPLOYMENT_NAME"
     )

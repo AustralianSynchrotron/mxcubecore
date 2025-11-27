@@ -20,4 +20,9 @@
     <path>Grid Scan</path>
     <requires>grid</requires>
   </workflow>
+  <workflow>
+    <title>Partial UDC</title>
+    <path>Partial UDC</path>
+    <requires>samplegrid</requires>
+  </workflow>
 </object>
