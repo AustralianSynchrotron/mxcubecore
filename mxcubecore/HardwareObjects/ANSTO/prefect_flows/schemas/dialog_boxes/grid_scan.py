@@ -37,9 +37,9 @@ def get_grid_scan_schema(partial_udc: bool = False) -> dict:
     }
     if partial_udc:
         properties["grid_step"] = {
-            "title": "Grid Step [um]",
+            "title": "Grid Step Size [μm]",
             "type": "string",
-            "enum": ["5x5", "10x10", "20x20"],
+            "enum": ["2.5x2.5", "5x5", "10x10", "20x20"],
             "default": str(
                 get_dialog_box_param("grid_step", collection_type="grid_scan")
             ),

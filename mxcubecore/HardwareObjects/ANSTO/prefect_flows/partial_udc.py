@@ -37,14 +37,39 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
 
         self._collection_type = "partial_udc"
         self.grid_step_map = {
+            "2.5x2.5": (2.5, 2.5),
             "5x5": (5.0, 5.0),
             "10x10": (10.0, 10.0),
             "20x20": (20.0, 20.0),
         }
 
+    def _check_redis_params(self) -> None:
+        """Check that required parameters are in redis"""
+        with get_redis_connection() as redis_connection:
+            if (
+                redis_connection.hget("top_camera_target_coords", "x_pixel_target")
+                is None
+            ):
+                msg = (
+                    "Top camera target coordinates are not set. "
+                    + "Run optical centering calibration before running Partial UDC."
+                )
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+            if (
+                redis_connection.hget("top_camera_pixels_per_mm", "pixels_per_mm_x")
+                is None
+            ):
+                msg = (
+                    "Top camera pixels per mm are not set. "
+                    + "Run optical centering calibration before running Partial UDC."
+                )
+                logging.getLogger("user_level_log").error(msg)
+                raise QueueExecutionException(msg, self)
+
     def run(self, dialog_box_parameters: dict) -> None:
         """
-
+        Runs the Partial UDC prefect flow
 
         Parameters
         ----------
@@ -55,6 +80,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         -------
         None
         """
+        self._check_redis_params()
 
         self._state.value = "RUNNING"
         head_type = self.get_head_type()
@@ -102,7 +128,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
         )
 
-        if dialog_box_model.perform_screening:
+        if dialog_box_model.run_screening:
             screening_params = ScreeningParams(
                 omega_range=screening_model.omega_range,
                 exposure_time=screening_model.exposure_time,
@@ -120,7 +146,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         else:
             screening_params = None
 
-        if dialog_box_model.perform_full_dataset:
+        if dialog_box_model.run_full_dataset:
             full_dataset_params = FullDatasetParams(
                 omega_range=full_dataset_model.omega_range,
                 exposure_time=full_dataset_model.exposure_time,
@@ -159,7 +185,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             mount_pin_at_start_of_flow=False,
             add_dummy_pin_to_db=settings.ADD_DUMMY_PIN_TO_DB,
             project_strategy=ProjectStrategy(
-                use_screening=dialog_box_model.perform_screening
+                use_screening=dialog_box_model.run_screening
             ),
         )
         prefect_parameters = {
@@ -177,23 +203,23 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         self._save_dialog_box_params_to_redis(
             grid_scan_model, collection_type="grid_scan"
         )
-        if dialog_box_model.perform_screening:
+        if dialog_box_model.run_screening:
             self._save_dialog_box_params_to_redis(
                 screening_model, collection_type="screening"
             )
-        if dialog_box_model.perform_full_dataset:
+        if dialog_box_model.run_full_dataset:
             self._save_dialog_box_params_to_redis(
                 full_dataset_model, collection_type="full_dataset"
             )
 
         with get_redis_connection() as redis_connection:
             redis_connection.set(
-                "partial_udc:perform_screening",
-                1 if dialog_box_model.perform_screening else 0,
+                "partial_udc:run_screening",
+                1 if dialog_box_model.run_screening else 0,
             )
             redis_connection.set(
-                "partial_udc:perform_full_dataset",
-                1 if dialog_box_model.perform_full_dataset else 0,
+                "partial_udc:run_full_dataset",
+                1 if dialog_box_model.run_full_dataset else 0,
             )
 
         partial_udc_flow = MX3SyncPrefectClient(
@@ -223,20 +249,22 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
 
         # Screening Properties
         resolution_limits = self.resolution.get_limits()
-        screening_properties = get_screening_schema(resolution_limits)
+        screening_properties = get_screening_schema(resolution_limits, partial_udc=True)
 
         # Full Dataset Properties
-        full_dataset_properties = get_full_dataset_schema(resolution_limits)
+        full_dataset_properties = get_full_dataset_schema(
+            resolution_limits, partial_udc=True
+        )
 
         with get_redis_connection() as redis_connection:
-            perform_screening = bool(
+            run_screening = bool(
                 int(
-                    redis_connection.get("partial_udc:perform_screening") or 0
+                    redis_connection.get("partial_udc:run_screening") or 0
                 )  # False by default
             )
-            perform_full_dataset = bool(
+            run_full_dataset = bool(
                 int(
-                    redis_connection.get("partial_udc:perform_full_dataset") or 0
+                    redis_connection.get("partial_udc:run_full_dataset") or 0
                 )  # False by default
             )
 
@@ -244,40 +272,39 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             "properties": {
                 "grid_scan": {
                     "type": "object",
-                    "title": "Grid Scan Parameters",
+                    "title": "Optical and X-ray Centering",
                     "properties": grid_scan_properties,
                     "required": [
                         "md3_alignment_y_speed",
                         "transmission",
                     ],
                 },
-                "perform_screening": {
+                "run_screening": {
                     "type": "boolean",
-                    "title": "Perform Screening",
-                    "default": perform_screening,
+                    "title": "Screen",
+                    "default": run_screening,
                 },
-                "perform_full_dataset": {
+                "run_full_dataset": {
                     "type": "boolean",
-                    "title": "Perform Full Dataset",
-                    "default": perform_full_dataset,
+                    "title": "Dataset",
+                    "default": run_full_dataset,
                 },
             },
             "required": ["grid_scan"],
             "allOf": [
                 {
-                    "if": {"properties": {"perform_screening": {"const": True}}},
+                    "if": {"properties": {"run_screening": {"const": True}}},
                     "then": {
                         "properties": {
                             "screening": {
                                 "type": "object",
-                                "title": "Screening Parameters",
+                                "title": "Screen Parameters",
                                 "properties": screening_properties,
                                 "required": [
                                     "exposure_time",
                                     "omega_range",
                                     "number_of_frames",
                                     "resolution",
-                                    "crystal_counter",
                                     "transmission",
                                 ],
                             }
@@ -285,7 +312,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                     },
                 },
                 {
-                    "if": {"properties": {"perform_full_dataset": {"const": True}}},
+                    "if": {"properties": {"run_full_dataset": {"const": True}}},
                     "then": {
                         "properties": {
                             "full_dataset": {
@@ -297,7 +324,6 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                                     "omega_range",
                                     "number_of_frames",
                                     "resolution",
-                                    "crystal_counter",
                                     "transmission",
                                     "processing_pipeline",
                                 ],

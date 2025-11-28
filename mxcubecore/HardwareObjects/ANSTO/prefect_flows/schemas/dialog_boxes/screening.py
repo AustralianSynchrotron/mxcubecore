@@ -1,7 +1,9 @@
 from .utils import get_dialog_box_param
 
 
-def get_screening_schema(resolution_limits: tuple[float, float]) -> dict:
+def get_screening_schema(
+    resolution_limits: tuple[float, float], partial_udc: bool = False
+) -> dict:
     properties = {
         "exposure_time": {
             "title": "Total Exposure Time [s]",
@@ -50,7 +52,9 @@ def get_screening_schema(resolution_limits: tuple[float, float]) -> dict:
             ),
             "widget": "textarea",
         },
-        "crystal_counter": {
+    }
+    if not partial_udc:
+        properties["crystal_counter"] = {
             "title": "Crystal ID",
             "type": "integer",
             "minimum": 0,
@@ -58,6 +62,5 @@ def get_screening_schema(resolution_limits: tuple[float, float]) -> dict:
                 get_dialog_box_param("crystal_counter", collection_type="screening")
             ),
             "widget": "textarea",
-        },
-    }
+        }
     return properties

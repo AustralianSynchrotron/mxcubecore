@@ -24,9 +24,9 @@ class PartialUDCGridScanDialogBox(GridScanDialogBox):
 
 class PartialUDCDialogBox(BaseModel):
     grid_scan: PartialUDCGridScanDialogBox
-    perform_screening: bool = False
+    run_screening: bool = False
     screening: ScreeningDialogBox | None = None
-    perform_full_dataset: bool = False
+    run_full_dataset: bool = False
     full_dataset: FullDatasetDialogBox | None = None
 
 
