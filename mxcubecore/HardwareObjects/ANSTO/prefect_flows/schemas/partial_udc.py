@@ -24,8 +24,10 @@ class PartialUDCGridScanDialogBox(GridScanDialogBox):
 
 class PartialUDCDialogBox(BaseModel):
     grid_scan: PartialUDCGridScanDialogBox
-    screening: ScreeningDialogBox
-    full_dataset: FullDatasetDialogBox
+    perform_screening: bool = False
+    screening: ScreeningDialogBox | None = None
+    perform_full_dataset: bool = False
+    full_dataset: FullDatasetDialogBox | None = None
 
 
 # Below are the schemas copied from bluesky_worker single loop data collection flow schema
