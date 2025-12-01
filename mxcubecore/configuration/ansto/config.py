@@ -41,7 +41,8 @@ class PrefectSettings(BaseSettings):
         "mxcube-screening/plans", env="SCREENING_DEPLOYMENT_NAME"
     )
     SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME: str = Field(
-        "mxcube-sample-centering/plans", env="SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME"
+        "optical-centering/optical_centering",
+        env="SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME",
     )
     USE_TOP_CAMERA: bool = Field(
         True, env="USE_TOP_CAMERA", description="False only for development"
