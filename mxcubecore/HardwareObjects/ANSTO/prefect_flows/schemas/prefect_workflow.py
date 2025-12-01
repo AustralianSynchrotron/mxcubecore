@@ -6,3 +6,4 @@ class PrefectFlows(str, Enum):
     collect_dataset = "Collect Dataset"
     grid_scan = "Grid Scan"
     one_shot = "One Shot"
+    partial_udc = "Partial UDC"

@@ -7,6 +7,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 
 from ..Resolution import Resolution
 from .abstract_flow import AbstractPrefectWorkflow
+from .schemas.dialog_boxes.screening import get_screening_schema
 from .schemas.screening import (
     ScreeningDialogBox,
     ScreeningParams,
@@ -126,61 +127,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
         """
         resolution_limits = self.resolution.get_limits()
 
-        properties = {
-            "exposure_time": {
-                "title": "Total Exposure Time [s]",
-                "type": "number",
-                "exclusiveMinimum": 0,
-                "default": float(self._get_dialog_box_param("exposure_time")),
-                "widget": "textarea",
-            },
-            "omega_range": {
-                "title": "Omega Range [degrees]",
-                "type": "number",
-                "exclusiveMinimum": 0,
-                "default": float(self._get_dialog_box_param("omega_range")),
-                "widget": "textarea",
-            },
-            "number_of_frames": {
-                "title": "Number of Frames",
-                "type": "integer",
-                "minimum": 1,
-                "default": int(self._get_dialog_box_param("number_of_frames")),
-                "widget": "textarea",
-            },
-            "resolution": {
-                "title": "Resolution [Å]",
-                "type": "number",
-                "minimum": resolution_limits[0],
-                "maximum": resolution_limits[1],
-                "default": float(self._get_dialog_box_param("resolution")),
-                "widget": "textarea",
-            },
-            "transmission": {
-                "title": "Transmission [%]",
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100,
-                "default": float(self._get_dialog_box_param("transmission")),
-                "widget": "textarea",
-            },
-            "crystal_counter": {
-                "title": "Crystal ID",
-                "type": "integer",
-                "minimum": 0,
-                "default": int(self._get_dialog_box_param("crystal_counter")),
-                "widget": "textarea",
-            },
-        }
-
-        if settings.ADD_DUMMY_PIN_TO_DB:
-            # Dev only
-            properties["sample_id"] = {
-                "title": "Database sample id (dev only)",
-                "type": "integer",
-                "default": 1,
-                "widget": "textarea",
-            }
+        properties = get_screening_schema(resolution_limits)
 
         tray_conditional: dict | None = None
         if self.get_head_type() == "Plate":

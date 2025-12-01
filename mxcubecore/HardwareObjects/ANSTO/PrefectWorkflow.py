@@ -11,7 +11,6 @@ import gevent
 import redis
 import yaml
 from gevent.event import Event
-from mx3_beamline_library.devices.motors import md3
 
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
@@ -22,6 +21,7 @@ from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
 from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
 from .prefect_flows.one_shot_flow import OneShotFlow
+from .prefect_flows.partial_udc import PartialUDCFlow
 from .prefect_flows.schemas.prefect_workflow import PrefectFlows
 from .prefect_flows.screening_flow import ScreeningFlow
 from .redis_utils import get_redis_connection
@@ -490,6 +490,24 @@ class PrefectWorkflow(HardwareObject):
                     f"Dialog box parameters: {dialog_box_parameters}"
                 )
                 self.one_shot_flow.run(dialog_box_parameters=dialog_box_parameters)
+            else:
+                self.state.value = "ON"
+                raise QueueExecutionException("dialog_box_parameters is empty", self)
+
+        elif self.workflow_name == PrefectFlows.partial_udc:
+            logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
+
+            self.partial_udc_flow = PartialUDCFlow(
+                state=self._state,
+                resolution=self.resolution,
+                sample_id=sample_id,
+            )
+            dialog_box_parameters = self.open_dialog(self.partial_udc_flow.dialog_box())
+            if dialog_box_parameters:
+                logging.getLogger("HWR").info(
+                    f"Dialog box parameters: {dialog_box_parameters}"
+                )
+                self.partial_udc_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)

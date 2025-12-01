@@ -1,5 +1,6 @@
 import logging
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 import redis
@@ -100,7 +101,10 @@ class MX3SyncPrefectClient:
                     sleep(poll_interval)
 
     def trigger_data_collection(
-        self, sample_id: str, poll_interval: float = 3.0
+        self,
+        sample_id: int,
+        poll_interval: float = 3.0,
+        mode: Literal["mxcube", "partial_udc"] = "mxcube",
     ) -> None:
         """
         Triggers a prefect flow but only waits until data collection is finished
@@ -108,16 +112,23 @@ class MX3SyncPrefectClient:
 
         Parameters
         ----------
+        sample_id : int
+            The database sample id
         poll_interval : float, optional
             The poll interval in seconds, by default 3.0 seconds
+        mode : Literal["mxcube", "partial_udc"], optional
+            The mode to use for setting the redis state key, by default "mxcube"
 
         Returns
         -------
         None
         """
-        self.redis_connection.set(
-            f"mxcube_scan_state:{sample_id}", FlowState.RUNNING, ex=3600
-        )
+        if mode == "mxcube":
+            state_key = f"mxcube_scan_state:{sample_id}"
+        else:
+            state_key = f"state:{sample_id}"
+
+        self.redis_connection.set(state_key, FlowState.RUNNING, ex=3600)
 
         with get_client(sync_client=True) as client:
             deployment_id = client.read_deployment_by_name(self.name).id
@@ -126,16 +137,14 @@ class MX3SyncPrefectClient:
             )
             self.flow_run_id = response.id
 
-            flow_status = self.redis_connection.get(f"mxcube_scan_state:{sample_id}")
+            flow_status = self.redis_connection.get(state_key)
             while flow_status not in [
                 FlowState.FAILED,
                 FlowState.READY_TO_UNMOUNT,
                 FlowState.COMPLETED,
             ]:
                 sleep(poll_interval)
-                flow_status = self.redis_connection.get(
-                    f"mxcube_scan_state:{sample_id}"
-                )
+                flow_status = self.redis_connection.get(state_key)
             flow_run = client.read_flow_run(self.flow_run_id)
             flow_state = flow_run.state
             if flow_state and flow_state.type == StateType.FAILED:

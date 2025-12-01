@@ -367,14 +367,8 @@ class Diffractometer(GenericDiffractometer):
         try:
             sample_centering = MX3SyncPrefectClient(
                 name=settings.SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
-                parameters={
-                    "sample_id": "test",
-                    "beam_position": [self.beam_position[0], self.beam_position[1]],
-                    "use_top_camera": settings.USE_TOP_CAMERA,
-                    "calibrated_alignment_z": settings.CALIBRATED_ALIGNMENT_Z,
-                },
+                parameters={},
             )
-            # NOTE: using asyncio.run() does not seem to work consistently
 
             sample_centering.trigger_flow(wait=True)
             logging.getLogger("HWR").debug("Optical centering finished")

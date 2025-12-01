@@ -28,6 +28,7 @@ from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
 from .schemas.one_shot import OneShotDialogBox
+from .schemas.prefect_workflow import PrefectFlows
 from .schemas.screening import ScreeningDialogBox
 
 
@@ -299,6 +300,7 @@ class AbstractPrefectWorkflow(ABC):
             | GridScanDialogBox
             | OneShotDialogBox
         ),
+        collection_type: str | None = None,
     ) -> None:
         """
         Save the last set parameters from the dialog box to Redis.
@@ -308,6 +310,10 @@ class AbstractPrefectWorkflow(ABC):
         dialog_box : ScreeningDialogBox | FullDatasetDialogBox | GridScanDialogBox | OneShotDialogBox
             A dialog box pydantic model
         """
+        if collection_type is not None:
+            type = collection_type
+        else:
+            type = self._collection_type
         with get_redis_connection() as redis_connection:
             for key, value in dialog_box.model_dump(exclude_none=True).items():
                 if isinstance(value, bool):
@@ -316,7 +322,7 @@ class AbstractPrefectWorkflow(ABC):
                 if key in ["lab_name", "project_name", "auto_create_well"]:
                     redis_connection.set(f"mxcube_common_params:{key}", value)
                 else:
-                    redis_connection.set(f"{self._collection_type}:{key}", value)
+                    redis_connection.set(f"{type}:{key}", value)
 
     def _get_dialog_box_param(
         self,
@@ -334,13 +340,14 @@ class AbstractPrefectWorkflow(ABC):
             "lab_name",
             "project_name",
         ],
+        collection_type: str | None = None,
     ) -> str | int | float | None:
         """
         Retrieve a parameter value from Redis.
 
         Parameters
         ----------
-        Literal[
+        parameter : Literal[
             "exposure_time",
             "omega_range",
             "number_of_frames",
@@ -355,17 +362,24 @@ class AbstractPrefectWorkflow(ABC):
             "project_name",
         ]
             A parameter saved in redis
+        collection_type : str | None
+            The collection type. If None, use the current collection type
 
         Returns
         -------
         str | int | float
             The last value set in redis for a given parameter
         """
+        if collection_type is not None:
+            type = collection_type
+        else:
+            type = self._collection_type
+
         with get_redis_connection() as redis_connection:
             if parameter in ["lab_name", "project_name", "auto_create_well"]:
                 value = redis_connection.get(f"mxcube_common_params:{parameter}")
             else:
-                value = redis_connection.get(f"{self._collection_type}:{parameter}")
+                value = redis_connection.get(f"{type}:{parameter}")
 
             if parameter == "auto_create_well":
                 if value is not None:
