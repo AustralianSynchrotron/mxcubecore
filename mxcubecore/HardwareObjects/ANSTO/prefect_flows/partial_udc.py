@@ -25,7 +25,12 @@ from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class PartialUDCFlow(AbstractPrefectWorkflow):
-    """Prefect Raster Workflow"""
+    """Partial UDC Prefect Flow. Allows running:
+    - Optical and X-ray Centering
+    - Optical and X-ray Centering + Screening
+    - Optical and X-ray Centering + Full Dataset
+    - Optical and X-ray Centering + Screening + Full Dataset
+    """
 
     def __init__(
         self,
@@ -43,8 +48,20 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             "20x20": (20.0, 20.0),
         }
 
-    def _check_redis_params(self) -> None:
-        """Check that required parameters are in redis"""
+    def _check_optical_centering_params(self) -> None:
+        """Check that required optical centering parameters are in redis.
+        Currently checks por the following parameters:
+        - top_camera_target_coords:x_pixel_target
+        - top_camera_pixels_per_mm:pixels_per_mm_x
+
+        Additionally gets the following optional parameters from redis:
+        - optical_centering:calibrated_alignment_z (default: 0.487 m)
+        - optical_centering:grid_height_scale_factor (default: 2)
+
+        Returns
+        -------
+        None
+        """
         with get_redis_connection() as redis_connection:
             if (
                 redis_connection.hget("top_camera_target_coords", "x_pixel_target")
@@ -67,6 +84,30 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 logging.getLogger("user_level_log").error(msg)
                 raise QueueExecutionException(msg, self)
 
+            # The values below are saved in redis so that they can be changed on the fly
+            # if needed while we tune the optical centering params.
+            self.calibrated_alignment_z = redis_connection.get(
+                "optical_centering:calibrated_alignment_z"
+            )
+            if self.calibrated_alignment_z is None:
+                self.calibrated_alignment_z = 0.487
+                logging.getLogger("HWR").warning(
+                    f"Calibrated alignment Z not found in redis, using default value: {self.calibrated_alignment_z} m"
+                )
+            else:
+                self.calibrated_alignment_z = float(self.calibrated_alignment_z)
+
+            self.grid_height_scale_factor = redis_connection.get(
+                "optical_centering:grid_height_scale_factor"
+            )
+            if self.grid_height_scale_factor is None:
+                self.grid_height_scale_factor = 2
+                logging.getLogger("HWR").warning(
+                    f"Grid height scale factor not found in redis, using default value: {self.grid_height_scale_factor}"
+                )
+            else:
+                self.grid_height_scale_factor = float(self.grid_height_scale_factor)
+
     def run(self, dialog_box_parameters: dict) -> None:
         """
         Runs the Partial UDC prefect flow
@@ -80,7 +121,6 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         -------
         None
         """
-        self._check_redis_params()
 
         self._state.value = "RUNNING"
         head_type = self.get_head_type()
@@ -89,6 +129,8 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
             msg = "Partial UDC for plates is not supported yet"
             logging.getLogger("user_level_log").error(msg)
             raise QueueExecutionException(msg, self)
+
+        self._check_optical_centering_params()
 
         dialog_box_model = PartialUDCDialogBox.model_validate(dialog_box_parameters)
 
@@ -167,9 +209,11 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
         partial_udc_config = SingleLoopDataCollectionConfig(
             optical_centering=OpticalCenteringParams(
                 beam_position=(612, 512),
-                extra_config=OpticalCenteringExtraConfig(grid_height_scale_factor=2),
+                extra_config=OpticalCenteringExtraConfig(
+                    grid_height_scale_factor=self.grid_height_scale_factor
+                ),
                 grid_step=self.grid_step_map[grid_scan_model.grid_step],
-                calibrated_alignment_z=0.85,  # TODO: maybe get from redis?
+                calibrated_alignment_z=self.calibrated_alignment_z,
             ),
             grid_scan=GridScanParams(
                 omega_range=0,
