@@ -13,6 +13,9 @@ class FullDatasetDialogBox(DataCollectionDialogBoxBase):
     processing_pipeline: str = "dials"
     crystal_counter: int = 0
     number_of_frames: int
+    start_omega: float | None = Field(
+        default=None, description="If None, the current omega position is used"
+    )
 
 
 class FullDatasetParams(DataCollectionBase):

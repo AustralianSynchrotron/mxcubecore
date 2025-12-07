@@ -44,6 +44,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
 
         full_dataset_params = FullDatasetParams(
+            start_omega=dialog_box_model.start_omega,
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,

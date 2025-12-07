@@ -66,6 +66,12 @@ def get_full_dataset_schema(
                 "processing_pipeline", collection_type="full_dataset"
             ),
         },
+        "start_omega": {
+            "title": "Start Omega [degrees]",
+            "type": ["number", "null"],
+            "default": None,
+            "widget": "textarea",
+        },
     }
     if not partial_udc:
         properties["crystal_counter"] = {
