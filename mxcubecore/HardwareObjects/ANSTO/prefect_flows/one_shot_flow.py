@@ -74,11 +74,20 @@ class OneShotFlow(AbstractPrefectWorkflow):
             )
             sample_id = dialog_box_model.sample_id
 
+        head_type = self.get_head_type()
+        if head_type == "Plate":
+            type = "tray"
+        elif head_type == "SmartMagnet":
+            type = "pin"
+        else:
+            raise NotImplementedError(f"MD3 head type {head_type} not implemented")
+
         prefect_parameters = {
             "sample_id": sample_id,
             "collection_params": one_shot_params.model_dump(),
             "hardware_trigger": True,
             "add_dummy_pin": settings.ADD_DUMMY_PIN_TO_DB,
+            "type": type,
         }
 
         logging.getLogger("HWR").debug(
