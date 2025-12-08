@@ -43,9 +43,23 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             energy=photon_energy,
         )
 
-        number_of_frames = int(
+        number_of_frames = (
             dialog_box_model.omega_range / dialog_box_model.degrees_per_frame
         )
+        if number_of_frames.is_integer():
+            number_of_frames = int(number_of_frames)
+            omega_range = dialog_box_model.omega_range
+        else:
+            # adjust omega range to fit an integer number of frames
+            number_of_frames = round(number_of_frames)
+            omega_range = number_of_frames * dialog_box_model.degrees_per_frame
+            logging.getLogger("user_level_log").warning(
+                f"Adjusted omega range from {dialog_box_model.omega_range} "
+                f"to {omega_range} to fit an integer number of frames "
+                f"({number_of_frames}) with degrees per frame "
+                f"{dialog_box_model.degrees_per_frame}"
+            )
+
         logging.getLogger("HWR").info(
             f"Calculated number of frames: {number_of_frames} "
             f"from omega range {dialog_box_model.omega_range} "
@@ -53,7 +67,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
         full_dataset_params = FullDatasetParams(
             start_omega=dialog_box_model.start_omega,
-            omega_range=dialog_box_model.omega_range,
+            omega_range=omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
