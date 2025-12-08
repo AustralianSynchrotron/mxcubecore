@@ -12,7 +12,7 @@ from .common import (
 class FullDatasetDialogBox(DataCollectionDialogBoxBase):
     processing_pipeline: str = "dials"
     crystal_counter: int = 0
-    number_of_frames: int
+    degrees_per_frame: float
     start_omega: float | None = Field(
         default=None, description="If None, the current omega position is used"
     )

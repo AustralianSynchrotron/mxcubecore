@@ -43,13 +43,21 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             energy=photon_energy,
         )
 
+        number_of_frames = int(
+            dialog_box_model.omega_range / dialog_box_model.degrees_per_frame
+        )
+        logging.getLogger("HWR").info(
+            f"Calculated number of frames: {number_of_frames} "
+            f"from omega range {dialog_box_model.omega_range} "
+            f"and degrees per frame {dialog_box_model.degrees_per_frame}"
+        )
         full_dataset_params = FullDatasetParams(
             start_omega=dialog_box_model.start_omega,
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
-            number_of_frames=dialog_box_model.number_of_frames,
+            number_of_frames=number_of_frames,
             detector_distance=detector_distance,
             photon_energy=photon_energy,
             beam_size=(80, 80),  # TODO: get beam size,
@@ -139,7 +147,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "required": [
                 "exposure_time",
                 "omega_range",
-                "number_of_frames",
+                "degrees_per_frame",
                 "resolution",
                 "processing_pipeline",
                 "crystal_counter",

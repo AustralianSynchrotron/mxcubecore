@@ -6,7 +6,7 @@ from .common import (
 
 class ScreeningDialogBox(DataCollectionDialogBoxBase):
     crystal_counter: int = 0
-    number_of_frames: int
+    degrees_per_frame: float
 
 
 class ScreeningParams(DataCollectionBase):

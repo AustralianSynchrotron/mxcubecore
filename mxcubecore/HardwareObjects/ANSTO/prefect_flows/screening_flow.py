@@ -44,12 +44,21 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             energy=photon_energy,
         )
 
+        number_of_frames = int(
+            dialog_box_model.omega_range / dialog_box_model.degrees_per_frame
+        )
+        logging.getLogger("HWR").info(
+            f"Calculated number of frames: {number_of_frames} "
+            f"from omega range {dialog_box_model.omega_range} "
+            f"and degrees per frame {dialog_box_model.degrees_per_frame}"
+        )
+
         screening_params = ScreeningParams(
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
-            number_of_frames=dialog_box_model.number_of_frames,
+            number_of_frames=number_of_frames,
             detector_distance=detector_distance,
             photon_energy=photon_energy,
             # Convert transmission percentage to a value between 0 and 1
@@ -139,7 +148,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "required": [
                 "exposure_time",
                 "omega_range",
-                "number_of_frames",
+                "degrees_per_frame",
                 "resolution",
                 "crystal_counter",
                 "transmission",
