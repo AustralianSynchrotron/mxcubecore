@@ -48,7 +48,11 @@ class DataCollectionBase(BaseModel):
     exposure_time: float = Field(description="Measured in seconds.")
     number_of_passes: int = 1
     count_time: float | None = None
-    number_of_frames: int | None = None
+    number_of_frames: int | None = Field(
+        default=None,
+        description="If None, calculated from omega_range and "
+        "degrees_per_frame. Degrees per frame must be provided in that case.",
+    )
     detector_distance: float = Field(description="Detector distance in meters")
     photon_energy: float = Field(description="Measured in keV.")
     transmission: float = Field(strict=True, ge=0, le=1)
@@ -57,7 +61,10 @@ class DataCollectionBase(BaseModel):
         description="Determined by the crystal finder. Not currently used. "
         "Measured in um.",
     )
-    degrees_per_frame: float | None = None
+    degrees_per_frame: float | None = Field(
+        default=None,
+        description="Measured in degrees. Has to be provided if number_of_frames is None",
+    )
 
     class Config:
         extra = "forbid"
