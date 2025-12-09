@@ -49,12 +49,12 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
-            number_of_frames=dialog_box_model.number_of_frames,
             detector_distance=detector_distance,
             photon_energy=photon_energy,
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
             beam_size=(80, 80),  # TODO: get beam size
+            degrees_per_frame=dialog_box_model.degrees_per_frame,
         )
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
@@ -139,7 +139,7 @@ class ScreeningFlow(AbstractPrefectWorkflow):
             "required": [
                 "exposure_time",
                 "omega_range",
-                "number_of_frames",
+                "degrees_per_frame",
                 "resolution",
                 "crystal_counter",
                 "transmission",

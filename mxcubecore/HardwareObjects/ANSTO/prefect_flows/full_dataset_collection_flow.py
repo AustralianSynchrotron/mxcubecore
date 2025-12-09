@@ -44,16 +44,17 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
         )
 
         full_dataset_params = FullDatasetParams(
+            start_omega=dialog_box_model.start_omega,
             omega_range=dialog_box_model.omega_range,
             exposure_time=dialog_box_model.exposure_time,
             number_of_passes=1,
             count_time=None,
-            number_of_frames=dialog_box_model.number_of_frames,
             detector_distance=detector_distance,
             photon_energy=photon_energy,
             beam_size=(80, 80),  # TODO: get beam size,
             # Convert transmission percentage to a value between 0 and 1
             transmission=dialog_box_model.transmission / 100,
+            degrees_per_frame=dialog_box_model.degrees_per_frame,
         )
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
@@ -138,7 +139,7 @@ class FullDatasetFlow(AbstractPrefectWorkflow):
             "required": [
                 "exposure_time",
                 "omega_range",
-                "number_of_frames",
+                "degrees_per_frame",
                 "resolution",
                 "processing_pipeline",
                 "crystal_counter",

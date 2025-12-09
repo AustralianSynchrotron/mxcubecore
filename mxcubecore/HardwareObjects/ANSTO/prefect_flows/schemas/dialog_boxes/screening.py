@@ -23,12 +23,12 @@ def get_screening_schema(
             ),
             "widget": "textarea",
         },
-        "number_of_frames": {
-            "title": "Number of Frames",
-            "type": "integer",
-            "minimum": 1,
-            "default": int(
-                get_dialog_box_param("number_of_frames", collection_type="screening")
+        "degrees_per_frame": {
+            "title": "Degrees per Frame",
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "default": float(
+                get_dialog_box_param("degrees_per_frame", collection_type="screening")
             ),
             "widget": "textarea",
         },

@@ -23,12 +23,14 @@ def get_full_dataset_schema(
             ),
             "widget": "textarea",
         },
-        "number_of_frames": {
-            "title": "Number of Frames",
-            "type": "integer",
-            "minimum": 1,
-            "default": int(
-                get_dialog_box_param("number_of_frames", collection_type="full_dataset")
+        "degrees_per_frame": {
+            "title": "Degrees per Frame",
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "default": float(
+                get_dialog_box_param(
+                    "degrees_per_frame", collection_type="full_dataset"
+                )
             ),
             "widget": "textarea",
         },
@@ -65,6 +67,12 @@ def get_full_dataset_schema(
             "default": get_dialog_box_param(
                 "processing_pipeline", collection_type="full_dataset"
             ),
+        },
+        "start_omega": {
+            "title": "Start Omega [degrees]",
+            "type": ["number", "null"],
+            "default": None,
+            "widget": "textarea",
         },
     }
     if not partial_udc:
