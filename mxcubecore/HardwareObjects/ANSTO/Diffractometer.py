@@ -813,7 +813,7 @@ class Diffractometer(GenericDiffractometer):
     def set_phase(self, phase: str, wait: bool = True, timeout: float = None) -> None:
         """
         Sets diffractometer to selected phase.
-        By default available phase is Centring, BeamLocation,
+        By default available phase is Centring,
         DataCollection, Transfer
 
         phase : str
@@ -831,13 +831,13 @@ class Diffractometer(GenericDiffractometer):
         logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
         try:
+            self._wait_ready()
             self.move_phase(phase)
             gevent.sleep(0.2)
 
-            if wait:
-                if timeout is None:
-                    timeout = 40
-                self._wait_ready(timeout)
+            if timeout is None:
+                timeout = 40
+            self._wait_ready(timeout)
         except Exception as e:
             logging.getLogger("user_level_log").error(
                 f"Failed to change phase to {phase}: {e}"
@@ -845,6 +845,8 @@ class Diffractometer(GenericDiffractometer):
             self.update_state(HardwareObjectState.READY)
 
             raise e
+        self.update_state(HardwareObjectState.READY)
+
         self.emit("minidiffPhaseChanged", (self.current_phase,))
 
     def get_point_from_line(self, point_one, point_two, index, images_num):
@@ -927,7 +929,6 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-        self.update_state(HardwareObjectState.BUSY)
         if timeout is not None and timeout <= 0:
             logging.getLogger("HWR").warning(
                 "DEBUG: Strange timeout value passed %s" % str(timeout)
@@ -946,5 +947,4 @@ class Diffractometer(GenericDiffractometer):
                     gevent.sleep(0.2)
             else:
                 # Simulate wait
-                gevent.sleep(5)
-        self.update_state(HardwareObjectState.READY)
+                gevent.sleep(3)
