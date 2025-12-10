@@ -831,12 +831,13 @@ class Diffractometer(GenericDiffractometer):
         logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
         try:
-            self._wait_ready()
+            if timeout is None:
+                timeout = 40
+
+            self._wait_ready(timeout)
             self.move_phase(phase)
             gevent.sleep(0.2)
 
-            if timeout is None:
-                timeout = 40
             self._wait_ready(timeout)
         except Exception as e:
             logging.getLogger("user_level_log").error(
