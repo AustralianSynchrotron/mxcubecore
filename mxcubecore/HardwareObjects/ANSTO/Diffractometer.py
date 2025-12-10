@@ -304,7 +304,7 @@ class Diffractometer(GenericDiffractometer):
         }
         return centred_pos_dir
 
-    def get_current_phase(self):
+    def get_current_phase(self) -> str:
         return self.read_phase.get_value()
 
     def execute_server_task(self, method, timeout=30, *args):
@@ -830,36 +830,18 @@ class Diffractometer(GenericDiffractometer):
         logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
         self.move_phase(phase)
-        if wait:
-            if timeout is None:
-                timeout = 40
-            self._wait_ready(timeout)
-        self.emit("minidiffPhaseChanged", (self.current_phase,))
-
-    def _wait_ready(self, timeout: float = None) -> None:
-        """
-        Waits until the MD3 is ready
-
-        Parameters
-        ----------
-        timeout : float, optional
-            None means infinite timeout, <=0 means default timeout (30s)
-
-        Returns
-        -------
-        None
-        """
-
-        if timeout is not None and timeout <= 0:
-            logging.getLogger("HWR").warning(
-                "DEBUG: Strange timeout value passed %s" % str(timeout)
+        gevent.sleep(0.2)
+        try:
+            if wait:
+                if timeout is None:
+                    timeout = 40
+                self._wait_ready(timeout)
+        except Exception as e:
+            logging.getLogger("HWR").error(
+                f"Error waiting for diffractometer to be ready after phase change: {e}"
             )
-            timeout = 30
-        with gevent.Timeout(
-            timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
-        ):
-            while not self._ready():
-                time.sleep(0.5)
+            raise e
+        self.emit("minidiffPhaseChanged", (self.current_phase,))
 
     def get_point_from_line(self, point_one, point_two, index, images_num):
         return point_one.as_dict()
@@ -941,14 +923,24 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-
+        self.update_state(HardwareObjectState.BUSY)
         if timeout is not None and timeout <= 0:
             logging.getLogger("HWR").warning(
                 "DEBUG: Strange timeout value passed %s" % str(timeout)
             )
-            timeout = 30
+            timeout = 40
         with gevent.Timeout(
             timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
         ):
-            while self.get_md3_state() != "Ready":
-                time.sleep(0.1)
+            if settings.BL_ACTIVE:
+                # The MD3 phase is set to Unknown when moving
+                while self.get_current_phase() == "Unknown":
+                    gevent.sleep(0.2)
+
+                # Wait until the MD3 is ready
+                while self.get_md3_state() == "Running":
+                    gevent.sleep(0.2)
+            else:
+                # Simulate wait
+                gevent.sleep(5)
+        self.update_state(HardwareObjectState.READY)
