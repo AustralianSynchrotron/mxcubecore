@@ -19,8 +19,9 @@ class SimChannel:
         return self._value
 
     def __call__(self, value=None):
-        self.set_value(value)
-        return self._value
+        if value is not None:
+            self.set_value(value)
+        return self.get_value()
 
     def name(self):
         return self._name
