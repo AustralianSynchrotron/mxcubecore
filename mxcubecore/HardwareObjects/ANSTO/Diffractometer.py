@@ -827,19 +827,23 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
+        self.update_state(HardwareObjectState.BUSY)
         logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
-        self.move_phase(phase)
-        gevent.sleep(0.2)
         try:
+            self.move_phase(phase)
+            gevent.sleep(0.2)
+
             if wait:
                 if timeout is None:
                     timeout = 40
                 self._wait_ready(timeout)
         except Exception as e:
-            logging.getLogger("HWR").error(
-                f"Error waiting for diffractometer to be ready after phase change: {e}"
+            logging.getLogger("user_level_log").error(
+                f"Failed to change phase to {phase}: {e}"
             )
+            self.update_state(HardwareObjectState.READY)
+
             raise e
         self.emit("minidiffPhaseChanged", (self.current_phase,))
 
@@ -930,7 +934,7 @@ class Diffractometer(GenericDiffractometer):
             )
             timeout = 40
         with gevent.Timeout(
-            timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
+            timeout, TimeoutError(f"Failed to change MD3 phase after {timeout} seconds")
         ):
             if settings.BL_ACTIVE:
                 # The MD3 phase is set to Unknown when moving
