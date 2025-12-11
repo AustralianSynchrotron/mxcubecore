@@ -14,11 +14,12 @@ from scipy import optimize
 from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObjectState
 from mxcubecore.configuration.ansto.config import settings
-from mxcubecore.HardwareObjects.GenericDiffractometer import (
-    GenericDiffractometer,
-    PhaseEnum,
-)
+from mxcubecore.HardwareObjects.GenericDiffractometer import GenericDiffractometer
 
+from .mockup.channels import (
+    SimChannel,
+    SimMd3State,
+)
 from .prefect_flows.sync_prefect_client import MX3SyncPrefectClient
 from .redis_utils import get_redis_connection
 
@@ -84,7 +85,6 @@ class Diffractometer(GenericDiffractometer):
             self.mount_mode = "manual"
 
         self.equipment_ready()
-
         self.connect(self.motor_hwobj_dict["phi"], "valueChanged", self.phi_motor_moved)
         self.connect(
             self.motor_hwobj_dict["phiy"], "valueChanged", self.phiy_motor_moved
@@ -108,87 +108,100 @@ class Diffractometer(GenericDiffractometer):
         self.connect(
             self.motor_hwobj_dict["sampy"], "valueChanged", self.sampy_motor_moved
         )
+        if settings.BL_ACTIVE:
+            self.save_positions = self.add_command(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "save_centring_positions",
+                },
+                "saveCentringPositions",
+            )
 
-        self.save_positions = self.add_command(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "save_centring_positions",
-            },
-            "saveCentringPositions",
-        )
+            self.move_phase = self.add_command(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "move_to_phase",
+                },
+                "startSetPhase",
+            )
 
-        self.move_phase = self.add_command(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "move_to_phase",
-            },
-            "startSetPhase",
-        )
+            self.get_md3_state = self.add_command(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "get_md3_state",
+                },
+                "getState",
+            )
 
-        self.get_md3_state = self.add_command(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "get_md3_state",
-            },
-            "getState",
-        )
+            self.md3_abort = self.add_command(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "md3_abort",
+                },
+                "abort",
+            )
 
-        self.md3_abort = self.add_command(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "md3_abort",
-            },
-            "abort",
-        )
+            self.hwstate_attr = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "hwstate",
+                },
+                "HardwareState",
+            )
 
-        self.hwstate_attr = self.add_channel(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "hwstate",
-            },
-            "HardwareState",
-        )
+            self.swstate_attr = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "swstate",
+                },
+                "State",
+            )
+            self.read_phase = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "read_phase",
+                },
+                "CurrentPhase",
+            )
+            self.state = self.add_channel(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "state",
+                },
+                "State",
+            )
+            self.read_phase.connect_signal("update", self._update_phase_value)
+            self.state.connect_signal("update", self._update_state)
 
-        self.swstate_attr = self.add_channel(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "swstate",
-            },
-            "State",
-        )
-        self.read_phase = self.add_channel(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "read_phase",
-            },
-            "CurrentPhase",
-        )
-        self.state = self.add_channel(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "state",
-            },
-            "State",
-        )
-        self.read_phase.connect_signal("update", self._update_phase_value)
-        self.state.connect_signal("update", self._update_state)
-
-        self.get_md3_head_type = self.add_command(
-            {
-                "type": "exporter",
-                "exporter_address": self.exporter_addr,
-                "name": "get_md3_head_type",
-            },
-            "getHeadType",
-        )
+            self.get_md3_head_type = self.add_command(
+                {
+                    "type": "exporter",
+                    "exporter_address": self.exporter_addr,
+                    "name": "get_md3_head_type",
+                },
+                "getHeadType",
+            )
+        else:
+            # Sim channels
+            self.save_positions = SimChannel("sim_save_positions", None)
+            self.move_phase = SimChannel("sim_move_phase", "DataCollection")
+            self.get_md3_state = SimChannel("sim_get_md3_state", "Ready")
+            self.md3_abort = SimChannel("sim_md3_abort", None)
+            self.hwstate_attr = SimChannel("sim_hwstate_attr", "Ready")
+            self.swstate_attr = SimChannel("sim_swstate_attr", "Ready")
+            self.read_phase = self.move_phase
+            self.state = SimMd3State("sim_md3_state", "Ready")
+            with get_redis_connection() as redis_connection:
+                head_type = redis_connection.get("mxcube:md3_head_type")
+            self.get_md3_head_type = SimChannel("sim_get_md3_head_type", head_type)
 
         self._save_head_type_to_redis()
 
@@ -291,7 +304,7 @@ class Diffractometer(GenericDiffractometer):
         }
         return centred_pos_dir
 
-    def get_current_phase(self):
+    def get_current_phase(self) -> str:
         return self.read_phase.get_value()
 
     def execute_server_task(self, method, timeout=30, *args):
@@ -365,14 +378,15 @@ class Diffractometer(GenericDiffractometer):
         # so we convert the units to micrometers
         # beam_size_micrometers = tuple([b * 1000 for b in self.beam.get_beam_size()])
         try:
+            logging.getLogger("user_level_log").info("Starting optical centering...")
             sample_centering = MX3SyncPrefectClient(
                 name=settings.SAMPLE_CENTERING_PREFECT_DEPLOYMENT_NAME,
                 parameters={},
             )
 
             sample_centering.trigger_flow(wait=True)
-            logging.getLogger("HWR").debug("Optical centering finished")
-        except Exception:
+            logging.getLogger("user_level_log").info("Optical centering finished")
+        except Exception as ex:
             logging.getLogger("user_level_log").error(
                 "Automatic optical centering failed. Use three-click centering instead."
             )
@@ -799,7 +813,7 @@ class Diffractometer(GenericDiffractometer):
     def set_phase(self, phase: str, wait: bool = True, timeout: float = None) -> None:
         """
         Sets diffractometer to selected phase.
-        By default available phase is Centring, BeamLocation,
+        By default available phase is Centring,
         DataCollection, Transfer
 
         phase : str
@@ -813,39 +827,28 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
+        self.update_state(HardwareObjectState.BUSY)
         logging.getLogger("HWR").debug(f"Setting phase: {phase}, wait={wait}")
         self.current_phase = str(phase)
-        self.move_phase(phase)
-        if wait:
+        try:
             if timeout is None:
-                timeout = 40
+                timeout = 60
+
             self._wait_ready(timeout)
-        self.emit("minidiffPhaseChanged", (self.current_phase,))
+            self.move_phase(phase)
+            gevent.sleep(0.2)
 
-    def _wait_ready(self, timeout: float = None) -> None:
-        """
-        Waits until the MD3 is ready
-
-        Parameters
-        ----------
-        timeout : float, optional
-            None means infinite timeout, <=0 means default timeout (30s)
-
-        Returns
-        -------
-        None
-        """
-
-        if timeout is not None and timeout <= 0:
-            logging.getLogger("HWR").warning(
-                "DEBUG: Strange timeout value passed %s" % str(timeout)
+            self._wait_ready(timeout)
+        except Exception as e:
+            logging.getLogger("user_level_log").error(
+                f"Failed to change phase to {phase}: {e}"
             )
-            timeout = 30
-        with gevent.Timeout(
-            timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
-        ):
-            while not self._ready():
-                time.sleep(0.5)
+            self.update_state(HardwareObjectState.READY)
+
+            raise e
+        self.update_state(HardwareObjectState.READY)
+
+        self.emit("minidiffPhaseChanged", (self.current_phase,))
 
     def get_point_from_line(self, point_one, point_two, index, images_num):
         return point_one.as_dict()
@@ -927,14 +930,22 @@ class Diffractometer(GenericDiffractometer):
         -------
         None
         """
-
         if timeout is not None and timeout <= 0:
             logging.getLogger("HWR").warning(
                 "DEBUG: Strange timeout value passed %s" % str(timeout)
             )
-            timeout = 30
+            timeout = 60
         with gevent.Timeout(
-            timeout, RuntimeError("Timeout waiting for diffractometer to be ready")
+            timeout, TimeoutError(f"Failed to change MD3 phase after {timeout} seconds")
         ):
-            while self.get_md3_state() != "Ready":
-                time.sleep(0.1)
+            if settings.BL_ACTIVE:
+                # The MD3 phase is set to Unknown when moving
+                while self.get_current_phase() == "Unknown":
+                    gevent.sleep(0.2)
+
+                # Wait until the MD3 is ready
+                while self.get_md3_state() == "Running":
+                    gevent.sleep(0.2)
+            else:
+                # Simulate wait
+                gevent.sleep(3)
