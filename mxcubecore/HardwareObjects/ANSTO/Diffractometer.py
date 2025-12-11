@@ -832,7 +832,7 @@ class Diffractometer(GenericDiffractometer):
         self.current_phase = str(phase)
         try:
             if timeout is None:
-                timeout = 40
+                timeout = 60
 
             self._wait_ready(timeout)
             self.move_phase(phase)
@@ -934,7 +934,7 @@ class Diffractometer(GenericDiffractometer):
             logging.getLogger("HWR").warning(
                 "DEBUG: Strange timeout value passed %s" % str(timeout)
             )
-            timeout = 40
+            timeout = 60
         with gevent.Timeout(
             timeout, TimeoutError(f"Failed to change MD3 phase after {timeout} seconds")
         ):
