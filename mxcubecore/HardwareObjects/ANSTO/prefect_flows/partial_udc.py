@@ -176,7 +176,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 exposure_time=screening_model.exposure_time,
                 number_of_passes=1,
                 count_time=None,
-                number_of_frames=screening_model.number_of_frames,
+                degrees_per_frame=screening_model.degrees_per_frame,
                 detector_distance=self._resolution_to_distance(
                     screening_model.resolution,
                     energy=photon_energy,
@@ -194,7 +194,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 exposure_time=full_dataset_model.exposure_time,
                 number_of_passes=1,
                 count_time=None,
-                number_of_frames=full_dataset_model.number_of_frames,
+                degrees_per_frame=full_dataset_model.degrees_per_frame,
                 detector_distance=self._resolution_to_distance(
                     full_dataset_model.resolution,
                     energy=photon_energy,
@@ -347,9 +347,9 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                                 "required": [
                                     "exposure_time",
                                     "omega_range",
-                                    "number_of_frames",
                                     "resolution",
                                     "transmission",
+                                    "degrees_per_frame",
                                 ],
                             }
                         }
@@ -366,10 +366,10 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                                 "required": [
                                     "exposure_time",
                                     "omega_range",
-                                    "number_of_frames",
                                     "resolution",
                                     "transmission",
                                     "processing_pipeline",
+                                    "degrees_per_frame",
                                 ],
                             }
                         }
