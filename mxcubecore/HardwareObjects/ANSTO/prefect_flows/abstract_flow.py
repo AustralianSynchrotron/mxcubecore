@@ -28,8 +28,8 @@ from .schemas.data_layer import PinRead
 from .schemas.full_dataset import FullDatasetDialogBox
 from .schemas.grid_scan import GridScanDialogBox
 from .schemas.one_shot import OneShotDialogBox
-from .schemas.prefect_workflow import PrefectFlows
 from .schemas.screening import ScreeningDialogBox
+from .sync_prefect_client import MX3SyncPrefectClient
 
 
 class AbstractPrefectWorkflow(ABC):
@@ -69,6 +69,7 @@ class AbstractPrefectWorkflow(ABC):
         self.prefect_flow_aborted = False
         self.mxcubecore_workflow_aborted = False
         self.project_id_lab_name_map = None
+        self.prefect_client: None | MX3SyncPrefectClient = None
 
         if settings.BL_ACTIVE:
             self.robot_client = Client(host=settings.ROBOT_HOST, readonly=False)

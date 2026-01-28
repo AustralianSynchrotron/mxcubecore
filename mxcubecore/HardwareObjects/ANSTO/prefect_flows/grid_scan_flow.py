@@ -182,12 +182,12 @@ class GridScanFlow(AbstractPrefectWorkflow):
             with the exception message.
         """
 
-        grid_scan_flow = MX3SyncPrefectClient(
+        self.prefect_client = MX3SyncPrefectClient(
             name=settings.GRID_SCAN_DEPLOYMENT_NAME,
             parameters=prefect_parameters.model_dump(exclude_none=True),
         )
         try:
-            flow_run_uuid = grid_scan_flow.trigger_grid_scan()
+            flow_run_uuid = self.prefect_client.trigger_grid_scan()
 
             logging.getLogger("HWR").info("Getting spotfinder results from redis...")
             logging.getLogger("HWR").info(
@@ -238,6 +238,10 @@ class GridScanFlow(AbstractPrefectWorkflow):
                 self.sample_view.set_grid_data(
                     grid_id, heatmap_dict, data_file_path=None
                 )
+            else:
+                self._state.value = "ON"
+                self.mxcubecore_workflow_aborted = False
+                raise RuntimeError("Workflow aborted by the user.")
 
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
@@ -246,7 +250,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
             self._state.value = "ON"
             self.mxcubecore_workflow_aborted = False
 
-            grid_scan_flow.check_flow_state()
+            self.prefect_client.check_flow_state()
 
             logging.getLogger("user_level_log").error(
                 f"Grid scan flow was not successful: {str(ex)}"

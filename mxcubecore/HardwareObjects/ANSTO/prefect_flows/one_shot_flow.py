@@ -94,7 +94,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
             f"parameters sent to prefect flow {prefect_parameters}"
         )
 
-        one_shot_flow = MX3SyncPrefectClient(
+        self.prefect_client = MX3SyncPrefectClient(
             name=settings.ONE_SHOT_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
 
@@ -102,7 +102,7 @@ class OneShotFlow(AbstractPrefectWorkflow):
         self._save_dialog_box_params_to_redis(dialog_box_model)
 
         try:
-            one_shot_flow.trigger_data_collection(sample_id)
+            self.prefect_client.trigger_data_collection(sample_id)
             logging.getLogger("user_level_log").info("One-shot completed successfully.")
         except Exception as ex:
             raise QueueExecutionException(str(ex), self) from ex
