@@ -1,10 +1,8 @@
-import asyncio
 import logging
 import os
 import pprint
 import time
 from os import path
-from time import perf_counter
 from typing import Literal
 
 import gevent
@@ -316,27 +314,34 @@ class PrefectWorkflow(HardwareObject):
         None
         """
         logging.getLogger("HWR").info("Aborting current workflow")
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # TODO: MXcube takes some significant time to cancel workflows (investigate why)
-            timeout = 30
-            logging.getLogger("HWR").warning(
-                f"Loop is still running, waiting for {timeout} s to complete"
+
+        if (
+            self.current_flow.prefect_client is not None
+            and self.current_flow.prefect_client.flow_run_id is not None
+        ):
+            try:
+                self.current_flow.prefect_client.cancel_flow_run(wait=False)
+                logging.getLogger("user_level_log").info(
+                    "Prefect workflow aborted successfully."
+                )
+            except Exception as ex:
+                logging.getLogger("HWR").error(
+                    f"Error aborting prefect flow: {str(ex)}"
+                )
+                return
+        else:
+            logging.getLogger("user_level_log").warning(
+                "No prefect client available to abort the workflow"
             )
-            t = perf_counter()
-            while loop.is_running():
-                gevent.sleep(1)
-                logging.getLogger("HWR").warning(f"Loop is still running")
-                if perf_counter() > t + timeout:
-                    raise QueueExecutionException("Asyncio Loop is still running", self)
+            return
 
         # If necessary unblock dialog
         if not self.gevent_event.is_set():
             self.gevent_event.set()
 
         if self.workflow_name == PrefectFlows.grid_scan:
-            self.raster_flow.prefect_flow_aborted = True
-            self.raster_flow.mxcubecore_workflow_aborted = True
+            self.current_flow.prefect_flow_aborted = True
+            self.current_flow.mxcubecore_workflow_aborted = True
 
         self.state.value = "ON"
 
@@ -428,68 +433,66 @@ class PrefectWorkflow(HardwareObject):
 
         if self.workflow_name == PrefectFlows.screen_sample:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.screening_flow = ScreeningFlow(
+            self.current_flow = ScreeningFlow(
                 state=self._state, resolution=self.resolution, sample_id=sample_id
             )
-            dialog_box_parameters = self.open_dialog(self.screening_flow.dialog_box())
+            dialog_box_parameters = self.open_dialog(self.current_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
                     f"Dialog box parameters: {dialog_box_parameters}"
                 )
                 self.state.value = "ON"
-                self.screening_flow.run(dialog_box_parameters=dialog_box_parameters)
+                self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)
 
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.full_dataset_flow = FullDatasetFlow(
+            self.current_flow = FullDatasetFlow(
                 state=self._state, resolution=self.resolution, sample_id=sample_id
             )
-            dialog_box_parameters = self.open_dialog(
-                self.full_dataset_flow.dialog_box()
-            )
+            dialog_box_parameters = self.open_dialog(self.current_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
                     f"Dialog box parameters: {dialog_box_parameters}"
                 )
-                self.full_dataset_flow.run(dialog_box_parameters=dialog_box_parameters)
+                self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)
 
         elif self.workflow_name == PrefectFlows.grid_scan:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.raster_flow = GridScanFlow(
+            self.current_flow = GridScanFlow(
                 sample_view=self.sample_view,
                 state=self._state,
                 redis_connection=self.redis_connection,
                 resolution=self.resolution,
                 sample_id=sample_id,
             )
-            dialog_box_parameters = self.open_dialog(self.raster_flow.dialog_box())
+            dialog_box_parameters = self.open_dialog(self.current_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
                     f"Dialog box parameters: {dialog_box_parameters}"
                 )
 
-                self.raster_flow.run(dialog_box_parameters=dialog_box_parameters)
+                self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)
 
         elif self.workflow_name == PrefectFlows.one_shot:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
-            self.one_shot_flow = OneShotFlow(
+            self.current_flow = OneShotFlow(
                 state=self._state, resolution=self.resolution, sample_id=sample_id
             )
-            dialog_box_parameters = self.open_dialog(self.one_shot_flow.dialog_box())
+            dialog_box_parameters = self.open_dialog(self.current_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
                     f"Dialog box parameters: {dialog_box_parameters}"
                 )
-                self.one_shot_flow.run(dialog_box_parameters=dialog_box_parameters)
+                self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)
@@ -497,17 +500,17 @@ class PrefectWorkflow(HardwareObject):
         elif self.workflow_name == PrefectFlows.partial_udc:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
 
-            self.partial_udc_flow = PartialUDCFlow(
+            self.current_flow = PartialUDCFlow(
                 state=self._state,
                 resolution=self.resolution,
                 sample_id=sample_id,
             )
-            dialog_box_parameters = self.open_dialog(self.partial_udc_flow.dialog_box())
+            dialog_box_parameters = self.open_dialog(self.current_flow.dialog_box())
             if dialog_box_parameters:
                 logging.getLogger("HWR").info(
                     f"Dialog box parameters: {dialog_box_parameters}"
                 )
-                self.partial_udc_flow.run(dialog_box_parameters=dialog_box_parameters)
+                self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
                 raise QueueExecutionException("dialog_box_parameters is empty", self)

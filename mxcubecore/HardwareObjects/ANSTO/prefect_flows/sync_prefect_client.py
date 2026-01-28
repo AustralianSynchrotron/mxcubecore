@@ -1,5 +1,6 @@
 import logging
 from enum import StrEnum
+from time import perf_counter
 from typing import Literal
 from uuid import UUID
 
@@ -54,7 +55,7 @@ class MX3SyncPrefectClient:
         """
         self.parameters = parameters
         self.name = name
-        self.flow_run_id = None
+        self.flow_run_id: None | UUID = None
         self.redis_connection = redis.StrictRedis(
             host=settings.MXCUBE_REDIS_HOST,
             port=settings.MXCUBE_REDIS_PORT,
@@ -150,6 +151,9 @@ class MX3SyncPrefectClient:
             if flow_state and flow_state.type == StateType.FAILED:
                 logging.getLogger("user_level_log").error(flow_state.message)
                 raise QueueExecutionException(flow_state.message, self)
+            if flow_state and flow_state.type == StateType.CANCELLED:
+                logging.getLogger("user_level_log").warning("Flow run was cancelled.")
+                raise QueueExecutionException("Flow run was cancelled.", self)
 
     def check_flow_state(self) -> None:
         """
@@ -167,6 +171,9 @@ class MX3SyncPrefectClient:
             if flow_state and flow_state.type == StateType.FAILED:
                 logging.getLogger("user_level_log").error(flow_state.message)
                 raise QueueExecutionException(flow_state.message, self)
+            if flow_state and flow_state.type == StateType.CANCELLED:
+                logging.getLogger("user_level_log").warning("Flow run was cancelled.")
+                raise QueueExecutionException("Flow run was cancelled.", self)
 
     def trigger_grid_scan(self) -> UUID:
         """
@@ -239,3 +246,33 @@ class MX3SyncPrefectClient:
         """
         q = FlowRunFilter(id={"any_": [flow_run_id]})
         return client.read_flow_runs(flow_run_filter=q)
+
+    def cancel_flow_run(self, wait: bool = True, timeout: float = 10.0) -> bool:
+        """
+        Cancel the current flow run.
+        """
+        with get_client(sync_client=True) as client:
+            try:
+                client.set_flow_run_state(
+                    self.flow_run_id,
+                    state=State(type=StateType.CANCELLING, name="Cancelling"),
+                    force=True,
+                )
+            except Exception as ex:
+                logging.getLogger("HWR").error(f"Failed to cancel flow run: {ex}")
+                return False
+
+            if not wait:
+                return True
+
+            deadline = timeout + perf_counter()
+            flow_state = None
+            while flow_state != StateType.CANCELLED and perf_counter() < deadline:
+                flow_state = client.read_flow_run(self.flow_run_id).state
+                if flow_state and flow_state.type == StateType.CANCELLED:
+                    return True
+                sleep(0.5)
+            logging.getLogger("HWR").warning(
+                "Flow run did not reach CANCELLED state within timeout"
+            )
+            return False

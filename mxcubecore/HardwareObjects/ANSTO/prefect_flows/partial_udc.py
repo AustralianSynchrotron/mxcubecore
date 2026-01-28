@@ -266,11 +266,11 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 1 if dialog_box_model.run_full_dataset else 0,
             )
 
-        partial_udc_flow = MX3SyncPrefectClient(
+        self.prefect_client = MX3SyncPrefectClient(
             name=settings.PARTIAL_UDC_DEPLOYMENT_NAME, parameters=prefect_parameters
         )
         try:
-            partial_udc_flow.trigger_data_collection(sample_id, mode="partial_udc")
+            self.prefect_client.trigger_data_collection(sample_id, mode="partial_udc")
             logging.getLogger("user_level_log").info(
                 "Partial UDC completed successfully."
             )
