@@ -19,7 +19,8 @@ from .abstract_flow import AbstractPrefectWorkflow
 from .schemas.dialog_boxes.grid_scan import get_grid_scan_schema
 from .schemas.grid_scan import (
     GridScanDialogBox,
-    GridScanParams,
+    GridScanPrefectFlow,
+    MXCubeGridScanParams
 )
 from .sync_prefect_client import MX3SyncPrefectClient
 
@@ -61,19 +62,45 @@ class GridScanFlow(AbstractPrefectWorkflow):
         self._state.value = "RUNNING"
 
         grid_list: list[Grid] = self.sample_view.get_grids()
-        logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
-        grid = grid_list[-1]
-
-        sid = grid.id
-        num_cols = grid.num_cols
-        num_rows = grid.num_rows
-        beam_position = grid.beam_pos
-        screen_coordinate = [round(grid.screen_coord[0]), round(grid.screen_coord[1])]
-        width = round(grid.width)
-        height = round(grid.height)
-
         dialog_box_model = GridScanDialogBox.model_validate(dialog_box_parameters)
-        head_type = self.get_head_type()
+        grid_params: list[MXCubeGridScanParams] = []
+        photon_energy = energy_master.get()
+
+        default_resolution = float(self.redis_connection.get("grid_scan:resolution"))
+        detector_distance = self._resolution_to_distance(
+            default_resolution,
+            energy=photon_energy,
+        )
+        logging.getLogger("HWR").info(
+            f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
+        )
+
+        for grid in grid_list:
+            logging.getLogger("HWR").info(f"Number of grids: {len(grid_list)}")
+            grid = grid_list[-1]
+
+            sid = grid.id
+            num_cols = grid.num_cols
+            num_rows = grid.num_rows
+            beam_position = grid.beam_pos
+            screen_coordinate = [round(grid.screen_coord[0]), round(grid.screen_coord[1])]
+            width = round(grid.width)
+            height = round(grid.height)
+            grid_params.append(MXCubeGridScanParams(
+                grid_top_left_coordinate=screen_coordinate,
+                grid_height=height,
+                grid_width=width,
+                number_of_columns=num_cols,
+                number_of_rows=num_rows,
+                detector_distance=detector_distance,
+                photon_energy=photon_energy,
+                transmission=dialog_box_model.transmission / 100,
+                omega_range=0,
+                md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
+                beam_position=beam_position,
+                count_time=None,
+            ))
+
 
         if not settings.ADD_DUMMY_PIN_TO_DB:
             if self.sample_id is None:
@@ -94,38 +121,19 @@ class GridScanFlow(AbstractPrefectWorkflow):
             )
             sample_id = 1
 
-        photon_energy = energy_master.get()
 
-        default_resolution = float(self.redis_connection.get("grid_scan:resolution"))
-        detector_distance = self._resolution_to_distance(
-            default_resolution,
-            energy=photon_energy,
-        )
-        logging.getLogger("HWR").info(
-            f"Detector distance corresponding to {default_resolution} A: {detector_distance} [m]"
-        )
-
+        head_type = self.get_head_type()
         if head_type == "Plate":
             use_centring_table = False
         else:
             use_centring_table = True
 
-        prefect_parameters = GridScanParams(
+        prefect_parameters = GridScanPrefectFlow(
             sample_id=sample_id,
-            grid_top_left_coordinate=screen_coordinate,
-            grid_height=height,
-            grid_width=width,
-            beam_position=beam_position,
-            number_of_columns=num_cols,
-            number_of_rows=num_rows,
-            detector_distance=detector_distance,
-            photon_energy=photon_energy,
-            omega_range=float(self._get_dialog_box_param("omega_range")),
-            md3_alignment_y_speed=dialog_box_model.md3_alignment_y_speed,
+            params=grid_params,
             hardware_trigger=True,
+            crystal_finder_threshold=1,
             number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
-            # Convert transmission percentage to a value between 0 and 1
-            transmission=dialog_box_model.transmission / 100,
             use_centring_table=use_centring_table,
             detector_roi_mode=dialog_box_model.detector_roi_mode,
         )
@@ -146,7 +154,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
     def start_prefect_flow_and_get_results_from_redis(
         self,
-        prefect_parameters: GridScanParams,
+        prefect_parameters: GridScanPrefectFlow,
         num_cols: int,
         num_rows: int,
         grid_id: int,
@@ -158,7 +166,7 @@ class GridScanFlow(AbstractPrefectWorkflow):
 
         Parameters
         ----------
-        prefect_parameters : GridScanParams
+        prefect_parameters : GridScanPrefectFlow
             The prefect grid scan parameters
         num_cols : int
             The number of columns of the grid
@@ -205,6 +213,10 @@ class GridScanFlow(AbstractPrefectWorkflow):
                     password=settings.MXCUBE_REDIS_PASSWORD,
                     db=settings.MXCUBE_REDIS_DB,
                 ) as redis_client:
+                    # TODO FIXME:
+                    # now the mxcube flow has multiple acquisition uuids so we can't use
+                    # the flow run id to read the redis streams. Need to find a way to get all
+                    # acquisition uuids from the flow run
                     for _ in range(number_of_frames):
                         data, last_id = self.read_message_from_redis_streams(
                             topic=f"spotfinder_results:{flow_run_uuid}",

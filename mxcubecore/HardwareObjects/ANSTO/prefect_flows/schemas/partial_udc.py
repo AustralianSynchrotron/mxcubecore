@@ -11,7 +11,6 @@ from pydantic import (
 from .full_dataset import FullDatasetDialogBox
 from .grid_scan import (
     GridScanDialogBox,
-    GridScanParams,
 )
 from .screening import ScreeningDialogBox
 
