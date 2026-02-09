@@ -14,7 +14,7 @@ from mxcubecore import HardwareRepository as HWR
 from mxcubecore.BaseHardwareObjects import HardwareObject
 from mxcubecore.configuration.ansto.config import settings
 from mxcubecore.HardwareObjects.SampleView import SampleView
-from mxcubecore.queue_entry.base_queue_entry import QueueExecutionException
+from mxcubecore.queue_entry.base_queue_entry import QueueSkipEntryException
 
 from .prefect_flows.full_dataset_collection_flow import FullDatasetFlow
 from .prefect_flows.grid_scan_flow import GridScanFlow
@@ -330,7 +330,7 @@ class PrefectWorkflow(HardwareObject):
                 )
                 return
         else:
-            logging.getLogger("user_level_log").warning(
+            logging.getLogger("HWR").warning(
                 "No prefect client available to abort the workflow"
             )
             return
@@ -445,7 +445,9 @@ class PrefectWorkflow(HardwareObject):
                 self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
-                raise QueueExecutionException("dialog_box_parameters is empty", self)
+                raise QueueSkipEntryException(
+                    "Workflow parameters dialog was skipped", self
+                )
 
         elif self.workflow_name == PrefectFlows.collect_dataset:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
@@ -460,7 +462,9 @@ class PrefectWorkflow(HardwareObject):
                 self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
-                raise QueueExecutionException("dialog_box_parameters is empty", self)
+                raise QueueSkipEntryException(
+                    "Workflow parameters dialog was skipped", self
+                )
 
         elif self.workflow_name == PrefectFlows.grid_scan:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
@@ -480,7 +484,9 @@ class PrefectWorkflow(HardwareObject):
                 self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
-                raise QueueExecutionException("dialog_box_parameters is empty", self)
+                raise QueueSkipEntryException(
+                    "Workflow parameters dialog was skipped", self
+                )
 
         elif self.workflow_name == PrefectFlows.one_shot:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
@@ -495,7 +501,9 @@ class PrefectWorkflow(HardwareObject):
                 self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
-                raise QueueExecutionException("dialog_box_parameters is empty", self)
+                raise QueueSkipEntryException(
+                    "Workflow parameters dialog was skipped", self
+                )
 
         elif self.workflow_name == PrefectFlows.partial_udc:
             logging.getLogger("HWR").info(f"Starting workflow: {self.workflow_name}")
@@ -513,7 +521,9 @@ class PrefectWorkflow(HardwareObject):
                 self.current_flow.run(dialog_box_parameters=dialog_box_parameters)
             else:
                 self.state.value = "ON"
-                raise QueueExecutionException("dialog_box_parameters is empty", self)
+                raise QueueSkipEntryException(
+                    "Workflow parameters dialog was skipped", self
+                )
 
         else:
             logging.getLogger("HWR").error(
