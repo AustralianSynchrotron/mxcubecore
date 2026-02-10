@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -61,6 +62,7 @@ class GridScanParams(BaseModel):
     photon_energy: float = Field(description="Global default. Measured in keV.")
     transmission: float = Field(strict=True, ge=0, le=1, default=0.1)
     crystal_finder_threshold: int = Field(default=1, description="Global default.")
+    detector_roi_mode: Literal["4M", "disabled"]
 
     number_of_processes: int | None = None
 
