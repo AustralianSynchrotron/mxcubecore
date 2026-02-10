@@ -310,7 +310,7 @@ class SampleChanger(AbstractSampleChanger):
 
             robot_state = client.status.state
             self._update_sample_changer_state(robot_state)
-            self._update_loaded_pin_state(robot_state)
+            # self._update_loaded_pin_state(robot_state)
 
         except Exception as ex:
             self._update_sample_changer_state(None)
@@ -506,7 +506,27 @@ class SampleChanger(AbstractSampleChanger):
             prefect_prefetch = None
 
         self._check_if_robot_is_ready()
+        # Mock mounting a sample for now
+        for puck_location in self.puck_location_list:
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+                mxcube_pin: MxcubePin = self.get_component_by_address(address)
+                loaded: bool = False
+                if (puck_location, port) == (prefect_sample_to_mount["puck"], prefect_sample_to_mount["id"]):
+                    loaded = True
 
+                mxcube_pin._set_loaded(
+                    loaded=loaded,
+                    has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
+                )
+                mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
+                if loaded:
+                    self._trigger_loaded_sample_changed_event(mxcube_pin)
+
+
+
+
+        # FIXME! uncomment
         try:
             # Mount pin using `mount` Prefect Flow
             # _prefect_mount_client = MX3SyncPrefectClient(
@@ -630,9 +650,11 @@ class SampleChanger(AbstractSampleChanger):
         -------
         None
         """
-        self._check_if_robot_is_ready()
+        #self._check_if_robot_is_ready()
 
+        # FIXME! uncomment
         # Mount pin using `unmount` Prefect Flow
+        current_sample = self.get_loaded_sample()
         try:
             # _prefect_unmount_client = MX3SyncPrefectClient(
             #     name=self._unmount_deployment_name,
@@ -642,6 +664,9 @@ class SampleChanger(AbstractSampleChanger):
             # response = _prefect_unmount_client.trigger_flow(wait=True)
             # if response.state.type != StateType.COMPLETED:
             #     raise RuntimeError(f"{response.state.message}")
+            print("unload")
+            current_sample._set_loaded(False, has_been_loaded=True)
+            self._trigger_loaded_sample_changed_event(current_sample)
             pass
         except Exception as ex:
             logging.getLogger("user_level_log").error(
