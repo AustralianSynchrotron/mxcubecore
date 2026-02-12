@@ -4,7 +4,6 @@ import atexit
 import os
 import signal
 import subprocess
-import time
 import uuid
 from typing import (
     List,
@@ -30,12 +29,7 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
     def _init(self):
         self._format = "MPEG1"
         self.stream_hash = ""
-        self.udiffVER_Ok = False
-        self.badimg = 0
-        self.pollInterval = 500
         self.connected = False
-        self.image_name = self.get_property("image_name")
-        self.image = "/home/fhv/github_repos/mxcubecore/mxcubecore/HardwareObjects/mockup/sample.jpg"
         self.update_state(BaseHardwareObjects.HardwareObjectState.READY)
         self._video_stream_process = None
         self._current_stream_size = (0, 0)
@@ -43,33 +37,10 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
 
     def init(self):
         self.log.info("initializing camera object")
-        if self.get_property("interval"):
-            self.pollInterval = self.get_property("interval")
-        self.stopper = False  # self.polling_timer(self.pollInterval, self.poll)
-        gevent.spawn(self.poll)
-
-    def udiffVersionChanged(self, value) -> None:
-        if value == "MD2_2":
-            print(("start polling MD camera with poll interval=", self.pollInterval))
-        else:
-            print(
-                "stop polling the camera. This microdiff version does not support a camera"
-            )
-            self.stopper = True
 
     def connectToDevice(self) -> bool:
         self.connected = True
         return self.connected
-
-    def poll(self) -> None:
-        self.log.info("going to poll images")
-        while not self.stopper:
-            time.sleep(1)
-            try:
-                img = open(self.image, "rb").read()
-                self.emit("imageReceived", img, 659, 493)
-            except Exception:
-                self.log.exception("Could not read image")
 
     def imageUpdated(self, value) -> None:
         print("<HW> got new image")
@@ -88,20 +59,20 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
         return False
 
     def get_width(self) -> int:
-        # return 768 #JN ,20140807,adapt the MD2 screen to mxCuBE2
+        # TODO
         return 659
 
     def get_height(self) -> int:
-        # return 576 # JN ,20140807,adapt the MD2 screen to mxCuBE2
+        # TODO
         return 493
 
     def set_live(self, state) -> bool:
         self.liveState = state
         return True
 
-    def get_last_image(self) -> Tuple[bytes, int, int]:
-        image = Image.open(self.image)
-        return image.tobytes(), image.size[0], image.size[1]
+    # def get_last_image(self) -> Tuple[bytes, int, int]:
+    #     image = Image.open(self.image)
+    #     return image.tobytes(), image.size[0], image.size[1]
 
     def get_available_stream_sizes(self) -> List[Tuple[int, int]]:
         try:
@@ -130,18 +101,30 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
             not self._video_stream_process
             or self._video_stream_process.poll() is not None
         ):
-            cmd = [
-                "video-streamer",
-                "-d",
-                "-of",
-                str(self._format),
-                "-uri",
-                f"redis://{settings.MD3_REDIS_HOST}:{settings.MD3_REDIS_PORT}",
-                "-irc",
-                "bzoom:RAW",
-                "-p",
-                str(self._port),
-            ]
+            if settings.BL_ACTIVE:
+                cmd = [
+                    "video-streamer",
+                    "-d",
+                    "-of",
+                    str(self._format),
+                    "-uri",
+                    f"redis://{settings.MD3_REDIS_HOST}:{settings.MD3_REDIS_PORT}",
+                    "-irc",
+                    "bzoom:RAW",
+                    "-p",
+                    str(self._port),
+                ]
+            else:
+                cmd = [
+                    "video-streamer",
+                    "-d",
+                    "-of",
+                    str(self._format),
+                    "-uri",
+                    "test",
+                    "-p",
+                    str(self._port),
+                ]
 
             if self.stream_hash:
                 cmd += ["-id", str(self.stream_hash)]
