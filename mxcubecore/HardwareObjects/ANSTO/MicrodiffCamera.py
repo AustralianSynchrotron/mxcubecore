@@ -17,6 +17,7 @@ from PIL import Image
 
 from mxcubecore import BaseHardwareObjects
 from mxcubecore import HardwareRepository as HWR
+from mxcubecore.configuration.ansto.config import settings
 
 MAX_TRIES = 3
 SLOW_INTERVAL = 1000
@@ -135,7 +136,7 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
                 "-of",
                 str(self._format),
                 "-uri",
-                "redis://10.244.101.30:6379",
+                f"redis://{settings.MD3_REDIS_HOST}:{settings.MD3_REDIS_PORT}",
                 "-irc",
                 "bzoom:RAW",
                 "-p",
