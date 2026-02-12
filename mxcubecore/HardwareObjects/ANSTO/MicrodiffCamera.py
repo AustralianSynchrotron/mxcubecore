@@ -5,6 +5,7 @@ import os
 import signal
 import subprocess
 import time
+import uuid
 from typing import (
     List,
     Tuple,
@@ -120,26 +121,32 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
 
     def clean_up(self):
         self.log.info("Shutting down video_stream...")
-        os.kill(self._video_stream_process.pid, signal.SIGTERM)
+        if self._video_stream_process and self._video_stream_process.pid:
+            os.kill(self._video_stream_process.pid, signal.SIGTERM)
 
     def start_video_stream_process(self) -> None:
         if (
             not self._video_stream_process
             or self._video_stream_process.poll() is not None
         ):
+            cmd = [
+                "video-streamer",
+                "-d",
+                "-of",
+                str(self._format),
+                "-uri",
+                "redis://10.244.101.30:6379",
+                "-irc",
+                "bzoom:RAW",
+                "-p",
+                str(self._port),
+            ]
+
+            if self.stream_hash:
+                cmd += ["-id", str(self.stream_hash)]
+
             self._video_stream_process = subprocess.Popen(
-                [
-                    "video-streamer",
-                    "-d",
-                    "-of",
-                    "MJPEG",
-                    "-uri",
-                    "redis://10.244.101.30:6379",
-                    "-irc",
-                    "bzoom:RAW",
-                    "-p",
-                    str(self._port),    
-                ],
+                cmd,
                 close_fds=True,
                 stdout=subprocess.DEVNULL,
             )
@@ -162,6 +169,12 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
     def start_streaming(self, _format="MPEG1", size=(0, 0), port="8000") -> None:
         self._format = _format
         self._port = port
+
+        if str(self._format).upper() == "MJPEG":
+            self.stream_hash = ""
+        else:
+            if not self.stream_hash:
+                self.stream_hash = uuid.uuid4().hex
 
         if not size[0]:
             _s = int(self.get_width()), int(self.get_height())
