@@ -12,12 +12,12 @@ server:
     - "http://localhost:8081"
     - "http://localhost:3000"
     - "http://localhost:5173"
-    - "http://localhost:8002"
+    - "http://localhost:8002" # MJPEG stream
 
 mxcube:
   USE_EXTERNAL_STREAMER: True
-  VIDEO_FORMAT: MJPEG
-  VIDEO_STREAM_URL: http://localhost:8002/video
+  VIDEO_FORMAT: MJPEG # # MJPEG stream
+  VIDEO_STREAM_URL: http://localhost:8002/video # MJPEG stream
 
   # At which port to stream from
   VIDEO_STREAM_PORT: 8002
