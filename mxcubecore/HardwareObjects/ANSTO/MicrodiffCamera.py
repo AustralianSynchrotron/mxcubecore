@@ -10,16 +10,10 @@ from typing import (
     Tuple,
 )
 
-import gevent
 import psutil
-from PIL import Image
 
 from mxcubecore import BaseHardwareObjects
-from mxcubecore import HardwareRepository as HWR
 from mxcubecore.configuration.ansto.config import settings
-
-MAX_TRIES = 3
-SLOW_INTERVAL = 1000
 
 
 class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
@@ -59,25 +53,19 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
         return False
 
     def get_width(self) -> int:
-        # TODO
-        return 659
+        return settings.MD3_IMAGE_WIDTH
 
     def get_height(self) -> int:
-        # TODO
-        return 493
+        return settings.MD3_IMAGE_HEIGHT
 
     def set_live(self, state) -> bool:
         self.liveState = state
         return True
 
-    # def get_last_image(self) -> Tuple[bytes, int, int]:
-    #     image = Image.open(self.image)
-    #     return image.tobytes(), image.size[0], image.size[1]
-
     def get_available_stream_sizes(self) -> List[Tuple[int, int]]:
         try:
             w, h = self.get_width(), self.get_height()
-            video_sizes = [(w, h), (int(w / 2), int(h / 2)), (int(w / 4), int(h / 4))]
+            video_sizes = [(w, h)]
         except (ValueError, AttributeError):
             video_sizes = []
 
