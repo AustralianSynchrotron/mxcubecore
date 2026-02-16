@@ -75,7 +75,6 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
             if settings.BL_ACTIVE:
                 cmd = [
                     "video-streamer",
-                    "-d",
                     "-of",
                     str(self._format),
                     "-uri",
@@ -88,7 +87,6 @@ class MicrodiffCamera(BaseHardwareObjects.HardwareObject):
             else:
                 cmd = [
                     "video-streamer",
-                    "-d",
                     "-of",
                     str(self._format),
                     "-uri",
