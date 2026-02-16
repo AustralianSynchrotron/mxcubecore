@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mxcubecore"
-version = "1.195.0.53"
+version = "1.195.0.54"
 license = "LGPL-3.0-or-later"
 description = "Core libraries for the MXCuBE application"
 authors = ["The MXCuBE collaboration <mxcube@esrf.fr>"]
@@ -52,7 +52,7 @@ colorama = "^0.4.6"
 prefect = { version = "3.6.10", optional = true, python = ">=3.10"  }
 cachetools = ">=5.3.3"
 mx3-beamline-library = { git = "https://github.com/AustralianSynchrotron/mx3-beamline-library.git", rev = "v2.5.0", python = ">=3.11,<3.12" }
-mxcube-video-streamer = { git = "https://github.com/fhernandezvivanco/video-streamer.git", rev = "mxcubecore_like_streamer", python = ">=3.11,<3.12" }
+mxcube-video-streamer = { git = "git@github.com:AustralianSynchrotron/video-streamer.git", rev = "v1.8.4.0", python = ">=3.11,<3.12" }
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^3.5.0"
