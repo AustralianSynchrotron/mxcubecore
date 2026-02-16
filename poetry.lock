@@ -4400,8 +4400,8 @@ tango = ["pytango (>=9.3.6,<10.0.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/fhernandezvivanco/video-streamer.git"
-reference = "context_manager"
-resolved_reference = "17d4cba038d370355344e8b49afef6a4c31e435a"
+reference = "ansto_md3_cam_2"
+resolved_reference = "3568c967407e2d1399a2cd93b29db2d2051e06d7"
 
 [[package]]
 name = "myst-parser"
@@ -8943,4 +8943,4 @@ tango = ["PyTango"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8,<3.12"
-content-hash = "d72980ece58f1ca733bd4874e4aa852a28473924a3ca67928e9b3ef8c270200f"
+content-hash = "b51160c2f2c5418d623450a5398cf9f52c87213c18dc9a6afe1f2798032f67e7"
