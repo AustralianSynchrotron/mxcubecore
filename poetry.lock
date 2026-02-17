@@ -4399,7 +4399,7 @@ tango = ["pytango (>=9.3.6,<10.0.0)"]
 
 [package.source]
 type = "git"
-url = "ssh://git@github.com/AustralianSynchrotron/video-streamer.git"
+url = "https://github.com/AustralianSynchrotron/video-streamer.git"
 reference = "v1.8.4.0"
 resolved_reference = "af1c01cf4cefa004b71d2265d0f7624c8841cc69"
 
@@ -8943,4 +8943,4 @@ tango = ["PyTango"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8,<3.12"
-content-hash = "409c2e9d64980037fa0a5f850868557a0d2332a1f34b4d0f7250e5a2dac8e0dd"
+content-hash = "cc9cc67ea558176dae377fd18e3822548d7cdfb445a1602fe75769aed37cf540"
