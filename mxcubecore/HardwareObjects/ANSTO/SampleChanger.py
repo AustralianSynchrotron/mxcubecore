@@ -354,6 +354,7 @@ class SampleChanger(AbstractSampleChanger):
 
             robot_state = client.status.state
             self._update_sample_changer_state(robot_state)
+            # TODO: this should be included, but omitted in sim for now
             # self._update_loaded_pin_state(robot_state)
 
         except Exception as ex:
@@ -835,7 +836,6 @@ class SampleChanger(AbstractSampleChanger):
         loaded_pucks = client.status.get_loaded_pucks()
         pucks_by_epn = self.get_pucks_by_epn()
 
-        # Map visit pucks by barcode for O(1) lookup
         epn_puck_by_barcode = {
             str(p.get("barcode")): p for p in pucks_by_epn if p.get("barcode")
         }
@@ -844,26 +844,27 @@ class SampleChanger(AbstractSampleChanger):
         self.sample_dict = []
         pin_ports_by_puck: dict[int, list[int]] = {}
 
-        for rp in loaded_pucks:
-            key = rp.name.replace("-", "") if rp.name else None
+        for puck in loaded_pucks:
+            key = puck.name.replace("-", "") if puck.name else None
             visit_puck = epn_puck_by_barcode.get(key)
             if not visit_puck:
                 continue
-            self.loaded_pucks_dict[rp.id] = rp
+            self.loaded_pucks_dict[puck.id] = puck
             pins = visit_puck.get("pins", [])
-            pin_ports_by_puck[rp.id] = []
+            pin_ports_by_puck[puck.id] = []
             for pin in pins:
                 port = pin.get("port")
                 if port is None:
                     continue
-                pin_ports_by_puck[rp.id].append(port)
+                pin_ports_by_puck[puck.id].append(port)
                 self.sample_dict.append(
                     {
-                        "containerSampleChangerLocation": str(rp.id),
+                        "containerSampleChangerLocation": str(puck.id),
                         "sampleLocation": str(port),
                         "sampleName": pin.get("name"),
                         "sampleId": pin.get("id"),
-                        "queueID": None
+                        "queueID": None,
+                        "code": puck.name
                     }
                 )
 
@@ -917,4 +918,6 @@ class SampleChanger(AbstractSampleChanger):
                             id=address,
                             scanned=True,
                         )
+        logging.getLogger("HWR").info("Refreshing sample info completed.")
+
         return self.sample_dict
