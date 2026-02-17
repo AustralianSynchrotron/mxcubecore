@@ -223,6 +223,7 @@ class PartialUDCFlow(AbstractPrefectWorkflow):
                 transmission=grid_scan_model.transmission / 100,
                 crystal_finder_threshold=1,  # TODO: can user set this?
                 number_of_processes=settings.GRID_SCAN_NUMBER_OF_PROCESSES,
+                detector_roi_mode=grid_scan_model.detector_roi_mode,
             ),
             screening=screening_params,
             full_dataset=full_dataset_params,

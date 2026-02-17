@@ -154,6 +154,50 @@ class SampleChanger(AbstractSampleChanger):
         self._selected_basket = -1
         self._scIsCharging = None
 
+        client = self.get_client()
+
+        loaded_pucks = client.status.get_loaded_pucks()
+        pucks_by_epn = self.get_pucks_by_epn()
+
+        # Only show loaded pucks filtered by epn
+        self.loaded_pucks_dict: dict[int, RobotPuck] = {}
+        for robot_puck in loaded_pucks:
+            for puck in pucks_by_epn:
+                if robot_puck.name.replace("-", "") == puck["barcode"]:
+                    self.loaded_pucks_dict[robot_puck.id] = robot_puck
+
+        with get_redis_connection(decode_response=True) as redis_connection:
+            epn_string = redis_connection.get("epn")
+
+        if len(self.loaded_pucks_dict) == 0:
+            logging.getLogger("user_level_log").warning(
+                f"No pucks loaded in the robot match the current EPN {epn_string} ."
+                "The sample changer will be empty.",
+            )
+        self.no_of_samples_in_basket = (
+            robot_config.ASC_NUM_PINS
+        )  # TODO: number of samples per project
+
+        self.no_of_baskets = (
+            robot_config.ASC_NUM_PUCKS
+        )  # TODO: no_of_baskets = number of projects
+
+        puck_location_list = []
+        for loaded_puck in self.loaded_pucks_dict.values():
+            puck_location_list.append(loaded_puck.id)
+
+        for puck_location in range(1, self.no_of_baskets + 1):
+            if puck_location not in puck_location_list:
+                present = False
+            else:
+                present = True
+            basket = MxcubePuck(
+                self,
+                puck_location,
+                samples_num=self.no_of_samples_in_basket,
+            )
+            basket._set_info(present=present, id=str(puck_location), scanned=False)
+            self._add_component(basket)
 
         self._set_state(SampleChangerState.Unknown)
         self.signal_wait_task = None

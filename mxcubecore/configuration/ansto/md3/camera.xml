@@ -1,5 +1,4 @@
 <device class="ANSTO.MicrodiffCamera">
     <!-- Properties -->
     <username>Camera</username>
-    <interval>100</interval>
 </device>
