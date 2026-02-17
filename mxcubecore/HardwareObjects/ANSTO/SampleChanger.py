@@ -166,9 +166,12 @@ class SampleChanger(AbstractSampleChanger):
                 if robot_puck.name.replace("-", "") == puck["barcode"]:
                     self.loaded_pucks_dict[robot_puck.id] = robot_puck
 
+        with get_redis_connection(decode_response=True) as redis_connection:
+            epn_string = redis_connection.get("epn")
+
         if len(self.loaded_pucks_dict) == 0:
             logging.getLogger("user_level_log").warning(
-                "No pucks loaded in the robot match the current EPN. "
+                f"No pucks loaded in the robot match the current EPN {epn_string} ."
                 "The sample changer will be empty.",
             )
         self.no_of_samples_in_basket = (

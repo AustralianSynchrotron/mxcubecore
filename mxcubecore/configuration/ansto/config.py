@@ -61,6 +61,8 @@ class MD3(BaseSettings):
         description="Timeout in seconds when polling for an image from MD3 Redis "
         "before emitting a placeholder image",
     )
+    MD3_IMAGE_WIDTH: int = Field(1224, env="MD3_IMAGE_WIDTH")
+    MD3_IMAGE_HEIGHT: int = Field(1024, env="MD3_IMAGE_HEIGHT")
 
 
 class RedisSettings(BaseSettings):

@@ -12,11 +12,16 @@ server:
     - "http://localhost:8081"
     - "http://localhost:3000"
     - "http://localhost:5173"
-    - "ws://localhost:8000"
+    - "ws://localhost:8002"  # MPEG1 stream
 
 mxcube:
-  USE_EXTERNAL_STREAMER: false
-  VIDEO_FORMAT: MJPEG
+  USE_EXTERNAL_STREAMER: true
+  VIDEO_FORMAT: MPEG1  # MPEG1 stream
+  VIDEO_STREAM_URL: ws://localhost:8002/ws  # MPEG1 stream
+
+  # At which port to stream from
+  VIDEO_STREAM_PORT: 8002
+
   # Mode, SSX-CHIP, SSX-INJECTOR, OSC
   mode: OSC
 
