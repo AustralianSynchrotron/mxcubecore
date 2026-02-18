@@ -4372,7 +4372,7 @@ resolved_reference = "8bc53d243adf40b8d172f59061d82fc3ddf4e36a"
 
 [[package]]
 name = "mxcube-video-streamer"
-version = "1.8.4.0"
+version = "1.8.4.1"
 description = "FastAPI Based video streamer"
 optional = false
 python-versions = ">=3.10,<3.12"
@@ -4400,8 +4400,8 @@ tango = ["pytango (>=9.3.6,<10.0.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/AustralianSynchrotron/video-streamer.git"
-reference = "v1.8.4.0"
-resolved_reference = "af1c01cf4cefa004b71d2265d0f7624c8841cc69"
+reference = "v1.8.4.1"
+resolved_reference = "22b6f909f7f78caed5070625d70ee6cf4ceb0f26"
 
 [[package]]
 name = "myst-parser"
@@ -8943,4 +8943,4 @@ tango = ["PyTango"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8,<3.12"
-content-hash = "cc9cc67ea558176dae377fd18e3822548d7cdfb445a1602fe75769aed37cf540"
+content-hash = "57f5f180f69270270911709330cdad0881ac911aa465e947da90c7f032c23759"
