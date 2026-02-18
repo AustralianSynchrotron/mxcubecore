@@ -196,7 +196,12 @@ class SampleChanger(AbstractSampleChanger):
                 puck_location,
                 samples_num=self.no_of_samples_in_basket,
             )
-            basket._set_info(present=present, id=str(puck_location), scanned=False)
+            # NOTE: Whether a puck is present or not is determined by the id which is weird!!!
+            basket._set_info(
+                present=present,
+                id=str(puck_location) if present else None,
+                scanned=False,
+            )
             self._add_component(basket)
 
         self._set_state(SampleChangerState.Unknown)
@@ -824,7 +829,7 @@ class SampleChanger(AbstractSampleChanger):
                 pin: MxcubePin = self.get_component_by_address(address)
                 pin._set_info(
                     present=False,
-                    id=address,
+                    id=None,
                     scanned=False,
                 )
 
@@ -882,7 +887,7 @@ class SampleChanger(AbstractSampleChanger):
             if i not in self.puck_location_list:
                 baskets[i-1]._set_info(
                 present=False,
-                id=str(i),
+                id=None,
                 scanned=False,
                 )
             else:
