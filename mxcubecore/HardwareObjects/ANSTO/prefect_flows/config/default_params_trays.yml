@@ -8,7 +8,7 @@ full_dataset:
   photon_energy: 13.0  # keV
   resolution: 2.0  # Ångström (16M)
   transmission: 0.5  # Percentage
-   # Only used for trays
+  # Only used for trays
   auto_create_well: false
   project_name: null
   lab_name: null
@@ -34,7 +34,7 @@ grid_scan:
   resolution: 1.5  # Ångström (16M)
   transmission: 1.0  # Percentage
   detector_roi_mode: "disabled"  # 4M or disabled
-   # Only used for trays
+  # Only used for trays
   auto_create_well: false
   project_name: null
   lab_name: null
