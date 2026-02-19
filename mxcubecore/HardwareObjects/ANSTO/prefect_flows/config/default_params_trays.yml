@@ -1,51 +1,51 @@
 ---
 full_dataset:
-  exposure_time: 2.0  # Total exposure time, seconds
-  omega_range: 20.0  # Degrees
+  exposure_time: 2.0 # Total exposure time, seconds
+  omega_range: 20.0 # Degrees
   degrees_per_frame: 0.2
-  processing_pipeline: "fast_dp"  # can be fast_dp, dials, or dials_and_fast_dp
-  crystal_counter: 0  # a.k.a. crystal id
-  photon_energy: 13.0  # keV
-  resolution: 2.0  # Ångström (16M)
-  transmission: 0.5  # Percentage
+  processing_pipeline: "fast_dp" # can be fast_dp, dials, or dials_and_fast_dp
+  crystal_counter: 0 # a.k.a. crystal id
+  photon_energy: 13.0 # keV
+  resolution: 2.0 # Ångström (16M)
+  transmission: 0.5 # Percentage
   # Only used for trays
   auto_create_well: false
   project_name: null
   lab_name: null
 
 screening:
-  exposure_time: 0.5  # Total exposure time, seconds
-  omega_range: 5.0  # Degrees
+  exposure_time: 0.5 # Total exposure time, seconds
+  omega_range: 5.0 # Degrees
   degrees_per_frame: 0.2
-  processing_pipeline: "fast_dp"  # can be fast_dp, dials, or dials_and_fast_dp
-  crystal_counter: 0  # a.k.a. crystal id
-  photon_energy: 13.0  # keV
-  resolution: 2.0  # Ångström (16M)
-  transmission: 0.5  # Percentage
+  processing_pipeline: "fast_dp" # can be fast_dp, dials, or dials_and_fast_dp
+  crystal_counter: 0 # a.k.a. crystal id
+  photon_energy: 13.0 # keV
+  resolution: 2.0 # Ångström (16M)
+  transmission: 0.5 # Percentage
   # Only used for trays
   auto_create_well: false
   project_name: null
   lab_name: null
 
 grid_scan:
-  md3_alignment_y_speed: 1.0  # mm/s
-  omega_range: 0.0  # Degrees
-  photon_energy: 13.0  # keV
-  resolution: 1.5  # Ångström (16M)
-  transmission: 1.0  # Percentage
-  detector_roi_mode: "4M"  # 4M or disabled
+  md3_alignment_y_speed: 1.0 # mm/s
+  omega_range: 0.0 # Degrees
+  photon_energy: 13.0 # keV
+  resolution: 1.5 # Ångström (16M)
+  transmission: 1.0 # Percentage
+  detector_roi_mode: "disabled" # 4M or disabled
   # Only used for trays
   auto_create_well: false
   project_name: null
   lab_name: null
 
 one_shot:
-  exposure_time: 0.5  # Total exposure time, seconds
-  omega_range: 1.0  # Degrees
+  exposure_time: 0.5 # Total exposure time, seconds
+  omega_range: 1.0 # Degrees
   number_of_frames: 1
-  photon_energy: 13.0  # keV
-  resolution: 2.0  # Ångström (16M)
-  transmission: 0.5  # Percentage
+  photon_energy: 13.0 # keV
+  resolution: 2.0 # Ångström (16M)
+  transmission: 0.5 # Percentage
   # Only used for trays
   auto_create_well: false
   project_name: null
