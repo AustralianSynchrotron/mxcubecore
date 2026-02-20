@@ -357,8 +357,7 @@ class SampleChanger(AbstractSampleChanger):
 
             robot_state = client.status.state
             self._update_sample_changer_state(robot_state)
-            # TODO: this should be included, but omitted in sim for now
-            # self._update_loaded_pin_state(robot_state)
+            self._update_loaded_pin_state(robot_state)
 
         except Exception as ex:
             self._update_sample_changer_state(None)
@@ -385,75 +384,6 @@ class SampleChanger(AbstractSampleChanger):
                     has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
                 )
                 mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
-
-    def _update_mxcube_pin_info(
-        self,
-        robot_puck: RobotPuck,
-        puck_location: int,
-        port: int,
-        robot_state: StateResponse | None,
-        puck_list: list[dict],
-    ):
-        """
-        Updates the pin information
-
-        Parameters
-        ----------
-        robot_puck : RobotPuck
-            A mx-robot-library Puck pydantic model
-        puck_location : int
-            The puck location in the dewar
-        port : int
-            The pin position in the puck
-        robot_state : StateResponse | None
-            The state from the robot as reported by the mx-robot-library
-        puck_list : list[dict]
-            A list of pucks from the data layer API, each puck is a dictionary
-        """
-        robot_pin: RobotPin | None = None
-        if robot_puck is not None:
-            robot_pin = RobotPin(
-                id=port,
-                puck=robot_puck,
-            )
-
-        address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
-        mxcube_pin: MxcubePin = self.get_component_by_address(address)
-        if robot_pin is not None and robot_puck.name:  # check also that barcode exists
-            try:
-                sample_name = self.get_sample_by_barcode_and_port(
-                    puck_list=puck_list,
-                    port=port,
-                    barcode=robot_puck.name.replace("-", ""),
-                )
-            except Exception:
-                sample_name = str(robot_pin)
-
-            if sample_name is None:
-                sample_name = str(robot_pin)
-
-            mxcube_pin._name = sample_name
-            pin_datamatrix = str(robot_pin)
-
-            mxcube_pin._set_info(
-                present=robot_puck is not None,
-                id=pin_datamatrix,
-                scanned=False,
-            )
-            loaded: bool = False
-            if robot_state.goni_pin is not None:
-                loaded = (
-                    robot_state.goni_pin.puck.id,
-                    robot_state.goni_pin.id,
-                ) == (
-                    puck_location,
-                    port,
-                )
-            mxcube_pin._set_loaded(
-                loaded=loaded,
-                has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
-            )
-            mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
     def _update_sample_changer_state(self, robot_state: StateResponse | None) -> None:
         """
@@ -885,9 +815,13 @@ class SampleChanger(AbstractSampleChanger):
                     }
                 )
 
+        with get_redis_connection(decode_response=True) as redis_connection:
+            epn_string = redis_connection.get("epn")
+
         if not self.loaded_pucks_dict:
             logging.getLogger("user_level_log").warning(
-                "No pucks loaded in the robot match the current EPN. The sample changer will be empty."
+                f"No pucks loaded in the robot match the current EPN ({epn_string}). "
+                "The sample changer will be empty."
             )
 
         self.puck_location_list = list(self.loaded_pucks_dict.keys())
