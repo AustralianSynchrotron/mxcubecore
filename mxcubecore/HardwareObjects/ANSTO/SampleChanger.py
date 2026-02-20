@@ -147,8 +147,6 @@ class SampleChanger(AbstractSampleChanger):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(self.__TYPE__, False, *args, **kwargs)
 
-        self._pin_name_cache = {}
-
     def init(self) -> None:
         self._selected_sample = -1
         self._selected_basket = -1
@@ -216,7 +214,7 @@ class SampleChanger(AbstractSampleChanger):
         updateTask = self.__update_timer_task(wait=False)
         updateTask.link(self._on_timer_update_exit)
 
-        self._initialise_pucks_and_pins()
+        self._initialise_pucks_and_pins(pucks_by_epn)
 
         self.refresh_puck_info()
 
@@ -366,11 +364,12 @@ class SampleChanger(AbstractSampleChanger):
             self._update_sample_changer_state(None)
 
     def _update_loaded_pin_state(self, robot_state: StateResponse | None) -> None:
-        """Update MXCuBE pin loaded flags from the robot
-        """
+        """Update MXCuBE pin loaded flags from the robot"""
         for puck_location in self.puck_location_list:
             for port in range(1, self.no_of_samples_in_basket + 1):
-                address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+                address = MxcubePin.get_sample_address(
+                    puck_location, port
+                )  # e.g. "1:01"
                 mxcube_pin: MxcubePin = self.get_component_by_address(address)
                 loaded: bool = False
                 if robot_state.goni_pin is not None:
@@ -555,14 +554,19 @@ class SampleChanger(AbstractSampleChanger):
         else:
             prefect_prefetch = None
 
-        self._check_if_robot_is_ready()
+        # self._check_if_robot_is_ready()
         # Mock mounting a sample for now
         for puck_location in self.puck_location_list:
             for port in range(1, self.no_of_samples_in_basket + 1):
-                address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+                address = MxcubePin.get_sample_address(
+                    puck_location, port
+                )  # e.g. "1:01"
                 mxcube_pin: MxcubePin = self.get_component_by_address(address)
                 loaded: bool = False
-                if (puck_location, port) == (prefect_sample_to_mount["puck"], prefect_sample_to_mount["id"]):
+                if (puck_location, port) == (
+                    prefect_sample_to_mount["puck"],
+                    prefect_sample_to_mount["id"],
+                ):
                     loaded = True
 
                 mxcube_pin._set_loaded(
@@ -572,9 +576,6 @@ class SampleChanger(AbstractSampleChanger):
                 mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
                 if loaded:
                     self._trigger_loaded_sample_changed_event(mxcube_pin)
-
-
-
 
         # FIXME! uncomment
         try:
@@ -700,7 +701,7 @@ class SampleChanger(AbstractSampleChanger):
         -------
         None
         """
-        #self._check_if_robot_is_ready()
+        # self._check_if_robot_is_ready()
 
         # FIXME! uncomment
         # Mount pin using `unmount` Prefect Flow
@@ -717,7 +718,6 @@ class SampleChanger(AbstractSampleChanger):
             print("unload")
             current_sample._set_loaded(False, has_been_loaded=True)
             self._trigger_loaded_sample_changed_event(current_sample)
-            pass
         except Exception as ex:
             logging.getLogger("user_level_log").error(
                 f"Failed to unmount sample. {str(ex)}"
@@ -806,7 +806,11 @@ class SampleChanger(AbstractSampleChanger):
         except Exception:
             return []
 
-    def _initialise_pucks_and_pins(self) -> None:
+    def _initialise_pucks_and_pins(self, pucks_by_epn) -> None:
+        """
+        Initialises the pucks and pins in the sample changer based on
+        the pucks in the data layer API for the current EPN.
+        """
         self.no_of_baskets = (
             robot_config.ASC_NUM_PUCKS
         )  # TODO: no_of_baskets = number of projects
@@ -823,10 +827,18 @@ class SampleChanger(AbstractSampleChanger):
             self._add_component(basket)
 
         # all pins have to be added for the refresh button to work
-        for i in range(1, self.no_of_baskets + 1):
+        for puck in range(1, self.no_of_baskets + 1):
             for port in range(1, self.no_of_samples_in_basket + 1):
-                address = MxcubePin.get_sample_address(i, port)
+                address = MxcubePin.get_sample_address(puck, port)
                 pin: MxcubePin = self.get_component_by_address(address)
+                if self.loaded_pucks_dict.get(puck) is not None:
+                    sample_name = self.get_sample_by_barcode_and_port(
+                        pucks_by_epn,
+                        port,
+                        self.loaded_pucks_dict[puck].name.replace("-", ""),
+                    )
+                    if sample_name is not None:
+                        pin._name = sample_name
                 pin._set_info(
                     present=False,
                     id=None,
@@ -866,10 +878,10 @@ class SampleChanger(AbstractSampleChanger):
                     {
                         "containerSampleChangerLocation": str(puck.id),
                         "sampleLocation": str(port),
-                        "sampleName": pin.get("name"),
-                        "sampleId": pin.get("id"),
+                        "sampleName": pin["name"],
+                        "sampleId": pin["id"],
                         "queueID": None,
-                        "code": puck.name
+                        "code": puck.name,
                     }
                 )
 
@@ -885,18 +897,17 @@ class SampleChanger(AbstractSampleChanger):
         baskets: list[MxcubePuck] = self.get_basket_list()
         for i in range(1, self.no_of_baskets + 1):
             if i not in self.puck_location_list:
-                baskets[i-1]._set_info(
-                present=False,
-                id=None,
-                scanned=False,
+                baskets[i - 1]._set_info(
+                    present=False,
+                    id=None,
+                    scanned=False,
                 )
             else:
-                baskets[i-1]._set_info(
+                baskets[i - 1]._set_info(
                     present=True,
                     id=str(i),
                     scanned=True,
                 )
-
 
         for i in range(1, self.no_of_baskets + 1):
             for port in range(1, self.no_of_samples_in_basket + 1):
