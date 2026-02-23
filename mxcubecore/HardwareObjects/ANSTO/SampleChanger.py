@@ -485,27 +485,6 @@ class SampleChanger(AbstractSampleChanger):
             prefect_prefetch = None
 
         self._check_if_robot_is_ready()
-        # # Mock mounting a sample for now
-        # for puck_location in self.puck_location_list:
-        #     for port in range(1, self.no_of_samples_in_basket + 1):
-        #         address = MxcubePin.get_sample_address(
-        #             puck_location, port
-        #         )  # e.g. "1:01"
-        #         mxcube_pin: MxcubePin = self.get_component_by_address(address)
-        #         loaded: bool = False
-        #         if (puck_location, port) == (
-        #             prefect_sample_to_mount["puck"],
-        #             prefect_sample_to_mount["id"],
-        #         ):
-        #             loaded = True
-
-        #         mxcube_pin._set_loaded(
-        #             loaded=loaded,
-        #             has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
-        #         )
-        #         mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
-        #         if loaded:
-        #             self._trigger_loaded_sample_changed_event(mxcube_pin)
 
         try:
             # Mount pin using `mount` Prefect Flow
@@ -520,13 +499,10 @@ class SampleChanger(AbstractSampleChanger):
             response = _prefect_mount_client.trigger_flow(wait=True)
             if response.state.type != StateType.COMPLETED:
                 raise RuntimeError(f"{response.state.message}")
-            
-            # TODO: double check if this is necessary
+
             puck_location = prefect_sample_to_mount["puck"]
             port = prefect_sample_to_mount["id"]
-            address = MxcubePin.get_sample_address(
-                puck_location, port
-            )  # e.g. "1:01"
+            address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
             mxcube_pin: MxcubePin = self.get_component_by_address(address)
             mxcube_pin._set_loaded(
                 loaded=True,
@@ -747,8 +723,8 @@ class SampleChanger(AbstractSampleChanger):
     def _initialise_pucks_and_pins(self, pucks_by_epn: list[dict]) -> None:
         """
         Initialises the pucks and pins. All pins and pucks are added to the sample changer,
-        but only the pucks that are loaded in the robot and match the current 
-        EPN will be marked as present. 
+        but only the pucks that are loaded in the robot and match the current
+        EPN will be marked as present.
         NOTE: It is important to add all pins and pucks for the refresh button to work in the UI
 
         Parameters
@@ -795,7 +771,7 @@ class SampleChanger(AbstractSampleChanger):
         """Refreshes the puck and pin information from the robot and updates the sample
         changer state accordingly. This method is called when the user clicks the refresh
         button in the UI.
-        
+
         Returns
         -------
         dict
