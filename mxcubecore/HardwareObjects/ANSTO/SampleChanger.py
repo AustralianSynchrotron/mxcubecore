@@ -147,8 +147,6 @@ class SampleChanger(AbstractSampleChanger):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(self.__TYPE__, False, *args, **kwargs)
 
-        self._pin_name_cache = {}
-
     def init(self) -> None:
         self._selected_sample = -1
         self._selected_basket = -1
@@ -196,7 +194,12 @@ class SampleChanger(AbstractSampleChanger):
                 puck_location,
                 samples_num=self.no_of_samples_in_basket,
             )
-            basket._set_info(present=present, id=str(puck_location), scanned=False)
+            # NOTE: Whether a puck is present or not is determined by the id which is weird!!!
+            basket._set_info(
+                present=present,
+                id=str(puck_location) if present else None,
+                scanned=False,
+            )
             self._add_component(basket)
 
         self._set_state(SampleChangerState.Unknown)
@@ -210,6 +213,10 @@ class SampleChanger(AbstractSampleChanger):
         task1s.link(self._on_timer_1s_exit)
         updateTask = self.__update_timer_task(wait=False)
         updateTask.link(self._on_timer_update_exit)
+
+        self._initialise_pucks_and_pins(pucks_by_epn)
+
+        self.refresh_puck_info()
 
         self.update_info()
 
@@ -342,111 +349,41 @@ class SampleChanger(AbstractSampleChanger):
 
     def _do_update_info(self) -> None:
         """
-        Polls and updates the Puck/Pin information and robot state.
-        TODO: This method is called every second, but could be called
-        less frequently
+        Polls and updates the robot state. Updating the sample information
+        is now done via the UI refresh button
         """
         try:
             client = self.get_client()
 
             robot_state = client.status.state
-            puck_list = self.get_pucks_by_epn()
-
-            components: list[MxcubePuck] = self.get_components()
-            for mxcube_puck_idx in range(self.no_of_baskets):
-                puck_location = mxcube_puck_idx + 1
-                robot_puck = self.loaded_pucks_dict.get(puck_location)
-                mxcube_puck = components[mxcube_puck_idx]
-                mxcube_puck._name = "test1"
-                mxcube_puck._set_info(
-                    present=robot_puck is not None,
-                    id=(robot_puck is not None and str(robot_puck)) or None,
-                    scanned=False,
-                )
-
-                for mxcube_pin_idx in range(self.no_of_samples_in_basket):
-                    port = mxcube_pin_idx + 1
-                    self._update_mxcube_pin_info(
-                        robot_puck,
-                        puck_location=puck_location,
-                        port=port,
-                        robot_state=robot_state,
-                        puck_list=puck_list,
-                    )
-
             self._update_sample_changer_state(robot_state)
+            self._update_loaded_pin_state(robot_state)
 
         except Exception as ex:
             self._update_sample_changer_state(None)
 
-    def _update_mxcube_pin_info(
-        self,
-        robot_puck: RobotPuck,
-        puck_location: int,
-        port: int,
-        robot_state: StateResponse | None,
-        puck_list: list[dict],
-    ):
-        """
-        Updates the pin information
-
-        Parameters
-        ----------
-        robot_puck : RobotPuck
-            A mx-robot-library Puck pydantic model
-        puck_location : int
-            The puck location in the dewar
-        port : int
-            The pin position in the puck
-        robot_state : StateResponse | None
-            The state from the robot as reported by the mx-robot-library
-        puck_list : list[dict]
-            A list of pucks from the data layer API, each puck is a dictionary
-        """
-        robot_pin: RobotPin | None = None
-        if robot_puck is not None:
-            robot_pin = RobotPin(
-                id=port,
-                puck=robot_puck,
-            )
-
-        address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
-        mxcube_pin: MxcubePin = self.get_component_by_address(address)
-        if robot_pin is not None and robot_puck.name:  # check also that barcode exists
-            try:
-                sample_name = self.get_sample_by_barcode_and_port(
-                    puck_list=puck_list,
-                    port=port,
-                    barcode=robot_puck.name.replace("-", ""),
+    def _update_loaded_pin_state(self, robot_state: StateResponse | None) -> None:
+        """Update MXCuBE pin loaded flags from the robot"""
+        for puck_location in self.puck_location_list:
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(
+                    puck_location, port
+                )  # e.g. "1:01"
+                mxcube_pin: MxcubePin = self.get_component_by_address(address)
+                loaded: bool = False
+                if robot_state.goni_pin is not None:
+                    loaded = (
+                        robot_state.goni_pin.puck.id,
+                        robot_state.goni_pin.id,
+                    ) == (
+                        puck_location,
+                        port,
+                    )
+                mxcube_pin._set_loaded(
+                    loaded=loaded,
+                    has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
                 )
-            except Exception:
-                sample_name = str(robot_pin)
-
-            if sample_name is None:
-                sample_name = str(robot_pin)
-
-            mxcube_pin._name = sample_name
-            pin_datamatrix = str(robot_pin)
-
-            mxcube_pin._set_info(
-                present=robot_puck is not None,
-                id=pin_datamatrix,
-                scanned=False,
-            )
-            loaded: bool = False
-            if robot_state.goni_pin is not None:
-                loaded = (
-                    robot_state.goni_pin.puck.id,
-                    robot_state.goni_pin.id,
-                ) == (
-                    puck_location,
-                    port,
-                )
-            mxcube_pin._set_loaded(
-                loaded=loaded,
-                has_been_loaded=mxcube_pin.has_been_loaded() or loaded,
-            )
-            mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
+                mxcube_pin._set_holder_length(MxcubePin.STD_HOLDERLENGTH)
 
     def _update_sample_changer_state(self, robot_state: StateResponse | None) -> None:
         """
@@ -563,6 +500,15 @@ class SampleChanger(AbstractSampleChanger):
             if response.state.type != StateType.COMPLETED:
                 raise RuntimeError(f"{response.state.message}")
 
+            puck_location = prefect_sample_to_mount["puck"]
+            port = prefect_sample_to_mount["id"]
+            address = MxcubePin.get_sample_address(puck_location, port)  # e.g. "1:01"
+            mxcube_pin: MxcubePin = self.get_component_by_address(address)
+            mxcube_pin._set_loaded(
+                loaded=True,
+                has_been_loaded=mxcube_pin.has_been_loaded() or True,
+            )
+            self._trigger_loaded_sample_changed_event(mxcube_pin)
         except Exception as ex:
             logging.getLogger("user_level_log").error(
                 f"Failed to mount sample. {str(ex)}"
@@ -673,7 +619,8 @@ class SampleChanger(AbstractSampleChanger):
         """
         self._check_if_robot_is_ready()
 
-        # Mount pin using `unmount` Prefect Flow
+        # Unmount pin using `unmount` Prefect Flow
+        current_sample = self.get_loaded_sample()
         try:
             _prefect_unmount_client = MX3SyncPrefectClient(
                 name=self._unmount_deployment_name,
@@ -683,7 +630,8 @@ class SampleChanger(AbstractSampleChanger):
             response = _prefect_unmount_client.trigger_flow(wait=True)
             if response.state.type != StateType.COMPLETED:
                 raise RuntimeError(f"{response.state.message}")
-
+            current_sample._set_loaded(False, has_been_loaded=True)
+            self._trigger_loaded_sample_changed_event(current_sample)
         except Exception as ex:
             logging.getLogger("user_level_log").error(
                 f"Failed to unmount sample. {str(ex)}"
@@ -771,3 +719,157 @@ class SampleChanger(AbstractSampleChanger):
             return r.json()
         except Exception:
             return []
+
+    def _initialise_pucks_and_pins(self, pucks_by_epn: list[dict]) -> None:
+        """
+        Initialises the pucks and pins. All pins and pucks are added to the sample changer,
+        but only the pucks that are loaded in the robot and match the current
+        EPN will be marked as present.
+        NOTE: It is important to add all pins and pucks for the refresh button to work in the UI
+
+        Parameters
+        ----------
+        pucks_by_epn : list[dict]
+            A list of pucks from the data layer API, each puck is a dictionary
+            containing the puck information. This is used to get the sample names for the pins.
+        """
+        self.no_of_baskets = (
+            robot_config.ASC_NUM_PUCKS
+        )  # TODO: no_of_baskets = number of projects
+        self.no_of_samples_in_basket = (
+            robot_config.ASC_NUM_PINS
+        )  # TODO: number of samples per project
+
+        for puck_location in range(1, self.no_of_baskets + 1):
+            basket = MxcubePuck(
+                self,
+                puck_location,
+                samples_num=self.no_of_samples_in_basket,
+            )
+            self._add_component(basket)
+
+        # all pins have to be added for the refresh button to work
+        for puck in range(1, self.no_of_baskets + 1):
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(puck, port)
+                pin: MxcubePin = self.get_component_by_address(address)
+                if self.loaded_pucks_dict.get(puck) is not None:
+                    sample_name = self.get_sample_by_barcode_and_port(
+                        pucks_by_epn,
+                        port,
+                        self.loaded_pucks_dict[puck].name.replace("-", ""),
+                    )
+                    if sample_name is not None:
+                        pin._name = sample_name
+                pin._set_info(
+                    present=False,
+                    id=None,
+                    scanned=False,
+                )
+
+    def refresh_puck_info(self) -> dict[str, Any]:
+        """Refreshes the puck and pin information from the robot and updates the sample
+        changer state accordingly. This method is called when the user clicks the refresh
+        button in the UI.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the sample information for each pin, in the format
+            expected by the UI.
+        """
+
+        logging.getLogger("HWR").info("Refreshing sample info...")
+        client = self.get_client()
+
+        loaded_pucks = client.status.get_loaded_pucks()
+        pucks_by_epn = self.get_pucks_by_epn()
+
+        epn_puck_by_barcode = {
+            str(p.get("barcode")): p for p in pucks_by_epn if p.get("barcode")
+        }
+
+        self.loaded_pucks_dict = {}
+        self.sample_dict = []
+        pin_ports_by_puck: dict[int, list[int]] = {}
+
+        for puck in loaded_pucks:
+            key = puck.name.replace("-", "") if puck.name else None
+            visit_puck = epn_puck_by_barcode.get(key)
+            if not visit_puck:
+                continue
+            self.loaded_pucks_dict[puck.id] = puck
+            pins = visit_puck.get("pins", [])
+            pin_ports_by_puck[puck.id] = []
+            for pin in pins:
+                port = pin.get("port")
+                if port is None:
+                    continue
+                pin_ports_by_puck[puck.id].append(port)
+                self.sample_dict.append(
+                    {
+                        "containerSampleChangerLocation": str(puck.id),
+                        "sampleLocation": str(port),
+                        "sampleName": pin["name"],
+                        "sampleId": pin["id"],
+                        "queueID": None,
+                        "code": puck.name,
+                    }
+                )
+
+        with get_redis_connection(decode_response=True) as redis_connection:
+            epn_string = redis_connection.get("epn")
+
+        if not self.loaded_pucks_dict:
+            logging.getLogger("user_level_log").warning(
+                f"No pucks loaded in the robot match the current EPN ({epn_string}). "
+                "The sample changer will be empty."
+            )
+
+        self.puck_location_list = list(self.loaded_pucks_dict.keys())
+
+        self.no_of_baskets = robot_config.ASC_NUM_PUCKS
+
+        baskets: list[MxcubePuck] = self.get_basket_list()
+        for i in range(1, self.no_of_baskets + 1):
+            if i not in self.puck_location_list:
+                baskets[i - 1]._set_info(
+                    present=False,
+                    id=None,
+                    scanned=False,
+                )
+            else:
+                baskets[i - 1]._set_info(
+                    present=True,
+                    id=str(i),
+                    scanned=True,
+                )
+
+        for i in range(1, self.no_of_baskets + 1):
+            for port in range(1, self.no_of_samples_in_basket + 1):
+                address = MxcubePin.get_sample_address(i, port)
+                pin: MxcubePin = self.get_component_by_address(address)
+                if i not in self.puck_location_list:
+                    # pin._set_info(
+                    #     present=False,
+                    #     id=address,
+                    #     scanned=False,
+                    # )
+                    pass
+                else:
+                    if port not in pin_ports_by_puck.get(i, []):
+                        # pin._set_info(
+                        #     present=False,
+                        #     id=address,
+                        #     scanned=False,
+                        # )
+                        pass
+                    else:
+                        pin._set_info(
+                            present=True,
+                            id=address,
+                            scanned=True,
+                        )
+        logging.getLogger("HWR").info("Refreshing sample info completed.")
+
+        return self.sample_dict
