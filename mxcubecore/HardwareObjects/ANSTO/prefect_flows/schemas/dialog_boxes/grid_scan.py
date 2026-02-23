@@ -26,9 +26,9 @@ def get_grid_scan_schema(partial_udc: bool = False) -> dict:
             "widget": "textarea",
         },
         "detector_roi_mode": {
-            "title": "Detector ROI Mode",
+            "title": "Detector 4M Mode",
             "type": "string",
-            "enum": ["4M", "disabled"],
+            "enum": ["disabled", "4M"],
             "default": str(
                 get_dialog_box_param("detector_roi_mode", collection_type="grid_scan")
             ),

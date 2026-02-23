@@ -33,7 +33,7 @@ grid_scan:
   photon_energy: 13.0  # keV
   resolution: 1.5  # Ångström (16M)
   transmission: 1.0  # Percentage
-  detector_roi_mode: "4M"  # 4M or disabled
+  detector_roi_mode: "disabled"  # 4M or disabled
   # Only used for trays
   auto_create_well: false
   project_name: null
