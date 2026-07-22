@@ -90,6 +90,10 @@ class ANSTOConfig(APIs, Robot, RedisSettings, MD3, PrefectSettings):
         env="ADD_DUMMY_PIN_TO_DB",
         description="True only for development",
     )
+    PREFETCH_ENABLED: bool = Field(
+        default=True,
+        env="PREFETCH_ENABLED",
+    )
 
 
 settings = ANSTOConfig()
