@@ -488,6 +488,9 @@ class SampleChanger(AbstractSampleChanger):
 
         try:
             # Mount pin using `mount` Prefect Flow
+            if not settings.PREFETCH_ENABLED:
+                # Force prefetch to None if prefetching is disabled
+                prefect_prefetch = None
             _prefect_mount_client = MX3SyncPrefectClient(
                 name=self._mount_deployment_name,
                 parameters={
